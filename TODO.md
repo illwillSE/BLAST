@@ -4,14 +4,23 @@ Ideas and planned work, roughly prioritized. Items come from the original
 design brief and from development discussions.
 
 ## Features
-Sample export options
-Sound rename
-Export sample from sample source (for ease of use)
-How about using the sample as an envelope for the synth?
 
-- [ ] **Noise oscillator** — add white/pink noise as a synth wave option
-      (`Tone.Noise`). Unlocks gunshots, explosions, wind, snares; currently
-      only tonal waveforms exist.
+- [ ] **Sample export options** — more control over exported audio
+      (format, sample rate, mono/stereo?).
+- [ ] **Sound rename** — renaming beyond the double-click in the sound
+      list (e.g. from the chain header).
+- [ ] **Export sample from sample source** — download the (edited) sample
+      straight from the Sample block, for ease of use.
+- [ ] **Sample as envelope for the synth** — use a sample's amplitude
+      contour to shape the synth's volume over time. Follow the sample's
+      loudness with an envelope follower, or extract the contour offline.
+- [ ] **Richer synth oscillator** — Tone.js OmniOscillator extras:
+      partial-count types (`square4`, `sawtooth8`), a custom-partials
+      harmonics editor (draggable bars — "draw your own waveform"), and
+      pulse width. Skip `fat*` types (Detune block covers that).
+- [ ] **Noise oscillator** — add white/pink/brown noise as a synth wave
+      option (`Tone.Noise`). Unlocks gunshots, explosions, wind, snares;
+      currently only tonal waveforms exist.
 - [ ] **Live recording waveform** — show a scrolling waveform *while*
       recording (WaveSurfer Record plugin). Today the waveform only appears
       after pressing Stop.
