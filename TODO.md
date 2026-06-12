@@ -12,8 +12,24 @@ design brief and from development discussions.
 - [ ] **Export sample from sample source** — download the (edited) sample
       straight from the Sample block, for ease of use.
 - [ ] **Sample as envelope for the synth** — use a sample's amplitude
-      contour to shape the synth's volume over time. Follow the sample's
-      loudness with an envelope follower, or extract the contour offline.
+      contour to shape the synth's volume over time (record "pew-pew" or
+      beatboxing, the synth follows your timing and dynamics).
+      Design sketch:
+      - A **"Sample Envelope" control block** (same category as Pitch
+        LFO/Envelope) with its own embedded sample loader — drop/record
+        a file into the block; it's modulation data, not a chain source,
+        so the one-source-per-sound model is untouched.
+      - **Offline extraction**: RMS in ~10ms windows → normalized curve,
+        scheduled per trigger via `setValueCurveAtTime` — identical in
+        live playback and WAV export.
+      - Params: Smoothing, Amount, stretch-to-note-length vs natural
+        length toggle. Start with envelope *replacing* the synth ADSR.
+      - Gotchas: auto-gain quiet recordings, noise floor so room hiss
+        doesn't drone.
+      - Save/load already works: sample cache + ZIP key samples by block
+        id, so an envelope sample serializes today.
+      - Future door: the extracted curve as a generic modulation source
+        (cutoff = auto-wah, pitch, …).
 - [ ] **Richer synth oscillator** — Tone.js OmniOscillator extras:
       partial-count types (`square4`, `sawtooth8`), a custom-partials
       harmonics editor (draggable bars — "draw your own waveform"), and
