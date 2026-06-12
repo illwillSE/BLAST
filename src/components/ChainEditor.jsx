@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { isSource } from '../state/model'
+import { disabledSourceParams } from '../blocks/registry'
 import BlockCard from './BlockCard'
 import AddBlockMenu from './AddBlockMenu'
 import OutputVisualizer from './OutputVisualizer'
@@ -31,15 +32,28 @@ export default function ChainEditor({
 }) {
   const dragIndex = useRef(null)
   const [dropTarget, setDropTarget] = useState(null)
+  // Source controls another block currently overrides (greyed out in the card).
+  const sourceLocks = disabledSourceParams(sound)
 
-  function dragProps(block, index) {
-    if (isSource(block)) return {} // source stays pinned at the front
+  // Drag SOURCE lives on the grip handle only, not the whole card — otherwise
+  // the native element-drag swallows mouse interaction with anything rich
+  // inside the card (WaveSurfer regions, the sample-editor modal, canvases).
+  function dragHandleProps(block, index) {
+    if (isSource(block)) return null // source stays pinned at the front
     return {
       draggable: true,
       onDragStart: (e) => {
         dragIndex.current = index
         e.dataTransfer.effectAllowed = 'move'
       },
+      onDragEnd: () => { dragIndex.current = null; setDropTarget(null) },
+    }
+  }
+
+  // Drop TARGET stays the whole card so you can release anywhere over it.
+  function dropProps(block, index) {
+    if (isSource(block)) return {}
+    return {
       onDragOver: (e) => {
         if (dragIndex.current === null || dragIndex.current === index) return
         e.preventDefault()
@@ -53,7 +67,6 @@ export default function ChainEditor({
         dragIndex.current = null
         setDropTarget(null)
       },
-      onDragEnd: () => { dragIndex.current = null; setDropTarget(null) },
       style: dropTarget === index ? { outline: '2px dashed #f59e0b', outlineOffset: '2px' } : undefined,
     }
   }
@@ -71,7 +84,9 @@ export default function ChainEditor({
             onToggle={() => onToggle(block.id)}
             onRemove={() => onRemove(block.id)}
             onSwapSource={(type) => onSwapSource(block.id, type)}
-            dragProps={dragProps(block, i)}
+            disabledParams={isSource(block) ? sourceLocks : undefined}
+            dropProps={dropProps(block, i)}
+            dragHandleProps={dragHandleProps(block, i)}
           />
         </div>
       ))}

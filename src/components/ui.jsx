@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Shared control primitives — every control always shows its current value.
 
@@ -135,9 +135,78 @@ export function Select({ def, value, onChange }) {
   )
 }
 
+// "Draw your own waveform" — a row of draggable bars, one per harmonic, each
+// the relative level (0..1) of that partial. The array feeds the synth's
+// custom OmniOscillator partials. Drag up/down on a bar to set its level.
+export function HarmonicsEditor({ def, value, onChange }) {
+  const partials = Array.isArray(value) && value.length ? value : [1]
+  const canvasRef = useRef(null)
+  const draggingRef = useRef(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const { width, height } = canvas
+    ctx.clearRect(0, 0, width, height)
+    const slot = width / partials.length
+    for (let i = 0; i < partials.length; i++) {
+      const v = Math.min(1, Math.max(0, partials[i]))
+      const barH = v * (height - 2)
+      ctx.fillStyle = i === 0 ? '#fbbf24' : '#d97706' // fundamental brighter than overtones
+      ctx.fillRect(i * slot + 1, height - barH, slot - 2, barH)
+    }
+  }, [partials])
+
+  function setAt(e) {
+    const rect = canvasRef.current.getBoundingClientRect()
+    const n = partials.length
+    const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - rect.left) / rect.width) * n)))
+    const v = Math.min(1, Math.max(0, 1 - (e.clientY - rect.top) / rect.height))
+    const next = partials.slice()
+    next[i] = Math.round(v * 100) / 100
+    onChange(next)
+  }
+
+  return (
+    <div className="block select-none">
+      <div className="mb-0.5 text-[11px] uppercase tracking-wide text-slate-500">{def.label}</div>
+      <canvas
+        ref={canvasRef}
+        width={208}
+        height={56}
+        onPointerDown={(e) => { draggingRef.current = true; e.currentTarget.setPointerCapture(e.pointerId); setAt(e) }}
+        onPointerMove={(e) => { if (draggingRef.current) setAt(e) }}
+        onPointerUp={() => { draggingRef.current = false }}
+        onPointerCancel={() => { draggingRef.current = false }}
+        title="Drag the bars to set each harmonic’s level — draw your own waveform"
+        className="w-full cursor-crosshair rounded bg-slate-950 touch-none"
+      />
+    </div>
+  )
+}
+
 export function ParamControl({ def, value, onChange }) {
   if (def.type === 'select') return <Select def={def} value={value} onChange={onChange} />
+  if (def.type === 'harmonics') return <HarmonicsEditor def={def} value={value} onChange={onChange} />
   return <Slider def={def} value={value} onChange={onChange} />
+}
+
+// Browse / Record button row + error line, shared by the sample blocks.
+export function SampleLoadControls({ recording, onBrowse, onStartRecording, onStopRecording, error }) {
+  return (
+    <>
+      <div className="mt-2 flex gap-1.5">
+        <Button onClick={onBrowse} className="flex-1">Browse…</Button>
+        {recording ? (
+          <Button onClick={onStopRecording} variant="danger" className="flex-1 animate-pulse">■ Stop</Button>
+        ) : (
+          <Button onClick={onStartRecording} variant="danger" className="flex-1">● Record</Button>
+        )}
+      </div>
+      {error && <div className="mt-1.5 text-[11px] text-red-400">{error}</div>}
+    </>
+  )
 }
 
 export function Button({ children, onClick, variant = 'default', className = '', ...rest }) {

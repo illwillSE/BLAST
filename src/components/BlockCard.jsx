@@ -3,6 +3,7 @@ import { BLOCK_DEFS } from '../blocks/registry'
 import { liveEngine } from '../audio/engine'
 import { CAT_STYLES, ParamControl, formatValue } from './ui'
 import SampleEditor from './SampleEditor'
+import EnvelopeSampleLoader from './EnvelopeSampleLoader'
 import BlockHelpModal from './BlockHelpModal'
 
 function SpectrumCanvas({ blockId }) {
@@ -54,7 +55,7 @@ function SourceTypeSwitch({ block, onSwapSource }) {
 
 export default function BlockCard({
   block, soundId, isSource, onParam, onToggle, onRemove, onSwapSource,
-  dragProps,
+  disabledParams, dropProps, dragHandleProps,
 }) {
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
@@ -62,7 +63,12 @@ export default function BlockCard({
   const [helpOpen, setHelpOpen] = useState(false)
   const disabled = !isSource && !block.enabled
 
-  const summary = def.params.slice(0, 2)
+  // Params can hide themselves for the current settings (e.g. pulse Width only
+  // shows on a pulse wave) via an optional `show(params)` predicate.
+  const visibleParams = def.params.filter((p) => !p.show || p.show(block.params))
+  const summary = visibleParams
+    .filter((p) => p.type !== 'harmonics')
+    .slice(0, 2)
     .map((p) => `${p.label} ${formatValue(p, block.params[p.key])}`)
     .join(' · ')
 
@@ -70,15 +76,22 @@ export default function BlockCard({
     <div
       className={`shrink-0 self-start rounded-lg border bg-slate-900/80 shadow-lg transition-opacity ${cat.border} ${cat.glow} ${
         disabled ? 'opacity-45' : ''
-      } ${block.type === 'sample' ? 'w-72' : 'w-52'}`}
-      {...dragProps}
+      } ${block.type === 'sample' || block.type === 'samplenv' || block.type === 'vocoder' ? 'w-72' : 'w-52'}`}
+      {...dropProps}
     >
       <div
         className="flex cursor-pointer items-center gap-1.5 border-b border-slate-800 px-2.5 py-1.5"
         onClick={() => setExpanded((e) => !e)}
         title={def.description}
       >
-        <span className="cursor-grab text-slate-600" title="Drag to reorder">⠿</span>
+        <span
+          {...(dragHandleProps || {})}
+          onClick={(e) => e.stopPropagation()}
+          className={`text-slate-600 ${dragHandleProps ? 'cursor-grab' : 'cursor-default opacity-40'}`}
+          title={dragHandleProps ? 'Drag to reorder' : 'Source stays first'}
+        >
+          ⠿
+        </span>
         <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
         <span className={`flex-1 truncate text-[12px] font-semibold uppercase tracking-wider ${cat.text}`}>
           {def.name}
@@ -118,15 +131,27 @@ export default function BlockCard({
         <div className="space-y-2 p-2.5">
           {isSource && <SourceTypeSwitch block={block} onSwapSource={onSwapSource} />}
           {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
+          {(block.type === 'samplenv' || block.type === 'vocoder') && <EnvelopeSampleLoader block={block} onParam={onParam} />}
           {block.type === 'analyzer' && <SpectrumCanvas blockId={block.id} />}
-          {def.params.map((p) => (
-            <ParamControl
-              key={p.key}
-              def={p}
-              value={block.params[p.key]}
-              onChange={(v) => onParam(p.key, v)}
-            />
-          ))}
+          {visibleParams.map((p) => {
+            const lockedBy = disabledParams?.get(p.key)
+            const control = (
+              <ParamControl def={p} value={block.params[p.key]} onChange={(v) => onParam(p.key, v)} />
+            )
+            // A control another block is overriding is greyed and made inert,
+            // but still shows its value (it applies again once that block is off).
+            return lockedBy ? (
+              <div
+                key={p.key}
+                className="pointer-events-none opacity-40"
+                title={`Overridden by the ${lockedBy} block`}
+              >
+                {control}
+              </div>
+            ) : (
+              <div key={p.key}>{control}</div>
+            )
+          })}
         </div>
       ) : (
         <div className="truncate px-2.5 py-1.5 font-mono text-[10px] text-slate-500">

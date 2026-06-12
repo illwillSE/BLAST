@@ -29,6 +29,24 @@ function unisonOffsets(count) {
   return offsets
 }
 
+// Vocoder band centers: log-spaced across the speech-intelligibility range,
+// with a constant-Q per band derived from the spacing so neighbours just meet.
+// Returns one Q for all bands (the spacing ratio is uniform in log space).
+function vocoderBands(count) {
+  const f0 = 150, f1 = 6000
+  const freqs = []
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0 : i / (count - 1)
+    freqs.push(f0 * Math.pow(f1 / f0, t))
+  }
+  const ratio = Math.pow(f1 / f0, 1 / Math.max(1, count - 1)) // adjacent-band ratio
+  const Q = Math.sqrt(ratio) / (ratio - 1)
+  return { freqs, Q }
+}
+// Per-band makeup gain: a band-passed envelope is weak, so boost it before it
+// opens the carrier band. Tuned by ear for audible-but-not-clipping output.
+const VOCODER_MAKEUP = 6
+
 const wave = (def = 'sawtooth') => ({
   key: 'wave',
   label: 'Wave',
@@ -49,6 +67,27 @@ const sec = (v) => (v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`)
 const cents = (v) => `${v > 0 ? '+' : ''}${Math.round(v)}ct`
 const semis = (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}st`
 
+// Maps the synth's oscillator params onto a Tone OmniOscillator. Three "rich"
+// modes beyond the plain waves: band-limited partial counts (e.g. sawtooth8),
+// a pulse with adjustable width, and a custom harmonic spectrum ("draw your
+// own wave"). Tone only recreates the underlying oscillator when the source
+// kind actually changes, so calling this on every apply() is cheap.
+function applyOscillator(osc, p) {
+  if (p.wave === 'custom') {
+    // partials can't be set on a pulse/pwm source — switch to a plain
+    // oscillator first, then the array becomes a custom periodic wave.
+    if (osc.sourceType === 'pulse' || osc.sourceType === 'pwm') osc.type = 'sine'
+    osc.partials = p.harmonics?.length ? p.harmonics : [1]
+  } else if (p.wave === 'pulse') {
+    osc.type = 'pulse'
+    if (osc.width) osc.width.value = p.width ?? 0
+  } else {
+    // 0 partials = the full band-limited wave; >0 keeps only the first N.
+    const count = p.partials ?? 0
+    osc.type = count > 0 ? `${p.wave}${count}` : p.wave
+  }
+}
+
 export const BLOCK_DEFS = {
   // ---------------------------------------------------------------- sources
   synth: {
@@ -58,7 +97,16 @@ export const BLOCK_DEFS = {
     kind: 'source',
     description: 'Oscillator with envelope',
     params: [
-      wave('sawtooth'),
+      { key: 'wave', label: 'Wave', type: 'select', default: 'sawtooth',
+        options: ['sine', 'triangle', 'square', 'sawtooth', 'pulse', 'custom'].map((v) => ({ value: v, label: v })) },
+      // Band-limited partial count — only the harmonic-rich basic waves use it.
+      { key: 'partials', label: 'Partials', type: 'range', min: 0, max: 32, step: 1, default: 0,
+        format: (v) => (v === 0 ? 'full' : `${v}`),
+        show: (p) => p.wave === 'square' || p.wave === 'sawtooth' || p.wave === 'triangle' },
+      { key: 'width', label: 'Width', type: 'range', min: -0.95, max: 0.95, step: 0.01, default: 0,
+        percent: true, format: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`, show: (p) => p.wave === 'pulse' },
+      { key: 'harmonics', label: 'Harmonics', type: 'harmonics',
+        default: [1, 0.6, 0.4, 0.25, 0.15, 0.1, 0.07, 0.05], show: (p) => p.wave === 'custom' },
       { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 220, scale: 'log', format: hz },
       { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec },
       { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.01, scale: 'log', format: sec },
@@ -68,13 +116,13 @@ export const BLOCK_DEFS = {
     ],
     create(params) {
       const synth = new Tone.Synth({
-        oscillator: { type: params.wave },
         envelope: { attack: params.attack, decay: params.decay, sustain: params.sustain, release: params.release },
       })
+      applyOscillator(synth.oscillator, params)
       return { nodes: { synth }, input: null, output: synth }
     },
     apply({ synth }, params) {
-      synth.oscillator.type = params.wave
+      applyOscillator(synth.oscillator, params)
       synth.envelope.attack = params.attack
       synth.envelope.decay = params.decay
       synth.envelope.sustain = params.sustain
@@ -146,7 +194,115 @@ export const BLOCK_DEFS = {
     },
   },
 
+  samplenv: {
+    type: 'samplenv',
+    name: 'Sample Envelope',
+    category: 'dynamics',
+    kind: 'control',
+    description: 'Shapes the source volume with a sample’s amplitude contour',
+    params: [
+      { key: 'amount', label: 'Amount', type: 'range', min: 0, max: 1, step: 0.01, default: 1, percent: true, format: (v) => `${Math.round(v * 100)}%` },
+      { key: 'smoothing', label: 'Smooth', type: 'range', min: 0, max: 0.1, step: 0.005, default: 0.02, format: sec },
+      { key: 'stretch', label: 'Length', type: 'select', default: 'natural',
+        options: [{ value: 'natural', label: 'natural' }, { value: 'note', label: 'note' }] },
+    ],
+    // Pure modulation: the embedded sample's amplitude is extracted to a gain
+    // curve at trigger time (see engine.js). No audio node — like Pitch Env.
+    // The synth ADSR is flattened while this is active, and in 'natural' mode
+    // the synth Length is replaced by the sample's own length — so the UI
+    // disables those source controls (see `disabledSourceParams`).
+    overrides: (p) => (p.stretch === 'natural'
+      ? ['attack', 'decay', 'sustain', 'release', 'duration']
+      : ['attack', 'decay', 'sustain', 'release']),
+  },
+
   // ----------------------------------------------------------------- filter
+  vocoder: {
+    type: 'vocoder',
+    name: 'Vocoder',
+    category: 'filter',
+    kind: 'insert',
+    description: 'Imposes a speech sample’s spectrum onto the chain signal',
+    params: [
+      { key: 'bands', label: 'Bands', type: 'select', default: '16',
+        options: [{ value: '8', label: '8' }, { value: '16', label: '16' }, { value: '32', label: '32' }] },
+      { key: 'response', label: 'Response', type: 'range', min: 0.002, max: 0.2, step: 0.001, default: 0.02, scale: 'log', format: sec },
+      { key: 'sibilance', label: 'Sibilance', type: 'range', min: 0, max: 1, step: 0.01, default: 0.3, percent: true, format: (v) => `${Math.round(v * 100)}%` },
+    ],
+    // Band count changes the number of audio nodes, so it forces a rebuild.
+    structureParams: ['bands'],
+    // The chain signal is the carrier; an embedded speech sample (loaded/recorded
+    // into this block, played fresh on every trigger via onTrigger) is the
+    // modulator. N band-pass pairs split both; a Follower per band tracks the
+    // modulator band's loudness and gates the matching carrier band. A separate
+    // high-pass pair passes sibilance through for crisp S/T sounds. Output is
+    // fully vocoded (no dry-carrier mix): the raw carrier blended in just adds
+    // an un-vocoded buzz and makes the carrier ring on past the speech.
+    create(p) {
+      const count = Number(p.bands ?? 16)
+      const { freqs, Q } = vocoderBands(count)
+      const input = new Tone.Gain(1)   // carrier in (the chain signal)
+      const modIn = new Tone.Gain(1)   // modulator in (the speech source connects here)
+      const vsum = new Tone.Gain(1)    // sum of all vocoded bands → output
+
+      const followers = []
+      const bandNodes = []
+      for (const f of freqs) {
+        const cBP = new Tone.Filter({ frequency: f, type: 'bandpass', Q })
+        const mBP = new Tone.Filter({ frequency: f, type: 'bandpass', Q })
+        const fol = new Tone.Follower(p.response)
+        const scale = new Tone.Gain(VOCODER_MAKEUP) // makeup so the envelope opens the band audibly
+        const g = new Tone.Gain(0) // base 0 — the follower drives the gain
+        input.connect(cBP); cBP.connect(g); g.connect(vsum)
+        modIn.connect(mBP); mBP.connect(fol); fol.connect(scale); scale.connect(g.gain)
+        followers.push(fol)
+        bandNodes.push(cBP, mBP, scale, g)
+      }
+
+      // Sibilance passthrough: high-passed carrier gated by the modulator's highs.
+      const sibCar = new Tone.Filter({ frequency: 5000, type: 'highpass' })
+      const sibMod = new Tone.Filter({ frequency: 5000, type: 'highpass' })
+      const sibFol = new Tone.Follower(0.01)
+      const sibScale = new Tone.Gain(VOCODER_MAKEUP * (p.sibilance ?? 0))
+      const sibGain = new Tone.Gain(0)
+      input.connect(sibCar); sibCar.connect(sibGain); sibGain.connect(vsum)
+      modIn.connect(sibMod); sibMod.connect(sibFol); sibFol.connect(sibScale); sibScale.connect(sibGain.gain)
+
+      let activeMod = null
+      function onTrigger(when, { params, sample, nodes }) {
+        if (activeMod) {
+          try { activeMod.stop(); activeMod.dispose() } catch { /* already gone */ }
+          nodes.delete(activeMod)
+          activeMod = null
+        }
+        if (!sample?.audioBuffer) return
+        const full = sample.audioBuffer.duration
+        const ts = Math.max(0, params.trimStart ?? 0)
+        const te = Math.min(full, params.trimEnd ?? full)
+        let buf = new Tone.ToneAudioBuffer(sample.audioBuffer)
+        if (te - ts > 0.002 && (ts > 0.001 || te < full - 0.001)) buf = buf.slice(ts, te)
+        const src = new Tone.ToneBufferSource(buf)
+        src.connect(modIn)
+        src.onended = () => {
+          nodes.delete(src)
+          if (activeMod === src) activeMod = null
+          try { src.disconnect(); src.dispose() } catch { /* disposed */ }
+        }
+        src.start(when)
+        nodes.add(src)
+        activeMod = src
+      }
+
+      const nodes = { input, modIn, vsum, followers, sibFol, sibScale, sibCar, sibMod, sibGain, bands: bandNodes }
+      return { nodes, input, output: vsum, onTrigger }
+    },
+    apply({ followers, sibFol, sibScale }, p) {
+      for (const f of followers) f.smoothing = p.response
+      sibFol.smoothing = Math.min(0.02, p.response)
+      sibScale.gain.value = VOCODER_MAKEUP * (p.sibilance ?? 0)
+    },
+  },
+
   filter: {
     type: 'filter',
     name: 'Filter',
@@ -430,6 +586,21 @@ export const BLOCK_DEFS = {
     },
     apply() {},
   },
+}
+
+// Which of the source block's params are currently overridden by another
+// enabled block in the chain (e.g. the Sample Envelope flattens the synth
+// ADSR). Returns paramKey -> overriding block's name, so the UI can grey the
+// control out and explain why. Blocks opt in with an `overrides(params)` def.
+export function disabledSourceParams(sound) {
+  const locks = new Map()
+  for (const block of sound.blocks) {
+    if (!block.enabled) continue
+    const def = BLOCK_DEFS[block.type]
+    if (!def?.overrides) continue
+    for (const key of def.overrides(block.params)) if (!locks.has(key)) locks.set(key, def.name)
+  }
+  return locks
 }
 
 export function blocksByCategory() {

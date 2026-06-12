@@ -15,6 +15,10 @@ export const HELP = {
       synth: {
         summary: 'Generates a tone from scratch. Shape it with the waveform, pitch, and the attack/decay/sustain/release envelope.',
         params: {
+          wave: 'The oscillator shape: sine is pure, triangle mellow, square hollow, sawtooth bright and brassy. pulse is a square with adjustable width; custom lets you draw your own harmonic mix.',
+          partials: 'Limits how many harmonics the wave is built from. full is the complete bright wave; lower numbers round it off toward a sine — a softer, more retro tone. (Only for triangle/square/sawtooth.)',
+          width: 'The duty cycle of the pulse wave, from thin and nasal to a full square at 0%. Sweep it (e.g. with a separate effect) for the classic PWM shimmer.',
+          harmonics: 'Draw your own waveform: each bar is the level of one harmonic (the first is the fundamental). Drag the bars up and down to build a custom timbre.',
           freq: 'The base pitch of the note, in hertz. 220Hz is the A below middle C; lower is deeper, higher is shriller.',
           duration: 'How long the note is held before it starts fading out. The total sound length is roughly Length + Release.',
           attack: 'Time from silence to full volume when the note starts. Very short sounds clicky and percussive; long swells in softly.',
@@ -51,6 +55,34 @@ export const HELP = {
           threshold: 'Audio quieter than this is muted. Raise it to chop off background noise or trailing sounds.',
           smoothing: 'How quickly the gate opens and closes. Lower is snappier but can click; higher is smoother.',
         },
+      },
+      samplenv: {
+        summary: 'Uses the loudness contour of an audio sample to shape the source’s volume over time. Record a “pew-pew” or some beatboxing and the synth follows your timing and dynamics.',
+        params: {
+          amount: 'How strongly the contour shapes the volume. 0% leaves the source untouched; 100% follows the sample exactly.',
+          smoothing: 'Softens the contour so it glides instead of jumping. More smoothing rounds off sharp attacks.',
+          stretch: 'natural plays the contour at its recorded length (keeping your timing); note squeezes or stretches it to fit the synth’s Length.',
+        },
+        notes: [
+          'Drop or record an audio file on the card — it’s used as modulation data, not played as sound.',
+          'Hit ✎ Edit to trim the sample (zoom, exact in/out points) or crop/reverse/normalize — only the trimmed slice shapes the volume.',
+          'While it’s active the Synth block’s attack/decay/sustain/release is bypassed — the synth holds a flat, sustained tone and the sample’s contour owns the volume instead. (The ADSR sliders still show their values; they just don’t apply.) Bypass this block to get the normal ADSR back.',
+          'It modulates the source, so its position in the chain doesn’t matter.',
+        ],
+      },
+      vocoder: {
+        summary: 'Imposes the changing spectrum of a speech sample onto the chain signal — the classic “talking synth / robot voice”. The chain signal is the carrier (use something bright like a sawtooth or noise); the embedded sample is the voice that shapes it.',
+        params: {
+          bands: 'How many frequency bands the spectrum is split into. More bands track the voice more accurately and sound more intelligible; fewer is coarser and more robotic.',
+          response: 'How quickly each band follows the voice’s loudness. Fast catches crisp consonants but can sound buzzy; slow is smoother but smears the words.',
+          sibilance: 'Passes the voice’s high hiss (S, T, F sounds) straight through the carrier highs, which the bands alone reproduce poorly. Raise it for clearer speech.',
+        },
+        notes: [
+          'Drop or record the voice/speech sample on the card — it’s the modulator, not played as sound; the chain signal you feed in is what you actually hear.',
+          'Hit ✎ Edit to trim the sample (zoom, exact in/out points) or crop/reverse/normalize — only the trimmed slice drives the vocoder.',
+          'The voice sample restarts every time you press Play, in sync with the source.',
+          'Best results with a sustained, harmonically rich carrier — a held sawtooth or noise. A pure sine has too little to filter and vocodes poorly.',
+        ],
       },
       filter: {
         summary: 'Removes part of the frequency range — the classic tool for making sounds darker, thinner or squelchy.',
@@ -160,6 +192,10 @@ export const HELP = {
       synth: {
         summary: 'Skapar en ton från grunden. Forma den med vågformen, tonhöjden och ADSR-förloppet (attack/decay/sustain/release).',
         params: {
+          wave: 'Oscillatorns form: sinus är ren, triangel dov, fyrkant ihålig, sågtand ljus och vass. pulse är en fyrkant med justerbar bredd; custom låter dig rita din egen övertonsmix.',
+          partials: 'Begränsar hur många övertoner vågen byggs av. full är hela den ljusa vågen; lägre värden rundar av den mot en sinus — ett mjukare, mer retroaktigt ljud. (Bara för triangel/fyrkant/sågtand.)',
+          width: 'Pulsvågens pulskvot, från tunn och nasal till en hel fyrkant vid 0 %. Svep den (t.ex. med en separat effekt) för det klassiska PWM-skimret.',
+          harmonics: 'Rita din egen vågform: varje stapel är nivån på en överton (den första är grundtonen). Dra staplarna upp och ner för att bygga en egen klangfärg.',
           freq: 'Tonens grundton i hertz. 220 Hz är A:t under ettstrukna C; lägre är djupare, högre är gällare.',
           duration: 'Hur länge tonen hålls innan den börjar klinga ut. Ljudets totala längd är ungefär Length + Release.',
           attack: 'Tiden från tystnad till full volym när tonen startar. Mycket kort låter klickigt och perkussivt; långt tonar in mjukt.',
@@ -196,6 +232,34 @@ export const HELP = {
           threshold: 'Ljud som är svagare än så här tystas. Höj för att klippa bort bakgrundsbrus eller utklingningar.',
           smoothing: 'Hur snabbt gaten öppnar och stänger. Lägre är snärtigare men kan klicka; högre är mjukare.',
         },
+      },
+      samplenv: {
+        summary: 'Använder volymkonturen från ett ljudklipp för att forma källans volym över tid. Spela in ett ”pew-pew” eller lite beatboxning så följer synten din timing och dynamik.',
+        params: {
+          amount: 'Hur starkt konturen formar volymen. 0 % lämnar källan orörd; 100 % följer klippet exakt.',
+          smoothing: 'Mjukar upp konturen så att den glider i stället för att hoppa. Mer utjämning rundar av skarpa attacker.',
+          stretch: 'natural spelar konturen i sin inspelade längd (behåller din timing); note klämmer ihop eller tänjer den till syntens Length.',
+        },
+        notes: [
+          'Släpp eller spela in en ljudfil på kortet — den används som modulationsdata, inte som ljud.',
+          'Tryck på ✎ Edit för att trimma klippet (zooma, exakta in-/utpunkter) eller crop/reverse/normalize — bara den trimmade biten formar volymen.',
+          'Medan det är aktivt kopplas Synt-blockets attack/decay/sustain/release förbi — synten håller en platt, utdragen ton och klippets kontur formar volymen i stället. (ADSR-reglagen visar fortfarande sina värden; de påverkar bara inte.) Bypassa det här blocket för att få tillbaka den vanliga ADSR:en.',
+          'Det modulerar källan, så dess plats i kedjan spelar ingen roll.',
+        ],
+      },
+      vocoder: {
+        summary: 'Lägger talklippets föränderliga spektrum ovanpå kedjans signal — den klassiska ”pratande synten / robotrösten”. Kedjans signal är bäraren (använd något ljust som en sågtand eller brus); det inbäddade klippet är rösten som formar den.',
+        params: {
+          bands: 'Hur många frekvensband spektrumet delas upp i. Fler band följer rösten noggrannare och låter tydligare; färre är grövre och mer robotaktigt.',
+          response: 'Hur snabbt varje band följer röstens volym. Snabbt fångar skarpa konsonanter men kan låta surrigt; långsamt är mjukare men smetar ut orden.',
+          sibilance: 'Släpper igenom röstens väsljud (S-, T-, F-ljud) rakt genom bärarens diskant, som banden själva återger dåligt. Höj för tydligare tal.',
+        },
+        notes: [
+          'Släpp eller spela in röst-/talklippet på kortet — det är modulatorn, spelas inte som ljud; det är kedjans signal du faktiskt hör.',
+          'Tryck på ✎ Edit för att trimma klippet (zooma, exakta in-/utpunkter) eller crop/reverse/normalize — bara den trimmade biten styr vocodern.',
+          'Röstklippet startar om varje gång du trycker Play, i takt med källan.',
+          'Bäst resultat med en utdragen, övertonsrik bärare — en hållen sågtand eller brus. En ren sinus har för lite att filtrera och vocodar dåligt.',
+        ],
       },
       filter: {
         summary: 'Tar bort en del av frekvensområdet — det klassiska verktyget för att göra ljud mörkare, tunnare eller kvackigare.',

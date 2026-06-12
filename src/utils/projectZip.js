@@ -1,6 +1,20 @@
 import JSZip from 'jszip'
 import { allSamples, setSample, decodeBlob } from '../audio/sampleCache'
 import { downloadBlob, safeFileName } from '../audio/render'
+import { BLOCK_DEFS } from '../blocks/registry'
+import { defaultParams } from '../state/model'
+
+// Backfill params introduced after a project was saved (e.g. the synth's
+// partials/width/harmonics) so older files open with sensible defaults.
+function normalizeProject(project) {
+  for (const sound of project.sounds) {
+    for (const block of sound.blocks) {
+      if (!BLOCK_DEFS[block.type]) continue
+      block.params = { ...defaultParams(block.type), ...block.params }
+    }
+  }
+  return project
+}
 
 const FORMAT_VERSION = 1
 
@@ -45,5 +59,5 @@ export async function loadProjectZip(file) {
     setSample(blockId, { blob, fileName, audioBuffer })
   }
 
-  return data.project
+  return normalizeProject(data.project)
 }

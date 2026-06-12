@@ -11,7 +11,7 @@ design brief and from development discussions.
       list (e.g. from the chain header).
 - [ ] **Export sample from sample source** — download the (edited) sample
       straight from the Sample block, for ease of use.
-- [ ] **Sample as envelope for the synth** — use a sample's amplitude
+- [x] **Sample as envelope for the synth** — use a sample's amplitude
       contour to shape the synth's volume over time (record "pew-pew" or
       beatboxing, the synth follows your timing and dynamics).
       Design sketch:
@@ -30,7 +30,20 @@ design brief and from development discussions.
         id, so an envelope sample serializes today.
       - Future door: the extracted curve as a generic modulation source
         (cutoff = auto-wah, pitch, …).
-- [ ] **Richer synth oscillator** — Tone.js OmniOscillator extras:
+- [x] **Vocoder block** — insert effect: the chain signal is the carrier,
+      a speech sample embedded in the block (drop/record, like Sample
+      Envelope) is the modulator. Design sketch:
+      - Guts: N band-pass pairs (carrier + modulator) with a
+        `Tone.Follower` per band gating that carrier band. 8 bands to
+        start; intelligibility rises fast between 8 and 16.
+      - Params: Bands (8/16/32), Attack/Release tracking, Mix, optional
+        sibilance high-pass passthrough for crisp S/T sounds.
+      - Engine change: blocks need an optional `onTrigger` hook so the
+        modulator sample starts on every Play (today only sources are
+        triggered). Sample Envelope wants the same hook — build it first.
+      - Works offline for WAV export (pure audio graph). Best carrier:
+        sawtooth or noise; pure sine vocodes poorly.
+- [x] **Richer synth oscillator** — Tone.js OmniOscillator extras:
       partial-count types (`square4`, `sawtooth8`), a custom-partials
       harmonics editor (draggable bars — "draw your own waveform"), and
       pulse width. Skip `fat*` types (Detune block covers that).

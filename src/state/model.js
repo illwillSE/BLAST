@@ -9,7 +9,9 @@ export function uid(prefix = 'id') {
 export function defaultParams(type) {
   const def = BLOCK_DEFS[type]
   const params = {}
-  for (const p of def.params) params[p.key] = p.default
+  // Clone array defaults (e.g. the synth harmonics) so blocks never share a
+  // mutable reference with each other or with the registry.
+  for (const p of def.params) params[p.key] = Array.isArray(p.default) ? p.default.slice() : p.default
   return params
 }
 
