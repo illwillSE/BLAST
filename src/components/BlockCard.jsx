@@ -108,7 +108,7 @@ export default function BlockCard({
       {expanded ? (
         <div className="space-y-2 p-2.5">
           {isSource && <SourceTypeSwitch block={block} onSwapSource={onSwapSource} />}
-          {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} />}
+          {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
           {block.type === 'analyzer' && <SpectrumCanvas blockId={block.id} />}
           {def.params.map((p) => (
             <ParamControl

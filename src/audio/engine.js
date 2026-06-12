@@ -62,6 +62,11 @@ export async function buildChain(sound, destination) {
   prev.connect(masterOut)
   masterOut.connect(destination)
 
+  // Tap on the final output for the Output block's visualizer.
+  const outputAnalyser = new Tone.Analyser('waveform', 1024)
+  disposables.push(outputAnalyser)
+  masterOut.connect(outputAnalyser)
+
   // --- pitch modulation wiring -------------------------------------------
   const lfoBlocks = controls.filter((b) => b.type === 'pitchlfo')
   const envBlocks = controls.filter((b) => b.type === 'pitchenv')
@@ -126,8 +131,17 @@ export async function buildChain(sound, destination) {
         })
         activeSampleSources.clear()
 
-        const baseRate = semisToRate(freshParams(block).pitch)
-        const src = new Tone.ToneBufferSource(new Tone.ToneAudioBuffer(sample.audioBuffer))
+        const p = freshParams(block)
+        const baseRate = semisToRate(p.pitch)
+        // Non-destructive trim: play only the selected slice of the buffer.
+        const full = sample.audioBuffer.duration
+        const trimStart = Math.max(0, p.trimStart ?? 0)
+        const trimEnd = Math.min(full, p.trimEnd ?? full)
+        let buf = new Tone.ToneAudioBuffer(sample.audioBuffer)
+        if (trimEnd - trimStart > 0.002 && (trimStart > 0.001 || trimEnd < full - 0.001)) {
+          buf = buf.slice(trimStart, trimEnd)
+        }
+        const src = new Tone.ToneBufferSource(buf)
         src.playbackRate.value = baseRate
 
         let minRate = baseRate
@@ -153,7 +167,7 @@ export async function buildChain(sound, destination) {
         }
         activeSampleSources.add(src)
         src.start(when)
-        sourceDuration = Math.max(sourceDuration, sample.audioBuffer.duration / Math.max(0.05, minRate))
+        sourceDuration = Math.max(sourceDuration, (trimEnd - trimStart) / Math.max(0.05, minRate))
       }
     }
 
@@ -198,7 +212,7 @@ export async function buildChain(sound, destination) {
   }
 
   await Promise.all(readyPromises)
-  return { trigger, apply, dispose, getAnalyser }
+  return { trigger, apply, dispose, getAnalyser, getOutputAnalyser: () => outputAnalyser }
 }
 
 export function structureKey(sound) {
@@ -225,7 +239,10 @@ export function estimateDuration(sound) {
             minRate * centsToRate(env.params.end),
           )
         }
-        sourceDur = Math.max(sourceDur, sample.audioBuffer.duration / Math.max(0.05, minRate))
+        const full = sample.audioBuffer.duration
+        const playedLen =
+          Math.min(full, block.params.trimEnd ?? full) - Math.max(0, block.params.trimStart ?? 0)
+        sourceDur = Math.max(sourceDur, playedLen / Math.max(0.05, minRate))
       }
     }
   }
@@ -278,6 +295,10 @@ export class LiveEngine {
 
   getAnalyser(blockId) {
     return this.handle?.getAnalyser(blockId) ?? null
+  }
+
+  getOutputAnalyser() {
+    return this.handle?.getOutputAnalyser() ?? null
   }
 
   dispose() {

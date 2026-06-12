@@ -4,6 +4,29 @@
 
 const cache = new Map()
 const listeners = new Set()
+const history = new Map() // blockId -> stack of previous cache entries (max 10)
+
+export function pushHistory(blockId) {
+  const entry = cache.get(blockId)
+  if (!entry) return
+  const stack = history.get(blockId) || []
+  stack.push(entry)
+  if (stack.length > 10) stack.shift()
+  history.set(blockId, stack)
+}
+
+export function undoSample(blockId) {
+  const stack = history.get(blockId)
+  const prev = stack?.pop()
+  if (!prev) return false
+  cache.set(blockId, prev)
+  listeners.forEach((fn) => fn(blockId))
+  return true
+}
+
+export function hasHistory(blockId) {
+  return (history.get(blockId)?.length ?? 0) > 0
+}
 
 export function setSample(blockId, { blob, fileName, audioBuffer }) {
   cache.set(blockId, { blob, fileName, audioBuffer })

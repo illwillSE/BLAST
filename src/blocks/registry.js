@@ -309,13 +309,24 @@ export const BLOCK_DEFS = {
       { key: 'drive', label: 'Drive', type: 'range', min: 0, max: 1, step: 0.01, default: 0.4, percent: true, format: (v) => `${Math.round(v * 100)}%` },
       wet(1),
     ],
+    // Real overdrive = boost the signal INTO the waveshaper, then trim the
+    // level back. A bare Tone.Distortion at unity gain is barely audible on
+    // harmonically rich waves. Dry path stays unboosted for parallel mixing.
     create(p) {
-      const node = new Tone.Distortion({ distortion: p.drive, wet: p.wet })
-      return { nodes: { node }, input: node, output: node }
+      const input = new Tone.Gain(1)
+      const pre = new Tone.Gain(1 + p.drive * 9)
+      const dist = new Tone.Distortion({ distortion: 0.3 + p.drive * 0.65, oversample: '4x', wet: 1 })
+      const trim = new Tone.Gain(1 / (1 + p.drive))
+      const mix = new Tone.CrossFade(p.wet)
+      input.connect(mix.a)
+      input.chain(pre, dist, trim, mix.b)
+      return { nodes: { input, pre, dist, trim, mix }, input, output: mix }
     },
-    apply({ node }, p) {
-      node.distortion = p.drive
-      node.wet.value = p.wet
+    apply({ pre, dist, trim, mix }, p) {
+      pre.gain.value = 1 + p.drive * 9
+      dist.distortion = 0.3 + p.drive * 0.65
+      trim.gain.value = 1 / (1 + p.drive)
+      mix.fade.value = p.wet
     },
   },
 

@@ -22,6 +22,7 @@ export function newSound(name) {
     id: uid('snd'),
     name,
     outputVolume: 0,
+    outputView: 'wave',
     // blocks[0..n]: sources first, then effects, in signal order.
     // Kept as a flat ordered array so multiple sources or a trailing
     // sequencer block can be added later without a schema change.

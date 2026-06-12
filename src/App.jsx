@@ -131,6 +131,8 @@ export default function App() {
 
   const onOutputVolume = (v) => updateSound(sound.id, (s) => ({ ...s, outputVolume: v }))
 
+  const onOutputView = (v) => updateSound(sound.id, (s) => ({ ...s, outputView: v }))
+
   // ---- export -------------------------------------------------------------
 
   async function exportWav() {
@@ -193,6 +195,7 @@ export default function App() {
                   onAdd={onAdd}
                   onSwapSource={onSwapSource}
                   onOutputVolume={onOutputVolume}
+                  onOutputView={onOutputView}
                 />
               </div>
             </>

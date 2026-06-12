@@ -2,11 +2,22 @@ import { useRef, useState } from 'react'
 import { isSource } from '../state/model'
 import BlockCard from './BlockCard'
 import AddBlockMenu from './AddBlockMenu'
-import { Slider } from './ui'
+import OutputVisualizer from './OutputVisualizer'
+import { Slider, Select } from './ui'
 
 const OUTPUT_VOLUME_DEF = {
   key: 'outputVolume', label: 'Level', type: 'range',
   min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB`,
+}
+
+const OUTPUT_VIEW_DEF = {
+  key: 'outputView', label: 'Display', type: 'select', default: 'wave',
+  options: [
+    { value: 'wave', label: 'waveform' },
+    { value: 'spectrum', label: 'spectrum' },
+    { value: 'fire', label: 'fire' },
+    { value: 'off', label: 'off' },
+  ],
 }
 
 const Arrow = ({ active }) => (
@@ -16,7 +27,7 @@ const Arrow = ({ active }) => (
 )
 
 export default function ChainEditor({
-  sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource, onOutputVolume,
+  sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource, onOutputVolume, onOutputView,
 }) {
   const dragIndex = useRef(null)
   const [dropTarget, setDropTarget] = useState(null)
@@ -69,12 +80,16 @@ export default function ChainEditor({
       <AddBlockMenu onAdd={onAdd} />
       <Arrow active />
 
-      <div className="w-40 shrink-0 self-start rounded-lg border border-slate-500/40 bg-slate-900/80 shadow-lg">
+      <div className="w-52 shrink-0 self-start rounded-lg border border-slate-500/40 bg-slate-900/80 shadow-lg">
         <div className="border-b border-slate-800 px-2.5 py-1.5">
           <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">Output</span>
         </div>
-        <div className="p-2.5">
+        <div className="space-y-2 p-2.5">
           <Slider def={OUTPUT_VOLUME_DEF} value={sound.outputVolume ?? 0} onChange={onOutputVolume} />
+          <Select def={OUTPUT_VIEW_DEF} value={sound.outputView ?? 'wave'} onChange={onOutputView} />
+          {(sound.outputView ?? 'wave') !== 'off' && (
+            <OutputVisualizer mode={sound.outputView ?? 'wave'} />
+          )}
         </div>
       </div>
     </div>

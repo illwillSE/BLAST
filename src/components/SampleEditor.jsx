@@ -1,30 +1,41 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import WaveSurfer from 'wavesurfer.js'
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import toWav from 'audiobuffer-to-wav'
-import { getSample, setSample, onSampleChange, decodeBlob } from '../audio/sampleCache'
+import {
+  getSample, setSample, onSampleChange, decodeBlob,
+  pushHistory, undoSample, hasHistory,
+} from '../audio/sampleCache'
+import { cropBuffer, bufferToWavBlob } from '../audio/bufferOps'
 import { onPlay } from '../utils/bus'
 import { Button } from './ui'
+import SampleEditorModal from './SampleEditorModal'
 
 const ACCEPTED = /\.(wav|mp3|ogg|webm|m4a|flac|aiff?)$/i
+const REGION_COLOR = 'rgba(245, 158, 11, 0.12)'
 
-// Waveform display with playback cursor, plus the two ways to fill the
-// sample buffer: file load (drop/browse) and microphone recording.
-export default function SampleEditor({ block, soundId }) {
+// Waveform display with playback cursor, trim region, edit tools, and the
+// two ways to fill the sample buffer: file load (drop/browse) and mic.
+export default function SampleEditor({ block, soundId, onParam }) {
   const containerRef = useRef(null)
-  const wavesurferRef = useRef(null)
   const cursorRef = useRef(null)
   const animRef = useRef(null)
+  const paramsRef = useRef(block.params)
+  paramsRef.current = block.params
+
   const [sample, setSampleState] = useState(() => getSample(block.id))
   const [dragOver, setDragOver] = useState(false)
   const [recording, setRecording] = useState(false)
   const [error, setError] = useState(null)
+  const [historyTick, setHistoryTick] = useState(0) // refresh undo-button state
+  const [editorOpen, setEditorOpen] = useState(false)
   const recorderRef = useRef(null)
 
   useEffect(() => onSampleChange((id) => {
     if (id === block.id) setSampleState(getSample(block.id))
   }), [block.id])
 
-  // (Re)draw waveform when the sample changes.
+  // (Re)draw waveform + trim region when the sample changes.
   useEffect(() => {
     if (!containerRef.current || !sample?.blob) return
     const ws = WaveSurfer.create({
@@ -36,20 +47,39 @@ export default function SampleEditor({ block, soundId }) {
       interact: false,
       normalize: true,
     })
+    const regions = ws.registerPlugin(RegionsPlugin.create())
+    ws.on('decode', (duration) => {
+      const p = paramsRef.current
+      const start = Math.min(Math.max(0, p.trimStart ?? 0), duration)
+      const end = Math.min(p.trimEnd ?? duration, duration)
+      const region = regions.addRegion({
+        start,
+        end: end > start ? end : duration,
+        color: REGION_COLOR,
+        drag: true,
+        resize: true,
+      })
+      region.on('update-end', () => {
+        // Full-width region means "no trim" — store nothing.
+        const atFull = region.start < 0.005 && region.end > duration - 0.005
+        onParam('trimStart', atFull ? null : region.start)
+        onParam('trimEnd', atFull ? null : region.end)
+      })
+    })
     ws.loadBlob(sample.blob)
-    wavesurferRef.current = ws
-    return () => {
-      ws.destroy()
-      wavesurferRef.current = null
-    }
-  }, [sample])
+    return () => ws.destroy()
+  }, [sample, block.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Animate the playback cursor when this sound is triggered.
+  // Animate the playback cursor across the trimmed range when triggered.
   useEffect(() => onPlay(({ soundId: playedId }) => {
     if (playedId !== soundId || !sample?.audioBuffer || !cursorRef.current) return
     cancelAnimationFrame(animRef.current)
-    const rate = Math.pow(2, (block.params.pitch || 0) / 12)
-    const duration = sample.audioBuffer.duration / Math.max(0.05, rate)
+    const p = paramsRef.current
+    const full = sample.audioBuffer.duration
+    const trimStart = Math.max(0, p.trimStart ?? 0)
+    const trimEnd = Math.min(full, p.trimEnd ?? full)
+    const rate = Math.pow(2, (p.pitch || 0) / 12)
+    const duration = Math.max(0.01, (trimEnd - trimStart) / Math.max(0.05, rate))
     const start = performance.now()
     const step = (now) => {
       const t = (now - start) / 1000 / duration
@@ -58,14 +88,46 @@ export default function SampleEditor({ block, soundId }) {
         cursorRef.current.style.opacity = '0'
         return
       }
+      const posSec = trimStart + t * (trimEnd - trimStart)
       cursorRef.current.style.opacity = '1'
-      cursorRef.current.style.left = `${(t * 100).toFixed(2)}%`
+      cursorRef.current.style.left = `${((posSec / full) * 100).toFixed(2)}%`
       animRef.current = requestAnimationFrame(step)
     }
     animRef.current = requestAnimationFrame(step)
-  }), [soundId, sample, block.params.pitch])
+  }), [soundId, sample])
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), [])
+
+  // ---- destructive edits --------------------------------------------------
+
+  function applyEdit(fn) {
+    const current = getSample(block.id)
+    if (!current?.audioBuffer) return
+    const next = fn(current.audioBuffer)
+    if (!next) return
+    pushHistory(block.id)
+    setSample(block.id, {
+      blob: bufferToWavBlob(next),
+      fileName: current.fileName,
+      audioBuffer: next,
+    })
+    setHistoryTick((t) => t + 1)
+  }
+
+  function crop() {
+    const p = paramsRef.current
+    const full = sample.audioBuffer.duration
+    applyEdit((buf) => cropBuffer(buf, Math.max(0, p.trimStart ?? 0), Math.min(full, p.trimEnd ?? full)))
+    onParam('trimStart', null)
+    onParam('trimEnd', null)
+  }
+
+  function undo() {
+    undoSample(block.id)
+    setHistoryTick((t) => t + 1)
+  }
+
+  // ---- load & record ------------------------------------------------------
 
   const loadFile = useCallback(async (file) => {
     setError(null)
@@ -76,10 +138,12 @@ export default function SampleEditor({ block, soundId }) {
     try {
       const audioBuffer = await decodeBlob(file)
       setSample(block.id, { blob: file, fileName: file.name, audioBuffer })
+      onParam('trimStart', null)
+      onParam('trimEnd', null)
     } catch {
       setError('Could not decode this audio file')
     }
-  }, [block.id])
+  }, [block.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function startRecording() {
     setError(null)
@@ -96,6 +160,8 @@ export default function SampleEditor({ block, soundId }) {
           // Store as WAV so saved projects replay identically everywhere.
           const wavBlob = new Blob([toWav(audioBuffer)], { type: 'audio/wav' })
           setSample(block.id, { blob: wavBlob, fileName: 'recording.wav', audioBuffer })
+          onParam('trimStart', null)
+          onParam('trimEnd', null)
         } catch {
           setError('Recording could not be decoded')
         }
@@ -128,6 +194,8 @@ export default function SampleEditor({ block, soundId }) {
     input.click()
   }
 
+  const trimmed = sample && (block.params.trimStart != null || block.params.trimEnd != null)
+
   return (
     <div
       onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
@@ -141,14 +209,22 @@ export default function SampleEditor({ block, soundId }) {
             <div ref={containerRef} />
             <div
               ref={cursorRef}
-              className="pointer-events-none absolute top-0 h-full w-px bg-amber-300 opacity-0"
+              className="pointer-events-none absolute top-0 z-10 h-full w-px bg-amber-300 opacity-0"
               style={{ left: 0 }}
             />
           </div>
           <div className="mt-1 flex items-center justify-between gap-2">
             <span className="truncate font-mono text-[10px] text-slate-500" title={sample.fileName}>
               {sample.fileName} · {sample.audioBuffer.duration.toFixed(2)}s
+              {trimmed && ' · trimmed'}
             </span>
+            <button
+              onClick={() => setEditorOpen(true)}
+              title="Open the full-size editor — zoom, exact in/out points, edit tools"
+              className="shrink-0 rounded border border-slate-700 px-1.5 py-0.5 text-[10px] font-medium text-slate-300 transition-colors hover:border-amber-500/50 hover:text-amber-300"
+            >
+              ✎ Edit
+            </button>
           </div>
         </div>
       ) : (
@@ -167,6 +243,18 @@ export default function SampleEditor({ block, soundId }) {
         )}
       </div>
       {error && <div className="mt-1.5 text-[11px] text-red-400">{error}</div>}
+      {editorOpen && sample && (
+        <SampleEditorModal
+          block={block}
+          sample={sample}
+          onParam={onParam}
+          onApplyEdit={applyEdit}
+          onCrop={crop}
+          onUndo={undo}
+          canUndo={hasHistory(block.id)}
+          onClose={() => setEditorOpen(false)}
+        />
+      )}
     </div>
   )
 }
