@@ -4,6 +4,10 @@ Ideas and planned work, roughly prioritized. Items come from the original
 design brief and from development discussions.
 
 ## Features
+Sample export options
+Sound rename
+Export sample from sample source (for ease of use)
+How about using the sample as an envelope for the synth?
 
 - [ ] **Noise oscillator** — add white/pink noise as a synth wave option
       (`Tone.Noise`). Unlocks gunshots, explosions, wind, snares; currently

@@ -20,6 +20,15 @@ export const CATEGORIES = [
   { id: 'utility', label: 'Utility', color: 'slate' },
 ]
 
+// Pitch-step multipliers for a unison stack: ceil(n/2) above, floor(n/2)
+// below, e.g. n=4 -> [1, 2, -1, -2]. Negative `amount` mirrors naturally.
+function unisonOffsets(count) {
+  const offsets = []
+  for (let k = 1; k <= Math.ceil(count / 2); k++) offsets.push(k)
+  for (let k = 1; k <= Math.floor(count / 2); k++) offsets.push(-k)
+  return offsets
+}
+
 const wave = (def = 'sawtooth') => ({
   key: 'wave',
   label: 'Wave',
@@ -257,18 +266,38 @@ export const BLOCK_DEFS = {
     name: 'Detune',
     category: 'pitch',
     kind: 'insert',
-    description: 'Thickens the sound with a detuned copy',
+    description: 'Thickens the sound with detuned copies',
     params: [
-      { key: 'amount', label: 'Amount', type: 'range', min: 0, max: 100, step: 1, default: 15, format: cents },
+      { key: 'amount', label: 'Amount', type: 'range', min: -100, max: 100, step: 1, default: 15, format: cents },
+      { key: 'count', label: 'Count', type: 'range', min: 1, max: 8, step: 1, default: 1, format: (v) => `+${v}` },
       wet(0.5),
     ],
+    // Count changes the number of audio nodes, so it forces a graph rebuild.
+    structureParams: ['count'],
+    // Unison stack: `count` copies around the original — odd counts put the
+    // extra one above — each stepped `amount` cents apart. The wet bus
+    // includes the original (center voice), so full Mix keeps it audible.
     create(p) {
-      const node = new Tone.PitchShift({ pitch: p.amount / 100, wet: p.wet })
-      return { nodes: { node }, input: node, output: node }
+      const count = p.count ?? 1
+      const input = new Tone.Gain(1)
+      const sum = new Tone.Gain(1 / Math.sqrt(count + 1))
+      const mix = new Tone.CrossFade(p.wet)
+      input.connect(mix.a)
+      input.connect(sum) // the original, center voice
+      const shifters = unisonOffsets(count).map((step) => {
+        const ps = new Tone.PitchShift({ pitch: (step * p.amount) / 100, wet: 1 })
+        input.connect(ps)
+        ps.connect(sum)
+        return ps
+      })
+      sum.connect(mix.b)
+      return { nodes: { input, sum, mix, shifters }, input, output: mix }
     },
-    apply({ node }, p) {
-      node.pitch = p.amount / 100
-      node.wet.value = p.wet
+    apply({ shifters, sum, mix }, p) {
+      const offsets = unisonOffsets(shifters.length)
+      shifters.forEach((ps, i) => { ps.pitch = (offsets[i] * p.amount) / 100 })
+      sum.gain.value = 1 / Math.sqrt(shifters.length + 1)
+      mix.fade.value = p.wet
     },
   },
 

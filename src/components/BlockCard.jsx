@@ -3,6 +3,7 @@ import { BLOCK_DEFS } from '../blocks/registry'
 import { liveEngine } from '../audio/engine'
 import { CAT_STYLES, ParamControl, formatValue } from './ui'
 import SampleEditor from './SampleEditor'
+import BlockHelpModal from './BlockHelpModal'
 
 function SpectrumCanvas({ blockId }) {
   const canvasRef = useRef(null)
@@ -58,6 +59,7 @@ export default function BlockCard({
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
   const [expanded, setExpanded] = useState(true)
+  const [helpOpen, setHelpOpen] = useState(false)
   const disabled = !isSource && !block.enabled
 
   const summary = def.params.slice(0, 2)
@@ -81,6 +83,13 @@ export default function BlockCard({
         <span className={`flex-1 truncate text-[12px] font-semibold uppercase tracking-wider ${cat.text}`}>
           {def.name}
         </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); setHelpOpen(true) }}
+          title={`What does ${def.name} do?`}
+          className="flex h-4 w-4 items-center justify-center rounded-full border border-slate-600 font-serif text-[9px] italic leading-none text-slate-500 transition-colors hover:border-sky-400/60 hover:text-sky-300"
+        >
+          i
+        </button>
         {!isSource && (
           <>
             <button
@@ -124,6 +133,7 @@ export default function BlockCard({
           {summary || 'click to expand'}
         </div>
       )}
+      {helpOpen && <BlockHelpModal type={block.type} onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }

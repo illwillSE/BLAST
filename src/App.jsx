@@ -42,12 +42,17 @@ export default function App() {
     })
   }, [])
 
-  // Spacebar plays the selected sound (unless typing in a field).
+  // Spacebar always plays — like a DAW transport. Only true text entry
+  // (name fields, value popups) keeps Space for typing; focused sliders,
+  // selects and buttons don't swallow it (use Enter to activate a button,
+  // arrow keys to fine-tune a slider).
   useEffect(() => {
     const onKey = (e) => {
       if (e.code !== 'Space') return
-      const tag = document.activeElement?.tagName
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      const el = document.activeElement
+      const isTextEntry =
+        el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
+      if (isTextEntry) return
       e.preventDefault()
       playSound(selectedId)
     }

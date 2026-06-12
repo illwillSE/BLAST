@@ -102,6 +102,15 @@ export function Slider({ def, value, onChange }) {
         value={Math.round(pos * 1000)}
         onChange={(e) => onChange(toValue(e.target.value / 1000, def))}
         onDoubleClick={() => onChange(def.default)}
+        onKeyDown={(e) => {
+          // The native 1/1000-track nudge rounds away to nothing for coarse
+          // steps — make arrows move exactly one parameter step instead.
+          const dir = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key]
+          if (!dir) return
+          e.preventDefault()
+          const stepped = (e.shiftKey ? 10 : 1) * dir * def.step + value
+          onChange(Math.min(def.max, Math.max(def.min, Math.round(stepped / def.step) * def.step)))
+        }}
         className="blast-slider w-full"
         style={{ '--fill': fillPct }}
       />

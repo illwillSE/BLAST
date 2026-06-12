@@ -28,7 +28,7 @@ export async function buildChain(sound, destination) {
 
     if (def.kind === 'source') {
       const created = def.create(block.params)
-      Object.values(created.nodes).forEach((n) => disposables.push(n))
+      Object.values(created.nodes).flat().forEach((n) => disposables.push(n))
       if (created.ready) readyPromises.push(created.ready)
       created.output.connect(sourceBus)
       built.set(block.id, { def, nodes: created.nodes })
@@ -45,7 +45,7 @@ export async function buildChain(sound, destination) {
     if (!block.enabled) continue
 
     const created = def.create(block.params)
-    Object.values(created.nodes).forEach((n) => disposables.push(n))
+    Object.values(created.nodes).flat().forEach((n) => disposables.push(n))
     if (created.ready) readyPromises.push(created.ready)
     built.set(block.id, { def, nodes: created.nodes })
 
@@ -216,7 +216,16 @@ export async function buildChain(sound, destination) {
 }
 
 export function structureKey(sound) {
-  return sound.blocks.map((b) => `${b.id}:${b.type}:${b.enabled ? 1 : 0}`).join('|')
+  // structureParams are params that change the node graph itself (e.g. the
+  // detune voice count) — including them here forces a rebuild on change.
+  return sound.blocks
+    .map((b) => {
+      const extra = (BLOCK_DEFS[b.type]?.structureParams ?? [])
+        .map((k) => b.params[k])
+        .join(',')
+      return `${b.id}:${b.type}:${b.enabled ? 1 : 0}${extra ? `:${extra}` : ''}`
+    })
+    .join('|')
 }
 
 export function estimateDuration(sound) {
