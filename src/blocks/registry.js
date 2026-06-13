@@ -393,17 +393,37 @@ export const BLOCK_DEFS = {
     params: [
       { key: 'time', label: 'Time', type: 'range', min: 0.02, max: 1, step: 0.01, default: 0.25, format: sec },
       { key: 'feedback', label: 'Feedback', type: 'range', min: 0, max: 0.92, step: 0.01, default: 0.4, percent: true, format: (v) => `${Math.round(v * 100)}%` },
+      { key: 'pingpong', label: 'Ping-pong', type: 'toggle', default: false },
       wet(0.4),
     ],
+    structureParams: ['pingpong'],
     tailSeconds: (p) => Math.min(8, p.time * (1 / Math.max(0.05, 1 - p.feedback))),
     create(p) {
+      if (p.pingpong) {
+        // Tone's PingPongDelay forces a mono input onto both L+R identically, so
+        // the two delay lines echo in unison and you hear no bounce. We feed the
+        // wet path on the left channel only (via Merge) so it actually alternates
+        // L→R→L, and mix a centered mono dry path back in ourselves (the built-in
+        // dry would inherit the one-sided input). wet stays 1; our CrossFade owns
+        // the dry/wet balance, matching the normal mode's behaviour.
+        const input = new Tone.Gain()
+        const node = new Tone.PingPongDelay({ delayTime: p.time, feedback: p.feedback, wet: 1, maxDelay: 1 })
+        const toLeft = new Tone.Merge()
+        const mix = new Tone.CrossFade(p.wet)
+        input.connect(toLeft, 0, 0) // mono → left channel only
+        toLeft.connect(node)
+        input.connect(mix.a) // dry (centered)
+        node.connect(mix.b) // wet (bouncing)
+        return { nodes: { node, input, toLeft, mix }, input, output: mix }
+      }
       const node = new Tone.FeedbackDelay({ delayTime: p.time, feedback: p.feedback, wet: p.wet })
       return { nodes: { node }, input: node, output: node }
     },
-    apply({ node }, p) {
+    apply({ node, mix }, p) {
       node.delayTime.value = p.time
       node.feedback.value = p.feedback
-      node.wet.value = p.wet
+      if (mix) mix.fade.value = p.wet // ping-pong: our manual dry/wet
+      else node.wet.value = p.wet
     },
   },
 

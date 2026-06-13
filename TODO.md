@@ -7,7 +7,7 @@ design brief and from development discussions.
 
 - [ ] **Copy/paste samples** — reuse the same sample across multiple blocks (Sample, Sample Envelope, Vocoder).
 - [x] **Reverb presets** — one-click presets that set Reverb sliders to common room sizes (small room, big room, concert hall).
-- [ ] **Ping-pong delay** — add a ping-pong (alternating L/R) mode to the Delay block.
+- [x] **Ping-pong delay** — add a ping-pong (alternating L/R) mode to the Delay block.
 - [x] **Output block enhancements** — always show waveform; expose basic output controls inline; reserve advanced options for a panel.
 - [x] **Persistent lane pills** — keep source-lane pills visible when switching between lanes.
 - [ ] **Review translations** — audit Swedish/English strings in help.js for accuracy and completeness.

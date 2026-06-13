@@ -112,6 +112,7 @@ export const HELP = {
         params: {
           time: 'The gap between echoes.',
           feedback: 'How much of each echo is fed back in to echo again — higher means more repeats before fading out.',
+          pingpong: 'Normal repeats straight ahead; ping-pong alternates the echoes left and right for a wide stereo bounce.',
         },
       },
       pitchshift: {
@@ -289,6 +290,7 @@ export const HELP = {
         params: {
           time: 'Tiden mellan ekona.',
           feedback: 'Hur mycket av varje eko som matas tillbaka och ekar igen — högre ger fler upprepningar innan det dör ut.',
+          pingpong: 'Normal upprepar ekot rakt fram; ping-pong studsar ekona växelvis vänster och höger för ett brett stereoläge.',
         },
       },
       pitchshift: {

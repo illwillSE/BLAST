@@ -80,9 +80,11 @@ export async function buildChain(sound, destination) {
       }
     }
 
-    // Lane mix strip: level then pan, into the shared bus.
+    // Lane mix strip: level then pan, into the shared bus. channelCount: 2 keeps
+    // the pan stereo-aware — Tone.Panner defaults to channelCount 1, which would
+    // downmix a stereo signal (e.g. a ping-pong delay) to mono before panning.
     const laneVol = new Tone.Volume(src.level ?? 0)
-    const lanePan = new Tone.Panner(src.pan ?? 0)
+    const lanePan = new Tone.Panner({ pan: src.pan ?? 0, channelCount: 2 })
     disposables.push(laneVol, lanePan)
     prev.connect(laneVol)
     laneVol.connect(lanePan)

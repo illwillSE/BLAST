@@ -194,8 +194,23 @@ export function HarmonicsEditor({ def, value, onChange }) {
   )
 }
 
+export function Toggle({ def, value, onChange }) {
+  return (
+    <label className="flex cursor-pointer select-none items-center gap-2 py-1">
+      <input
+        type="checkbox"
+        checked={!!value}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-3.5 w-3.5 accent-amber-500"
+      />
+      <span className="text-[11px] uppercase tracking-wide text-slate-500">{def.label}</span>
+    </label>
+  )
+}
+
 export function ParamControl({ def, value, onChange }) {
   if (def.type === 'select') return <Select def={def} value={value} onChange={onChange} />
+  if (def.type === 'toggle') return <Toggle def={def} value={value} onChange={onChange} />
   if (def.type === 'harmonics') return <HarmonicsEditor def={def} value={value} onChange={onChange} />
   return <Slider def={def} value={value} onChange={onChange} />
 }
