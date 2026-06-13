@@ -365,6 +365,13 @@ export const BLOCK_DEFS = {
       { key: 'preDelay', label: 'Pre-delay', type: 'range', min: 0, max: 0.2, step: 0.001, default: 0.01, format: sec },
       wet(0.4),
     ],
+    presets: [
+      { label: 'Room',    params: { decay: 0.6, preDelay: 0.005, wet: 0.25 } },
+      { label: 'Hall',    params: { decay: 2.5, preDelay: 0.03,  wet: 0.40 } },
+      { label: 'Concert', params: { decay: 5.0, preDelay: 0.06,  wet: 0.50 } },
+      { label: 'Plate',   params: { decay: 1.8, preDelay: 0.001, wet: 0.50 } },
+      { label: 'Cave',    params: { decay: 8.0, preDelay: 0.08,  wet: 0.55 } },
+    ],
     tailSeconds: (p) => p.decay,
     create(p) {
       const node = new Tone.Reverb({ decay: p.decay, preDelay: p.preDelay, wet: p.wet })
@@ -429,8 +436,8 @@ export const BLOCK_DEFS = {
     description: 'Thickens the sound with detuned copies',
     params: [
       { key: 'amount', label: 'Amount', type: 'range', min: -100, max: 100, step: 1, default: 15, format: cents },
-      { key: 'count', label: 'Count', type: 'range', min: 1, max: 8, step: 1, default: 1, format: (v) => `+${v}` },
-      wet(0.5),
+      { key: 'count', label: 'Count', type: 'range', min: 1, max: 8, step: 1, default: 6, format: (v) => `+${v}` },
+      wet(0.8),
     ],
     // Count changes the number of audio nodes, so it forces a graph rebuild.
     structureParams: ['count'],

@@ -147,8 +147,11 @@ export default function App() {
 
   const onRemove = (blockId) => updateSound(sound.id, (s) => removeBlock(s, blockId))
 
-  const onAdd = (target, type) =>
-    updateSound(sound.id, (s) => addBlock(s, target, newBlock(type)))
+  const onAdd = (target, type) => {
+    const block = newBlock(type)
+    updateSound(sound.id, (s) => addBlock(s, target, block))
+    return block.id
+  }
 
   const onMove = (target, from, to) =>
     updateSound(sound.id, (s) => moveBlock(s, target, from, to))
@@ -167,8 +170,11 @@ export default function App() {
       sources: s.sources.map((src) => (src.id === laneId ? { ...src, [key]: value } : src)),
     }))
 
-  const onAddSource = () =>
-    updateSound(sound.id, (s) => ({ ...s, sources: [...s.sources, newLane('synth')] }))
+  const onAddSource = () => {
+    const lane = newLane('synth')
+    updateSound(sound.id, (s) => ({ ...s, sources: [...s.sources, lane] }))
+    return lane.id
+  }
 
   const onRemoveLane = (laneId) =>
     updateSound(sound.id, (s) =>

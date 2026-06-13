@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
-import { CAT_STYLES } from './ui'
 import AddBlockMenu from './AddBlockMenu'
 import Chip from './Chip'
 
@@ -19,37 +18,25 @@ export default function LaneRow({
   const isSel = (key) => selectedKeys.includes(key)
   const click = (key) => (e) => onSelect(key, e.shiftKey || e.metaKey)
 
-  // Slim (unfocused) lane: a single compact bar; click anywhere to focus.
+  // Unfocused lane: same chip pills as focused, but dimmed and without drag/add.
   if (!focused) {
-    const chain = lane.chain.filter((b) => BLOCK_DEFS[b.type])
     return (
-      <div className="flex items-center gap-2 opacity-80">
+      <div className="flex items-center gap-2">
         <button onClick={() => onFocusLane(lane.id)} className="w-6 text-center text-[11px] font-bold text-slate-500 hover:text-amber-400">
           ▸{laneNumber}
         </button>
-        <button
-          onClick={() => onFocusLane(lane.id)}
-          className={`flex items-center gap-2 rounded-lg border bg-slate-900/50 px-3 py-1.5 text-[12px] transition-colors hover:border-slate-500/60 ${
-            lane.enabled ? 'border-slate-800' : 'border-slate-800 opacity-60'
-          }`}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-          <span className="text-slate-300">{BLOCK_DEFS[lane.type].name}</span>
-          {chain.map((b) => {
-            const cat = CAT_STYLES[BLOCK_DEFS[b.type].category]
-            return (
-              <span key={b.id} className="flex items-center gap-2">
-                <span className="text-slate-600">·</span>
-                <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
-                <span className={!b.enabled ? 'text-slate-600 line-through' : 'text-slate-300'}>
-                  {BLOCK_DEFS[b.type].name}
-                </span>
-              </span>
-            )
-          })}
-          <span className="ml-1.5 text-[10px] tabular-nums text-slate-500">{mixReadout(lane)}</span>
-          {!lane.enabled && <span className="rounded bg-red-500/15 px-1 text-[9px] uppercase text-red-300">muted</span>}
-        </button>
+        <Chip block={lane} selected={isSel(lane.id)} onClick={click(lane.id)} />
+        {lane.chain.filter((b) => BLOCK_DEFS[b.type]).map((b) => (
+          <span key={b.id} className="flex items-center gap-2">
+            <Conn />
+            <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} />
+          </span>
+        ))}
+        <Conn />
+        <div className={`ml-1 flex items-center gap-1.5 rounded-lg border border-slate-600/40 bg-slate-800/50 px-2.5 py-1.5 text-[12px] ${!lane.enabled ? 'opacity-50' : ''}`}>
+          <span className="font-semibold text-slate-300">Mix</span>
+          <span className="text-[10px] tabular-nums text-slate-500">{mixReadout(lane)}</span>
+        </div>
         <Port portRef={outputRef} />
       </div>
     )

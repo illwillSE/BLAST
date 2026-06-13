@@ -54,6 +54,26 @@ function SourceTypeSwitch({ block, onSwapSource }) {
   )
 }
 
+function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
+  return (
+    <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
+      {visibleParams.map((p) => {
+        const lockedBy = disabledParams?.get(p.key)
+        return (
+          <div
+            key={p.key}
+            style={p.type === 'harmonics' ? { gridColumn: 'span 2' } : undefined}
+            className={lockedBy ? 'pointer-events-none opacity-40' : undefined}
+            title={lockedBy ? `Overridden by the ${lockedBy} block` : undefined}
+          >
+            <ParamControl def={p} value={blockParams[p.key]} onChange={(v) => onParam(p.key, v)} />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // Full controls for one block, rendered in the inspector dock. Params lay out
 // in a responsive 2-column grid; the rich editors (sample waveform, harmonics)
 // span the full width above the grid.
@@ -65,10 +85,9 @@ export default function BlockControls({
   const [helpOpen, setHelpOpen] = useState(false)
 
   const visibleParams = def.params.filter((p) => !p.show || p.show(block.params))
-  const wide = block.type === 'sample' || block.type === 'samplenv' || block.type === 'vocoder'
 
   return (
-    <div className={`min-w-[280px] ${wide ? 'max-w-3xl' : 'w-full'}`}>
+    <div className="min-w-[280px] w-full">
       <div className="flex items-center gap-2">
         <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
         <span className={`text-[12px] font-semibold uppercase tracking-wider ${cat.text}`}>{def.name}</span>
@@ -106,35 +125,34 @@ export default function BlockControls({
 
       <div className="mt-3 space-y-3">
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
-        {(block.type === 'samplenv' || block.type === 'vocoder') && (
-          <EnvelopeSampleLoader block={block} onParam={onParam} />
-        )}
+        {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} onParam={onParam} />}
         {block.type === 'analyzer' && <SpectrumCanvas blockId={block.id} />}
-
-        {/* Params flow into as many columns as fit, so param-heavy blocks
-            (the synth) lay out wide and short instead of a tall single stack. */}
-        <div
-          className="grid gap-x-8 gap-y-3"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', maxWidth: wide ? 480 : undefined }}
-        >
-          {visibleParams.map((p) => {
-            const lockedBy = disabledParams?.get(p.key)
-            const full = p.type === 'harmonics'
-            const control = (
-              <ParamControl def={p} value={block.params[p.key]} onChange={(v) => onParam(p.key, v)} />
-            )
-            return (
-              <div
-                key={p.key}
-                style={full ? { gridColumn: 'span 2' } : undefined}
-                className={lockedBy ? 'pointer-events-none opacity-40' : undefined}
-                title={lockedBy ? `Overridden by the ${lockedBy} block` : undefined}
+        {def.presets && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-slate-600">Presets</span>
+            {def.presets.map((preset) => (
+              <button
+                key={preset.label}
+                onClick={() => Object.entries(preset.params).forEach(([k, v]) => onParam(k, v))}
+                className="rounded border border-slate-700 px-2 py-0.5 text-[10px] text-slate-400 transition-colors hover:border-slate-500 hover:text-slate-200"
               >
-                {control}
-              </div>
-            )
-          })}
-        </div>
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Vocoder: sample loader left, params right. All others: params grid alone. */}
+        {block.type === 'vocoder' ? (
+          <div className="flex w-full items-start gap-6">
+            <div className="w-64 shrink-0">
+              <EnvelopeSampleLoader block={block} onParam={onParam} />
+            </div>
+            <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+          </div>
+        ) : (
+          <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+        )}
       </div>
 
       {helpOpen && <BlockHelpModal type={block.type} onClose={() => setHelpOpen(false)} />}

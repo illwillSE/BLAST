@@ -5,6 +5,7 @@ import LaneRow from './LaneRow'
 import LaneTimeline from './LaneTimeline'
 import InspectorDock from './InspectorDock'
 import Chip from './Chip'
+import OutputVisualizer from './OutputVisualizer'
 
 const Conn = () => <span className="text-[13px] text-slate-600">›</span>
 
@@ -43,6 +44,20 @@ export default function ChainEditor({
     setFocusedLane(laneId)
     const src = sound.sources.find((s) => s.id === laneId)
     if (src) setSelectedKeys([src.id])
+  }
+
+  function handleAdd(target, type) {
+    const id = onAdd(target, type)
+    if (!id) return
+    setSelectedKeys([id])
+    if (target !== MASTER) setFocusedLane(target)
+  }
+
+  function handleAddSource() {
+    const id = onAddSource()
+    if (!id) return
+    setFocusedLane(id)
+    setSelectedKeys([id])
   }
 
   // --- bezier connectors from each lane's output port to the mix bus -------
@@ -115,13 +130,13 @@ export default function ChainEditor({
                 onSelect={select}
                 onFocusLane={focusLane}
                 onMove={onMove}
-                onAdd={onAdd}
+                onAdd={handleAdd}
                 outputRef={setPortRef(lane.id)}
               />
             ))}
             <div className="flex items-center gap-2 pl-8">
               <button
-                onClick={onAddSource}
+                onClick={handleAddSource}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-amber-700/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-amber-500/80 transition-colors hover:border-amber-500/70 hover:text-amber-400"
               >
                 <span className="text-base leading-none">+</span> Source
@@ -142,15 +157,22 @@ export default function ChainEditor({
               </span>
             ))}
             <Conn />
-            <AddBlockMenu variant="chip" excludeKinds={['control']} label="Add Master" onAdd={(type) => onAdd(MASTER, type)} />
+            <AddBlockMenu variant="chip" excludeKinds={['control']} label="Add Master" onAdd={(type) => handleAdd(MASTER, type)} />
             <Conn />
             <button
               onClick={(e) => select('output', e.shiftKey || e.metaKey)}
-              className={`rounded-lg border bg-slate-900/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-                isSel('output') ? 'border-amber-500 text-amber-200 ring-1 ring-amber-500/70' : 'border-slate-600/50 text-slate-300 hover:border-slate-400/60'
+              className={`overflow-hidden rounded-lg border transition-colors ${
+                isSel('output') ? 'border-amber-500 ring-1 ring-amber-500/70' : 'border-slate-600/50 hover:border-slate-400/60'
               }`}
             >
-              Out
+              <div className="bg-slate-950/60 px-2 pt-1.5">
+                <OutputVisualizer mode={sound.outputView ?? 'wave'} />
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-900/70 px-2.5 py-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Out</span>
+                <span className="text-[10px] tabular-nums text-slate-500">{(sound.outputVolume ?? 0).toFixed(1)}dB</span>
+                <span className="text-[10px] text-slate-600">· {sound.outputView ?? 'wave'}</span>
+              </div>
             </button>
           </div>
         </div>

@@ -5,15 +5,22 @@ design brief and from development discussions.
 
 ## Features
 
-Copy / paste samples within the app to be able to use same sample in different controls
-Presets for reverb which changes the values of the sliders (small room, big room, concert hall)
-Ping pong option on delay
-the output block should be special, always showing the waveform, also add one more, and basic controls, if we add more advanced later, they can be in the panel
-look into the option to keep the pills visible at all time, even when changing lane
-kolla igenom översättningarna
-the mix inspector - here the controls would clearly fit on one row. Others as well. the vocoder is the same, would look better with all the controls to the right of the sample preview
-default detune should set to a classic superwave
-minimize inspector window
+- [ ] **Copy/paste samples** — reuse the same sample across multiple blocks (Sample, Sample Envelope, Vocoder).
+- [x] **Reverb presets** — one-click presets that set Reverb sliders to common room sizes (small room, big room, concert hall).
+- [ ] **Ping-pong delay** — add a ping-pong (alternating L/R) mode to the Delay block.
+- [x] **Output block enhancements** — always show waveform; expose basic output controls inline; reserve advanced options for a panel.
+- [x] **Persistent lane pills** — keep source-lane pills visible when switching between lanes.
+- [ ] **Review translations** — audit Swedish/English strings in help.js for accuracy and completeness.
+- [x] **Inspector layout** — fit mix-inspector controls on one row (they clearly fit); Vocoder controls should sit to the right of the sample preview.
+- [x] **Default detune** — set the Detune block's default to a classic supersaw/superwave configuration.
+- [ ] **Minimize inspector** — add a collapse/minimize toggle for the inspector panel.
+- [ ] **Contrast improvements** — improve low-contrast areas throughout the UI.
+- [ ] **Pitch LFO reset** — reset the Pitch LFO phase on each Play trigger; currently appears to share global LFO state.
+- [ ] **Background visualization** — a subtle deterministic visual effect in the background, driven by selected nodes/lanes and their control values (envelopes, levels, etc.).
+- [ ] **Grain player** — sample-based granular source block (`Tone.GrainPlayer`). Unlocks textural and glitchy sounds.
+- [ ] **Metal synth** — percussive metallic source block (`Tone.MetalSynth`). Unlocks cymbals, bells, and metallic hits.
+- [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce zipper noise on slider edits.
+- [ ] **Tone.js feature audit** — investigate other Tone.js features not yet used that could be useful.
 
 - [ ] **Sample export options** — more control over exported audio
       (format, sample rate, mono/stereo?).
