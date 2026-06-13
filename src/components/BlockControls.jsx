@@ -40,8 +40,8 @@ function SpectrumCanvas({ blockId }) {
 
 function SourceTypeSwitch({ block, onSwapSource }) {
   return (
-    <div className="inline-grid grid-cols-2 gap-1 rounded bg-well p-0.5">
-      {['synth', 'sample'].map((t) => (
+    <div className="inline-grid grid-cols-3 gap-1 rounded bg-well p-0.5">
+      {['synth', 'metal', 'sample'].map((t) => (
         <button
           key={t}
           onClick={() => t !== block.type && onSwapSource(t)}

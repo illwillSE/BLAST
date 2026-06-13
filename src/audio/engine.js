@@ -6,6 +6,11 @@ import { extractEnvelope } from './envelope'
 const centsToRate = (cents) => Math.pow(2, cents / 1200)
 const semisToRate = (semis) => Math.pow(2, semis / 12)
 
+// Synth-family sources share the Tone API the engine's pitch/trigger path needs:
+// a `synth` node with `.detune` (cents), `.envelope` (ADSR), and
+// triggerAttackRelease(freq, dur, when). Tone.Synth and Tone.MetalSynth both qualify.
+const isSynthSource = (type) => type === 'synth' || type === 'metal'
+
 // When a Sample Envelope shapes the amplitude, the synth's own ADSR must get
 // out of the way — flatten it to an always-on gate so the envelope curve (on
 // the source's envGain) is the only thing shaping volume.
@@ -104,7 +109,7 @@ export async function buildChain(sound, destination) {
     lane.hasAmpEnv = lane.ampBlocks.length > 0
 
     // Sample Envelope flattens this lane's synth ADSR so the curve owns volume.
-    if (lane.hasAmpEnv && lane.src.type === 'synth') flattenEnv(lane.nodes.synth)
+    if (lane.hasAmpEnv && isSynthSource(lane.src.type)) flattenEnv(lane.nodes.synth)
 
     for (const block of lane.controls.filter((b) => b.type === 'pitchlfo')) {
       const lfo = new Tone.LFO({ frequency: block.params.rate, min: -1, max: 1, type: block.params.wave })
@@ -115,7 +120,7 @@ export async function buildChain(sound, destination) {
     }
 
     // Synth sources: LFOs and the pitch envelope feed the detune signal (cents).
-    if (lane.src.type === 'synth') {
+    if (isSynthSource(lane.src.type)) {
       for (const { block: lb, lfo } of lane.lfos) {
         lfo.min = -lb.params.depth
         lfo.max = lb.params.depth
@@ -225,10 +230,10 @@ export async function buildChain(sound, destination) {
   // `when`), so the caller can fold in the lane delay for the total duration.
   function triggerLane(lane, when, transpose) {
     const { src, nodes } = lane
-    const carrierHold = lane.src.type === 'synth' ? vocoderHold(lane) : 0
+    const carrierHold = isSynthSource(lane.src.type) ? vocoderHold(lane) : 0
     let dur = 0
 
-    if (src.type === 'synth') {
+    if (isSynthSource(src.type)) {
       const p = freshParams(src)
       if (nodes.envSignal && lane.envBlocks.length > 0) {
         const env = freshParams(lane.envBlocks[0])
@@ -331,7 +336,7 @@ export async function buildChain(sound, destination) {
       // Source block params.
       if (lane.def.apply) {
         lane.def.apply(lane.nodes, src.params)
-        if (lane.hasAmpEnv && lane.src.type === 'synth') flattenEnv(lane.nodes.synth)
+        if (lane.hasAmpEnv && isSynthSource(lane.src.type)) flattenEnv(lane.nodes.synth)
       }
 
       // Lane chain blocks.
@@ -341,7 +346,7 @@ export async function buildChain(sound, destination) {
         if (block.type === 'pitchlfo' && entry.nodes.lfo) {
           entry.nodes.lfo.frequency.value = block.params.rate
           entry.nodes.lfo.type = block.params.wave
-          if (lane.src.type === 'synth') {
+          if (isSynthSource(lane.src.type)) {
             entry.nodes.lfo.min = -block.params.depth
             entry.nodes.lfo.max = block.params.depth
           }
@@ -405,7 +410,7 @@ export function structureKey(sound) {
 // tails), excluding the lane delay. Shared by the renderer and the timeline UI
 // so bar lengths match what's actually rendered.
 export function laneDuration(src) {
-  let laneDur = src.type === 'synth' ? src.params.duration + src.params.release : 0
+  let laneDur = isSynthSource(src.type) ? src.params.duration + src.params.release : 0
 
   if (src.type === 'sample') {
     const sample = getSample(src.id)
@@ -441,7 +446,7 @@ export function laneDuration(src) {
     }
   }
   // A vocoder holds this lane's synth carrier for its modulator's length.
-  if (src.type === 'synth') {
+  if (isSynthSource(src.type)) {
     for (const block of src.chain ?? []) {
       if (block.type !== 'vocoder' || !block.enabled) continue
       const s = getSample(block.id)

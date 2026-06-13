@@ -14,11 +14,11 @@ design brief and from development discussions.
 - [x] **Inspector layout** — fit mix-inspector controls on one row (they clearly fit); Vocoder controls should sit to the right of the sample preview.
 - [x] **Default detune** — set the Detune block's default to a classic supersaw/superwave configuration.
 - [ ] **Minimize inspector** — add a collapse/minimize toggle for the inspector panel.
-- [ ] **Contrast improvements** — improve low-contrast areas throughout the UI.
+- [x] **Contrast improvements** — improve low-contrast areas throughout the UI.
 - [ ] **Pitch LFO reset** — reset the Pitch LFO phase on each Play trigger; currently appears to share global LFO state.
 - [ ] **Background visualization** — a subtle deterministic visual effect in the background, driven by selected nodes/lanes and their control values (envelopes, levels, etc.).
 - [ ] **Grain player** — sample-based granular source block (`Tone.GrainPlayer`). Unlocks textural and glitchy sounds.
-- [ ] **Metal synth** — percussive metallic source block (`Tone.MetalSynth`). Unlocks cymbals, bells, and metallic hits.
+- [x] **Metal synth** — percussive metallic source block (`Tone.MetalSynth`). Unlocks cymbals, bells, and metallic hits.
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce zipper noise on slider edits.
 - [ ] **Tone.js feature audit** — investigate other Tone.js features not yet used that could be useful.
 
@@ -113,6 +113,10 @@ design brief and from development discussions.
 
 ## Polish / housekeeping
 
+- [x] **Centralized palette** — all colors live in `src/theme.css` as
+      Tailwind v4 `@theme` semantic tokens; components use the generated
+      utilities and canvas/SVG read the same vars via `theme/colors.js`.
+      Change a token to re-theme the whole app.
 - [ ] Decide the default Output display mode (currently `waveform`;
       candidates: `spectrum`, `fire`).
 - [ ] Screenshot in the README once the UI is settled.

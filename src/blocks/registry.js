@@ -130,6 +130,44 @@ export const BLOCK_DEFS = {
     },
   },
 
+  metal: {
+    type: 'metal',
+    name: 'Metal',
+    category: 'source',
+    kind: 'source',
+    description: 'Inharmonic metallic synth — cymbals, bells, clangs',
+    params: [
+      { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 200, scale: 'log', format: hz },
+      { key: 'harmonicity', label: 'Harmonicity', type: 'range', min: 0.5, max: 20, step: 0.1, default: 5.1, format: (v) => v.toFixed(1) },
+      { key: 'modIndex', label: 'Mod Index', type: 'range', min: 1, max: 100, step: 1, default: 32, format: (v) => `${v}` },
+      { key: 'resonance', label: 'Resonance', type: 'range', min: 200, max: 8000, step: 1, default: 4000, scale: 'log', format: hz },
+      { key: 'octaves', label: 'Octaves', type: 'range', min: 0, max: 6, step: 0.1, default: 1.5, format: (v) => v.toFixed(1) },
+      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec },
+      { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.001, scale: 'log', format: sec },
+      { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.4, scale: 'log', format: sec },
+      { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.2, scale: 'log', format: sec },
+    ],
+    // Node keyed `synth` so the engine's source path treats Metal exactly like
+    // the Synth: MetalSynth shares `.detune`, `.envelope`, and the
+    // triggerAttackRelease(freq, dur, when) call (see `isSynthSource` in engine.js).
+    create(p) {
+      const synth = new Tone.MetalSynth({
+        harmonicity: p.harmonicity, modulationIndex: p.modIndex, octaves: p.octaves, resonance: p.resonance,
+        envelope: { attack: p.attack, decay: p.decay, release: p.release },
+      })
+      return { nodes: { synth }, input: null, output: synth }
+    },
+    apply({ synth }, p) {
+      synth.harmonicity = p.harmonicity
+      synth.modulationIndex = p.modIndex
+      synth.octaves = p.octaves
+      synth.resonance = p.resonance
+      synth.envelope.attack = p.attack
+      synth.envelope.decay = p.decay
+      synth.envelope.release = p.release
+    },
+  },
+
   sample: {
     type: 'sample',
     name: 'Sample',

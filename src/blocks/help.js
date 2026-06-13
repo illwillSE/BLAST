@@ -27,6 +27,20 @@ export const HELP = {
           release: 'How long the sound takes to fade to silence after the note ends.',
         },
       },
+      metal: {
+        summary: 'An inharmonic, metallic FM source for cymbals, bells, gongs and clangs. Pitch is more of a character control than a clear note.',
+        params: {
+          freq: 'The base frequency the metallic cluster is built around. Low values clang and gong; high values ring and ping.',
+          harmonicity: 'The frequency ratio between the FM oscillators. Whole-number ratios sound more bell-like; in-between ratios are more dissonant and noisy.',
+          modIndex: 'How much the oscillators modulate each other. Low is purer and more tonal; high is brighter, denser and more clangorous.',
+          resonance: 'The cutoff of the high-pass on the metallic body — raise it for thinner, brighter, more cymbal-like sounds.',
+          octaves: 'How far the body sweeps over the note — how many octaves the high-pass envelope ramps. More gives a bigger downward "pshh" sweep.',
+          duration: 'How long the hit is held before it starts ringing out. The total length is roughly Length + Release.',
+          attack: 'Time from silence to full volume. Keep it tiny for a sharp metallic transient.',
+          decay: 'Time to fall from the peak — the length of the metallic ring.',
+          release: 'How long the sound takes to fade to silence after the note ends.',
+        },
+      },
       sample: {
         summary: 'Plays an audio file or microphone recording.',
         params: {
@@ -203,6 +217,20 @@ export const HELP = {
           decay: 'Tiden det tar att falla från attackens topp ner till sustain-nivån.',
           sustain: 'Volymen tonen ligger kvar på så länge den varar, i förhållande till toppen. 0 % ger ett knäpp; 100 % håller full volym.',
           release: 'Hur lång tid ljudet tar att tona ut till tystnad när tonen släpps.',
+        },
+      },
+      metal: {
+        summary: 'En oharmonisk, metallisk FM-källa för cymbaler, klockor, gonggonger och klang. Tonhöjden styr mer karaktären än en tydlig ton.',
+        params: {
+          freq: 'Grundfrekvensen som metallklustret byggs kring. Låga värden ger gonggong och klang; höga ringer och pingar.',
+          harmonicity: 'Frekvensförhållandet mellan FM-oscillatorerna. Heltalsförhållanden låter mer klocklika; mellanvärden blir mer dissonanta och brusiga.',
+          modIndex: 'Hur mycket oscillatorerna modulerar varandra. Lågt är renare och mer tonalt; högt är ljusare, tätare och mer klangfullt.',
+          resonance: 'Brytfrekvensen för högpassfiltret på metallkroppen — höj den för tunnare, ljusare, mer cymballiknande ljud.',
+          octaves: 'Hur långt kroppen sveper över tonen — hur många oktaver högpass-förloppet rampar. Mer ger ett större nedåtgående "pshh"-svep.',
+          duration: 'Hur länge anslaget hålls innan det börjar klinga ut. Total längd är ungefär Length + Release.',
+          attack: 'Tiden från tystnad till full volym. Håll den mycket kort för en skarp metallisk transient.',
+          decay: 'Tiden det tar att falla från toppen — längden på den metalliska klangen.',
+          release: 'Hur lång tid ljudet tar att tona ut efter att tonen släpps.',
         },
       },
       sample: {
