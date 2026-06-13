@@ -19,62 +19,132 @@ function flattenEnv(synth) {
 // Builds the full Tone.js graph for one sound and returns a handle with
 // trigger/apply/dispose. Used identically by the live engine and the
 // offline WAV renderer (Tone.Offline swaps the global context).
+//
+// Topology: each source is a "lane" — source → envGain → [lane inserts] →
+// laneVolume → lanePanner → sourceBus. All lanes mix at sourceBus, then the
+// shared master chain → masterOut → destination. Lane controls (pitch LFO /
+// pitch env / sample envelope) are per-lane and not in the audio path.
 export async function buildChain(sound, destination) {
   const built = new Map() // blockId -> { def, nodes }
   const disposables = []
   const readyPromises = []
-  const triggerHooks = [] // { block, onTrigger } — inserts that fire on every Play
-  const triggerNodes = new Set() // transient nodes those hooks spawn (e.g. vocoder modulator)
+  const lanes = [] // per-lane runtime state
+  const masterHooks = [] // master inserts that fire on every Play (rare)
+  const triggerNodes = new Set() // transient nodes hooks spawn (e.g. vocoder modulator)
 
-  // All sources mix into one bus before the effects chain, so layered
-  // sources can be added later without rewiring.
+  // All lanes mix into one bus before the master chain.
   const sourceBus = new Tone.Gain(1)
   disposables.push(sourceBus)
 
-  const sources = [] // { block, def, nodes }
-  const controls = [] // pitch lfo / pitch env blocks (enabled only)
-  let prev = sourceBus
+  // --- build each source lane --------------------------------------------
+  for (const src of sound.sources ?? []) {
+    if (!src.enabled) continue // muted lane: skip entirely (structural)
+    const def = BLOCK_DEFS[src.type]
+    if (!def || def.kind !== 'source') continue
 
-  for (const block of sound.blocks) {
-    const def = BLOCK_DEFS[block.type]
-    if (!def) continue
-
-    if (def.kind === 'source') {
-      const created = def.create(block.params)
-      Object.values(created.nodes).flat().forEach((n) => disposables.push(n))
-      if (created.ready) readyPromises.push(created.ready)
-      // Each source runs through its own envGain (unity by default, so it's
-      // transparent) before the bus — the Sample Envelope writes a gain curve
-      // here at trigger time.
-      const envGain = new Tone.Gain(1)
-      disposables.push(envGain)
-      created.output.connect(envGain)
-      envGain.connect(sourceBus)
-      created.nodes.envGain = envGain
-      built.set(block.id, { def, nodes: created.nodes })
-      sources.push({ block, def, nodes: created.nodes })
-      continue
-    }
-
-    if (def.kind === 'control') {
-      if (block.enabled) controls.push(block)
-      built.set(block.id, { def, nodes: {} })
-      continue
-    }
-
-    if (!block.enabled) continue
-
-    const created = def.create(block.params)
+    const created = def.create(src.params)
     Object.values(created.nodes).flat().forEach((n) => disposables.push(n))
     if (created.ready) readyPromises.push(created.ready)
-    built.set(block.id, { def, nodes: created.nodes })
-    if (created.onTrigger) triggerHooks.push({ block, onTrigger: created.onTrigger })
 
-    if (def.kind === 'analyzer') {
-      prev.connect(created.input) // tap: signal continues past the analyzer
+    // Each source runs through its own envGain (unity by default) before the
+    // lane chain — the Sample Envelope writes a gain curve here at trigger.
+    const envGain = new Tone.Gain(1)
+    disposables.push(envGain)
+    created.output.connect(envGain)
+    created.nodes.envGain = envGain
+    built.set(src.id, { def, nodes: created.nodes })
+
+    const controls = [] // this lane's enabled control blocks
+    const hooks = [] // this lane's per-trigger insert hooks (e.g. vocoder)
+    let prev = envGain
+
+    for (const block of src.chain ?? []) {
+      const bdef = BLOCK_DEFS[block.type]
+      if (!bdef) continue
+      if (bdef.kind === 'control') {
+        if (block.enabled) controls.push(block)
+        built.set(block.id, { def: bdef, nodes: {} })
+        continue
+      }
+      if (!block.enabled) continue
+      const c = bdef.create(block.params)
+      Object.values(c.nodes).flat().forEach((n) => disposables.push(n))
+      if (c.ready) readyPromises.push(c.ready)
+      built.set(block.id, { def: bdef, nodes: c.nodes })
+      if (c.onTrigger) hooks.push({ block, onTrigger: c.onTrigger })
+      if (bdef.kind === 'analyzer') {
+        prev.connect(c.input) // tap: signal continues past
+      } else {
+        prev.connect(c.input)
+        prev = c.output
+      }
+    }
+
+    // Lane mix strip: level then pan, into the shared bus.
+    const laneVol = new Tone.Volume(src.level ?? 0)
+    const lanePan = new Tone.Panner(src.pan ?? 0)
+    disposables.push(laneVol, lanePan)
+    prev.connect(laneVol)
+    laneVol.connect(lanePan)
+    lanePan.connect(sourceBus)
+
+    lanes.push({
+      src, def, nodes: created.nodes, envGain, laneVol, lanePan,
+      controls, hooks, lfos: [], envBlocks: [], ampBlocks: [], hasAmpEnv: false,
+      activeSampleSources: new Set(),
+    })
+  }
+
+  // --- per-lane pitch + amplitude modulation wiring ----------------------
+  for (const lane of lanes) {
+    lane.ampBlocks = lane.controls.filter((b) => b.type === 'samplenv')
+    lane.envBlocks = lane.controls.filter((b) => b.type === 'pitchenv')
+    lane.hasAmpEnv = lane.ampBlocks.length > 0
+
+    // Sample Envelope flattens this lane's synth ADSR so the curve owns volume.
+    if (lane.hasAmpEnv && lane.src.type === 'synth') flattenEnv(lane.nodes.synth)
+
+    for (const block of lane.controls.filter((b) => b.type === 'pitchlfo')) {
+      const lfo = new Tone.LFO({ frequency: block.params.rate, min: -1, max: 1, type: block.params.wave })
+      lfo.start()
+      disposables.push(lfo)
+      lane.lfos.push({ block, lfo })
+      built.get(block.id).nodes.lfo = lfo
+    }
+
+    // Synth sources: LFOs and the pitch envelope feed the detune signal (cents).
+    if (lane.src.type === 'synth') {
+      for (const { block: lb, lfo } of lane.lfos) {
+        lfo.min = -lb.params.depth
+        lfo.max = lb.params.depth
+        lfo.connect(lane.nodes.synth.detune)
+      }
+      if (lane.envBlocks.length > 0) {
+        // Connecting a signal into a Tone.Signal overrides its .value, so pitch
+        // envelope automation rides a separate Signal summed into detune.
+        const envSignal = new Tone.Signal(0)
+        disposables.push(envSignal)
+        envSignal.connect(lane.nodes.synth.detune)
+        lane.nodes.envSignal = envSignal
+      }
+    }
+  }
+
+  // --- master chain after the mix bus ------------------------------------
+  let prev = sourceBus
+  for (const block of sound.master ?? []) {
+    const bdef = BLOCK_DEFS[block.type]
+    if (!bdef || bdef.kind === 'control' || !block.enabled) continue
+    const c = bdef.create(block.params)
+    Object.values(c.nodes).flat().forEach((n) => disposables.push(n))
+    if (c.ready) readyPromises.push(c.ready)
+    built.set(block.id, { def: bdef, nodes: c.nodes })
+    if (c.onTrigger) masterHooks.push({ block, onTrigger: c.onTrigger })
+    if (bdef.kind === 'analyzer') {
+      prev.connect(c.input)
     } else {
-      prev.connect(created.input)
-      prev = created.output
+      prev.connect(c.input)
+      prev = c.output
     }
   }
 
@@ -88,67 +158,29 @@ export async function buildChain(sound, destination) {
   disposables.push(outputAnalyser)
   masterOut.connect(outputAnalyser)
 
-  // --- amplitude (sample) envelope ---------------------------------------
-  // Presence is part of structureKey (enabled flag), so hasAmpEnv is fixed for
-  // this build. When present, the synth's ADSR is flattened so the extracted
-  // curve fully owns the volume shape.
-  const ampBlocks = controls.filter((b) => b.type === 'samplenv')
-  const hasAmpEnv = ampBlocks.length > 0
-  if (hasAmpEnv) {
-    for (const { block, nodes } of sources) {
-      if (block.type === 'synth') flattenEnv(nodes.synth)
-    }
-  }
-
-  // --- pitch modulation wiring -------------------------------------------
-  const lfoBlocks = controls.filter((b) => b.type === 'pitchlfo')
-  const envBlocks = controls.filter((b) => b.type === 'pitchenv')
-
-  const lfos = []
-  for (const block of lfoBlocks) {
-    const lfo = new Tone.LFO({ frequency: block.params.rate, min: -1, max: 1, type: block.params.wave })
-    lfo.start()
-    disposables.push(lfo)
-    lfos.push({ block, lfo })
-    built.get(block.id).nodes.lfo = lfo
-  }
-
-  // Synth sources: LFOs and envelope feed the detune signal (cents).
-  // Both connect into the same signal and sum.
-  for (const { block, nodes } of sources) {
-    if (block.type !== 'synth') continue
-    for (const { block: lb, lfo } of lfos) {
-      lfo.min = -lb.params.depth
-      lfo.max = lb.params.depth
-      lfo.connect(nodes.synth.detune)
-    }
-    if (envBlocks.length > 0) {
-      const envSignal = new Tone.Signal(0)
-      disposables.push(envSignal)
-      envSignal.connect(nodes.synth.detune)
-      nodes.envSignal = envSignal
-    }
-  }
-
-  const activeSampleSources = new Set()
-
   // Params like the synth's length/pitch and the pitch envelope are consumed
   // at trigger time, not held by a Tone node — so always read them from the
   // latest sound state (updated by apply()), never the build-time snapshot.
   let current = sound
-  const freshParams = (block) =>
-    current.blocks.find((b) => b.id === block.id)?.params ?? block.params
+  const freshBlock = (id) => {
+    for (const src of current.sources ?? []) {
+      if (src.id === id) return src
+      const hit = (src.chain ?? []).find((b) => b.id === id)
+      if (hit) return hit
+    }
+    return (current.master ?? []).find((b) => b.id === id) ?? null
+  }
+  const freshParams = (block) => freshBlock(block.id)?.params ?? block.params
+  const freshLane = (laneId) => (current.sources ?? []).find((s) => s.id === laneId)
 
-  // Extract the amplitude curve fresh and schedule it on a source's envGain.
+  // Extract the amplitude curve fresh and schedule it on a lane's envGain.
   // `noteLen` is the source's own playing length, used when stretching to note.
-  // Returns the scheduled duration (so the synth note can span it), or null.
-  function scheduleAmpEnv(envGain, when, noteLen) {
-    if (!hasAmpEnv) return null
-    const block = ampBlocks[0]
+  function scheduleAmpEnv(lane, when, noteLen) {
+    if (!lane.hasAmpEnv) return null
+    const block = lane.ampBlocks[0]
     const sample = getSample(block.id)
     if (!sample?.audioBuffer) return null
     const ep = freshParams(block)
-    // Non-destructive trim: extract the contour from the selected slice only.
     const full = sample.audioBuffer.duration
     const trimStart = Math.max(0, ep.trimStart ?? 0)
     const trimEnd = Math.min(full, ep.trimEnd ?? full)
@@ -157,25 +189,24 @@ export async function buildChain(sound, destination) {
     })
     if (curve.length < 2) return null
     const dur = Math.max(0.02, ep.stretch === 'note' ? noteLen : trimEnd - trimStart)
+    const envGain = lane.envGain
     try {
       envGain.gain.cancelScheduledValues(when)
       envGain.gain.setValueCurveAtTime(curve, when, dur)
       envGain.gain.setValueAtTime(0, when + dur)
     } catch {
-      // A still-running curve from a rapid previous trigger can refuse to be
-      // overwritten — fall back to a flat pass so the source still sounds.
       envGain.gain.cancelScheduledValues(when)
       envGain.gain.setValueAtTime(1, when)
     }
     return dur
   }
 
-  // Natural length of the longest enabled vocoder's (trimmed) speech modulator.
-  // A held synth carrier is stretched to this so the whole sentence vocodes,
-  // instead of cutting off at the synth's own Length.
-  function vocoderHold() {
+  // Natural length a lane's source must be held for: the longest enabled
+  // vocoder modulator in THIS lane's chain (a vocoder holds only its own lane's
+  // synth carrier so the whole sentence vocodes). Samples are one-shots.
+  function vocoderHold(lane) {
     let hold = 0
-    for (const { block } of triggerHooks) {
+    for (const { block } of lane.hooks) {
       if (block.type !== 'vocoder') continue
       const sample = getSample(block.id)
       if (!sample?.audioBuffer) continue
@@ -188,46 +219,41 @@ export async function buildChain(sound, destination) {
     return hold
   }
 
-  // `transpose` (semitones) shifts the played note — keyboard play feeds it in;
-  // it defaults to 0 so offline export and plain Play are unchanged. The pitch
-  // LFO/envelope layer on top of the transposed base, like a real instrument.
-  function trigger(when = Tone.now(), transpose = 0) {
-    let sourceDuration = 0
-    const carrierHold = vocoderHold()
+  // Fire a single lane at `when`. Returns the lane's playing length (from
+  // `when`), so the caller can fold in the lane delay for the total duration.
+  function triggerLane(lane, when, transpose) {
+    const { src, nodes } = lane
+    const carrierHold = lane.src.type === 'synth' ? vocoderHold(lane) : 0
+    let dur = 0
 
-    for (const { block, nodes } of sources) {
-      if (block.type === 'synth') {
-        const p = freshParams(block)
-        if (nodes.envSignal && envBlocks.length > 0) {
-          const env = freshParams(envBlocks[0])
-          nodes.envSignal.cancelScheduledValues(when)
-          nodes.envSignal.setValueAtTime(env.start, when)
-          nodes.envSignal.linearRampToValueAtTime(env.end, when + env.time)
-        }
-        // In natural-length mode the envelope can outlast the synth's Length,
-        // so the note is held for whatever the curve spans. A vocoder modulator
-        // does the same — hold the carrier long enough to vocode the whole clip.
-        // Both *replace* Length (not floor it): when a vocoder holds the carrier,
-        // its modulator length governs, so the synth's Length is ignored.
-        const ampDur = scheduleAmpEnv(nodes.envGain, when, p.duration)
-        const base = ampDur ?? (carrierHold > 0 ? carrierHold : p.duration)
-        const noteDur = Math.max(base, carrierHold)
-        nodes.synth.triggerAttackRelease(p.freq * semisToRate(transpose), noteDur, when)
-        sourceDuration = Math.max(sourceDuration, noteDur + p.release)
+    if (src.type === 'synth') {
+      const p = freshParams(src)
+      if (nodes.envSignal && lane.envBlocks.length > 0) {
+        const env = freshParams(lane.envBlocks[0])
+        nodes.envSignal.cancelScheduledValues(when)
+        nodes.envSignal.setValueAtTime(env.start, when)
+        nodes.envSignal.linearRampToValueAtTime(env.end, when + env.time)
       }
+      // In natural-length mode the amp envelope (or a vocoder modulator) can
+      // outlast the synth's Length, so the note is held for whatever spans
+      // longest. Both *replace* Length rather than floor it.
+      const ampDur = scheduleAmpEnv(lane, when, p.duration)
+      const base = ampDur ?? (carrierHold > 0 ? carrierHold : p.duration)
+      const noteDur = Math.max(base, carrierHold)
+      nodes.synth.triggerAttackRelease(p.freq * semisToRate(transpose), noteDur, when)
+      dur = noteDur + p.release
+    }
 
-      if (block.type === 'sample') {
-        const sample = getSample(block.id)
-        if (!sample?.audioBuffer) continue
-
-        activeSampleSources.forEach((s) => {
+    if (src.type === 'sample') {
+      const sample = getSample(src.id)
+      if (sample?.audioBuffer) {
+        lane.activeSampleSources.forEach((s) => {
           try { s.stop() } catch { /* already stopped */ }
         })
-        activeSampleSources.clear()
+        lane.activeSampleSources.clear()
 
-        const p = freshParams(block)
+        const p = freshParams(src)
         const baseRate = semisToRate(p.pitch + transpose)
-        // Non-destructive trim: play only the selected slice of the buffer.
         const full = sample.audioBuffer.duration
         const trimStart = Math.max(0, p.trimStart ?? 0)
         const trimEnd = Math.min(full, p.trimEnd ?? full)
@@ -235,76 +261,108 @@ export async function buildChain(sound, destination) {
         if (trimEnd - trimStart > 0.002 && (trimStart > 0.001 || trimEnd < full - 0.001)) {
           buf = buf.slice(trimStart, trimEnd)
         }
-        const src = new Tone.ToneBufferSource(buf)
-        src.playbackRate.value = baseRate
+        const srcNode = new Tone.ToneBufferSource(buf)
+        srcNode.playbackRate.value = baseRate
 
         let minRate = baseRate
-        if (envBlocks.length > 0) {
-          const env = freshParams(envBlocks[0])
+        if (lane.envBlocks.length > 0) {
+          const env = freshParams(lane.envBlocks[0])
           const startRate = baseRate * centsToRate(env.start)
           const endRate = baseRate * centsToRate(env.end)
-          src.playbackRate.setValueAtTime(startRate, when)
-          src.playbackRate.exponentialRampToValueAtTime(endRate, when + env.time)
+          srcNode.playbackRate.setValueAtTime(startRate, when)
+          srcNode.playbackRate.exponentialRampToValueAtTime(endRate, when + env.time)
           minRate = Math.min(minRate, startRate, endRate)
         }
-        for (const { block: lb, lfo } of lfos) {
+        for (const { block: lb, lfo } of lane.lfos) {
           const delta = baseRate * (centsToRate(freshParams(lb).depth) - 1)
           lfo.min = -delta
           lfo.max = delta
-          lfo.connect(src.playbackRate)
+          lfo.connect(srcNode.playbackRate)
         }
 
-        src.connect(nodes.gain)
-        src.onended = () => {
-          activeSampleSources.delete(src)
-          try { src.disconnect(); src.dispose() } catch { /* disposed */ }
+        srcNode.connect(nodes.gain)
+        srcNode.onended = () => {
+          lane.activeSampleSources.delete(srcNode)
+          try { srcNode.disconnect(); srcNode.dispose() } catch { /* disposed */ }
         }
-        activeSampleSources.add(src)
-        src.start(when)
+        lane.activeSampleSources.add(srcNode)
+        srcNode.start(when)
         const playLen = (trimEnd - trimStart) / Math.max(0.05, minRate)
-        scheduleAmpEnv(nodes.envGain, when, playLen)
-        sourceDuration = Math.max(sourceDuration, playLen)
+        scheduleAmpEnv(lane, when, playLen)
+        dur = playLen
       }
     }
 
-    // Inserts with a per-Play hook (e.g. the vocoder's speech modulator) start
-    // their transient sources here, reading the latest params/sample.
-    for (const { block, onTrigger } of triggerHooks) {
+    // This lane's per-Play insert hooks (e.g. vocoder modulator) fire here.
+    for (const { block, onTrigger } of lane.hooks) {
       onTrigger(when, { params: freshParams(block), sample: getSample(block.id), nodes: triggerNodes })
     }
+    return dur
+  }
 
-    return sourceDuration
+  // `transpose` (semitones) shifts the played note — keyboard play feeds it in.
+  function trigger(when = Tone.now(), transpose = 0) {
+    let total = 0
+    for (const lane of lanes) {
+      const laneNow = freshLane(lane.src.id)
+      const delay = Math.max(0, laneNow?.delay ?? 0)
+      const dur = triggerLane(lane, when + delay, transpose)
+      total = Math.max(total, delay + dur)
+    }
+    // Master hooks (rare — a vocoder dropped on the mix) fire undelayed.
+    for (const { block, onTrigger } of masterHooks) {
+      onTrigger(when, { params: freshParams(block), sample: getSample(block.id), nodes: triggerNodes })
+    }
+    return total
   }
 
   function apply(soundNow) {
     current = soundNow
     masterOut.volume.value = soundNow.outputVolume ?? 0
-    for (const block of soundNow.blocks) {
-      const entry = built.get(block.id)
-      if (!entry) continue
-      if (block.type === 'pitchlfo' && entry.nodes.lfo) {
-        entry.nodes.lfo.frequency.value = block.params.rate
-        entry.nodes.lfo.type = block.params.wave
-        // depth is re-read per target (synth detune below; sample at trigger)
-        for (const { block: sb, nodes } of sources) {
-          if (sb.type === 'synth') {
+
+    for (const lane of lanes) {
+      const src = (soundNow.sources ?? []).find((s) => s.id === lane.src.id)
+      if (!src) continue
+      lane.laneVol.volume.value = src.level ?? 0
+      lane.lanePan.pan.value = src.pan ?? 0
+
+      // Source block params.
+      if (lane.def.apply) {
+        lane.def.apply(lane.nodes, src.params)
+        if (lane.hasAmpEnv && lane.src.type === 'synth') flattenEnv(lane.nodes.synth)
+      }
+
+      // Lane chain blocks.
+      for (const block of src.chain ?? []) {
+        const entry = built.get(block.id)
+        if (!entry) continue
+        if (block.type === 'pitchlfo' && entry.nodes.lfo) {
+          entry.nodes.lfo.frequency.value = block.params.rate
+          entry.nodes.lfo.type = block.params.wave
+          if (lane.src.type === 'synth') {
             entry.nodes.lfo.min = -block.params.depth
             entry.nodes.lfo.max = block.params.depth
           }
+        } else if (entry.def.apply) {
+          entry.def.apply(entry.nodes, block.params)
         }
-      } else if (entry.def.apply) {
-        entry.def.apply(entry.nodes, block.params)
-        // def.apply just rewrote the ADSR from params — flatten it again.
-        if (hasAmpEnv && block.type === 'synth') flattenEnv(entry.nodes.synth)
       }
+    }
+
+    // Master chain blocks.
+    for (const block of soundNow.master ?? []) {
+      const entry = built.get(block.id)
+      if (entry?.def.apply) entry.def.apply(entry.nodes, block.params)
     }
   }
 
   function dispose() {
-    activeSampleSources.forEach((s) => {
-      try { s.stop(); s.dispose() } catch { /* already gone */ }
-    })
-    activeSampleSources.clear()
+    for (const lane of lanes) {
+      lane.activeSampleSources.forEach((s) => {
+        try { s.stop(); s.dispose() } catch { /* already gone */ }
+      })
+      lane.activeSampleSources.clear()
+    }
     triggerNodes.forEach((n) => {
       try { n.stop?.(); n.dispose() } catch { /* already gone */ }
     })
@@ -323,79 +381,101 @@ export async function buildChain(sound, destination) {
   return { trigger, apply, dispose, getAnalyser, getOutputAnalyser: () => outputAnalyser }
 }
 
-export function structureKey(sound) {
-  // structureParams are params that change the node graph itself (e.g. the
-  // detune voice count) — including them here forces a rebuild on change.
-  return sound.blocks
-    .map((b) => {
-      const extra = (BLOCK_DEFS[b.type]?.structureParams ?? [])
-        .map((k) => b.params[k])
-        .join(',')
-      return `${b.id}:${b.type}:${b.enabled ? 1 : 0}${extra ? `:${extra}` : ''}`
-    })
-    .join('|')
+// structureParams are params that change the node graph itself (e.g. the detune
+// voice count) — included here so they force a rebuild on change. Lane mix props
+// (delay/level/pan) are NOT structural: delay is read fresh at trigger, level
+// and pan are updated in place by apply().
+function blockKey(b) {
+  const extra = (BLOCK_DEFS[b.type]?.structureParams ?? []).map((k) => b.params[k]).join(',')
+  return `${b.id}:${b.type}:${b.enabled ? 1 : 0}${extra ? `:${extra}` : ''}`
 }
 
-export function estimateDuration(sound) {
-  let sourceDur = 1
-  for (const block of sound.blocks) {
-    const def = BLOCK_DEFS[block.type]
-    if (def?.kind !== 'source') continue
-    if (block.type === 'synth') {
-      sourceDur = Math.max(sourceDur, block.params.duration + block.params.release)
-    }
-    if (block.type === 'sample') {
-      const sample = getSample(block.id)
-      if (sample?.audioBuffer) {
-        let minRate = semisToRate(block.params.pitch)
-        const env = sound.blocks.find((b) => b.type === 'pitchenv' && b.enabled)
-        if (env) {
-          minRate = Math.min(
-            minRate,
-            minRate * centsToRate(env.params.start),
-            minRate * centsToRate(env.params.end),
-          )
-        }
-        const full = sample.audioBuffer.duration
-        const playedLen =
-          Math.min(full, block.params.trimEnd ?? full) - Math.max(0, block.params.trimStart ?? 0)
-        sourceDur = Math.max(sourceDur, playedLen / Math.max(0.05, minRate))
+export function structureKey(sound) {
+  const laneKeys = (sound.sources ?? []).map((src) => {
+    const chain = (src.chain ?? []).map(blockKey).join(',')
+    return `${blockKey(src)}[${chain}]`
+  })
+  const master = (sound.master ?? []).map(blockKey).join(',')
+  return `${laneKeys.join('|')}#${master}`
+}
+
+// A lane's own playing length from its trigger (source + holds + its inserts'
+// tails), excluding the lane delay. Shared by the renderer and the timeline UI
+// so bar lengths match what's actually rendered.
+export function laneDuration(src) {
+  let laneDur = src.type === 'synth' ? src.params.duration + src.params.release : 0
+
+  if (src.type === 'sample') {
+    const sample = getSample(src.id)
+    if (sample?.audioBuffer) {
+      let minRate = semisToRate(src.params.pitch)
+      const env = (src.chain ?? []).find((b) => b.type === 'pitchenv' && b.enabled)
+      if (env) {
+        minRate = Math.min(
+          minRate,
+          minRate * centsToRate(env.params.start),
+          minRate * centsToRate(env.params.end),
+        )
       }
+      const full = sample.audioBuffer.duration
+      const playedLen =
+        Math.min(full, src.params.trimEnd ?? full) - Math.max(0, src.params.trimStart ?? 0)
+      laneDur = Math.max(laneDur, playedLen / Math.max(0.05, minRate))
     }
   }
-  // A natural-length sample envelope can hold the source longer than its own
-  // Length, so the render window must cover the envelope sample too.
-  const ampEnv = sound.blocks.find((b) => b.type === 'samplenv' && b.enabled)
-  if (ampEnv && ampEnv.params.stretch === 'natural') {
+
+  // A natural-length sample envelope can hold this lane's source longer.
+  const ampEnv = (src.chain ?? []).find(
+    (b) => b.type === 'samplenv' && b.enabled && b.params.stretch === 'natural',
+  )
+  if (ampEnv) {
     const s = getSample(ampEnv.id)
     if (s?.audioBuffer) {
       const full = s.audioBuffer.duration
-      const envLen =
-        Math.min(full, ampEnv.params.trimEnd ?? full) - Math.max(0, ampEnv.params.trimStart ?? 0)
-      sourceDur = Math.max(sourceDur, envLen)
+      laneDur = Math.max(
+        laneDur,
+        Math.min(full, ampEnv.params.trimEnd ?? full) - Math.max(0, ampEnv.params.trimStart ?? 0),
+      )
     }
   }
-
-  // Likewise a vocoder holds the synth carrier for its speech modulator's
-  // natural length, so the render window must cover the whole clip.
-  if (sound.blocks.some((b) => b.type === 'synth')) {
-    for (const block of sound.blocks) {
+  // A vocoder holds this lane's synth carrier for its modulator's length.
+  if (src.type === 'synth') {
+    for (const block of src.chain ?? []) {
       if (block.type !== 'vocoder' || !block.enabled) continue
       const s = getSample(block.id)
       if (!s?.audioBuffer) continue
       const full = s.audioBuffer.duration
-      const modLen =
-        Math.min(full, block.params.trimEnd ?? full) - Math.max(0, block.params.trimStart ?? 0)
-      sourceDur = Math.max(sourceDur, modLen)
+      laneDur = Math.max(
+        laneDur,
+        Math.min(full, block.params.trimEnd ?? full) - Math.max(0, block.params.trimStart ?? 0),
+      )
     }
   }
 
-  let tail = 0
-  for (const block of sound.blocks) {
+  // Tails from this lane's own inserts.
+  let laneTail = 0
+  for (const block of src.chain ?? []) {
     const def = BLOCK_DEFS[block.type]
-    if (block.enabled && def?.tailSeconds) tail = Math.max(tail, def.tailSeconds(block.params))
+    if (block.enabled && def?.tailSeconds) laneTail = Math.max(laneTail, def.tailSeconds(block.params))
   }
-  return Math.min(30, sourceDur + tail + 0.25)
+  return Math.max(0.1, laneDur) + laneTail
+}
+
+export function estimateDuration(sound) {
+  let end = 0
+  for (const src of sound.sources ?? []) {
+    if (!src.enabled) continue
+    end = Math.max(end, (src.delay ?? 0) + laneDuration(src))
+  }
+
+  // Tails from the shared master chain.
+  let masterTail = 0
+  for (const block of sound.master ?? []) {
+    const def = BLOCK_DEFS[block.type]
+    if (block.enabled && def?.tailSeconds) masterTail = Math.max(masterTail, def.tailSeconds(block.params))
+  }
+
+  return Math.min(30, end + masterTail + 0.25)
 }
 
 // ---------------------------------------------------------------- live engine

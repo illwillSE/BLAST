@@ -592,13 +592,13 @@ export const BLOCK_DEFS = {
   },
 }
 
-// Which of the source block's params are currently overridden by another
-// enabled block in the chain (e.g. the Sample Envelope flattens the synth
+// Which of a lane's source params are currently overridden by another enabled
+// block in that lane's chain (e.g. the Sample Envelope flattens the synth
 // ADSR). Returns paramKey -> overriding block's name, so the UI can grey the
 // control out and explain why. Blocks opt in with an `overrides(params)` def.
-export function disabledSourceParams(sound) {
+export function disabledSourceParams(lane) {
   const locks = new Map()
-  for (const block of sound.blocks) {
+  for (const block of lane.chain ?? []) {
     if (!block.enabled) continue
     const def = BLOCK_DEFS[block.type]
     if (!def?.overrides) continue

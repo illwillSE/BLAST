@@ -2,17 +2,48 @@ import JSZip from 'jszip'
 import { allSamples, setSample, decodeBlob } from '../audio/sampleCache'
 import { downloadBlob, safeFileName } from '../audio/render'
 import { BLOCK_DEFS } from '../blocks/registry'
-import { defaultParams } from '../state/model'
+import { defaultParams, isSource, allBlocks } from '../state/model'
+
+// Migrate a pre-multi-lane sound (flat `blocks` array) to the lane model:
+// the single source becomes one lane, every other block becomes that lane's
+// effects chain (audio-identical to the old flat chain), master starts empty.
+function migrateSound(sound) {
+  if (sound.sources) return sound // already the lane model
+  const blocks = sound.blocks ?? []
+  const srcIdx = blocks.findIndex(isSource)
+  const source = srcIdx >= 0 ? blocks[srcIdx] : null
+  const chain = blocks.filter((_, i) => i !== srcIdx)
+  const lane = source
+    ? { ...source, chain, delay: 0, level: 0, pan: 0 }
+    : { ...newLaneFallback(), chain }
+  delete sound.blocks
+  return { ...sound, sources: [lane], master: [] }
+}
+
+// A defensive fallback if a saved sound somehow has no source block at all.
+function newLaneFallback() {
+  return { id: `blk_${Date.now().toString(36)}`, type: 'synth', enabled: true, params: defaultParams('synth'), delay: 0, level: 0, pan: 0 }
+}
 
 // Backfill params introduced after a project was saved (e.g. the synth's
-// partials/width/harmonics) so older files open with sensible defaults.
+// partials/width/harmonics) and lane-level props, so older files open with
+// sensible defaults.
 function normalizeProject(project) {
-  for (const sound of project.sounds) {
-    for (const block of sound.blocks) {
+  project.sounds = project.sounds.map((raw) => {
+    const sound = migrateSound(raw)
+    if (!sound.master) sound.master = []
+    for (const src of sound.sources) {
+      if (src.delay == null) src.delay = 0
+      if (src.level == null) src.level = 0
+      if (src.pan == null) src.pan = 0
+      if (!src.chain) src.chain = []
+    }
+    for (const block of allBlocks(sound)) {
       if (!BLOCK_DEFS[block.type]) continue
       block.params = { ...defaultParams(block.type), ...block.params }
     }
-  }
+    return sound
+  })
   return project
 }
 
@@ -24,7 +55,7 @@ const FORMAT_VERSION = 1
 export async function saveProjectZip(project) {
   const zip = new JSZip()
   const usedBlockIds = new Set(
-    project.sounds.flatMap((s) => s.blocks.map((b) => b.id)),
+    project.sounds.flatMap((s) => allBlocks(s).map((b) => b.id)),
   )
 
   const sampleManifest = {}

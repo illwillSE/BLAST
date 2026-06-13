@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { blocksByCategory } from '../blocks/registry'
 import { CAT_STYLES } from './ui'
 
-export default function AddBlockMenu({ onAdd }) {
+// `excludeKinds` hides whole block kinds. Sources are always excluded (a lane's
+// source is switched in place on its card). The master chain also excludes
+// `control` blocks — pitch/amp modulation is per-lane, not post-mix.
+export default function AddBlockMenu({ onAdd, excludeKinds = [], label = 'Add Block', variant = 'box' }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -15,19 +18,31 @@ export default function AddBlockMenu({ onAdd }) {
     return () => window.removeEventListener('mousedown', close)
   }, [open])
 
-  // Sources are excluded: each sound has one source block, switched
-  // in place on the source card itself.
-  const categories = blocksByCategory().filter((c) => c.id !== 'source')
+  const hidden = new Set(['source', ...excludeKinds])
+  const categories = blocksByCategory()
+    .map((c) => ({ ...c, blocks: c.blocks.filter((def) => !hidden.has(def.kind)) }))
+    .filter((c) => c.blocks.length > 0)
 
   return (
-    <div className="relative shrink-0 self-start" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-700 text-slate-500 transition-colors hover:border-amber-500/50 hover:text-amber-400"
-      >
-        <span className="text-xl leading-none">+</span>
-        <span className="text-[11px] font-semibold uppercase tracking-wider">Add Block</span>
-      </button>
+    <div className="relative shrink-0 self-center" ref={ref}>
+      {variant === 'chip' ? (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          title={label}
+          className="flex items-center gap-1 rounded-lg border border-dashed border-slate-700 px-2.5 py-1.5 text-[12px] text-slate-500 transition-colors hover:border-amber-500/50 hover:text-amber-400"
+        >
+          <span className="text-base leading-none">+</span>
+          {label !== 'Add Block' && <span className="text-[10px] uppercase tracking-wider">{label.replace(/^Add /, '')}</span>}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-700 text-slate-500 transition-colors hover:border-amber-500/50 hover:text-amber-400"
+        >
+          <span className="text-xl leading-none">+</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
+        </button>
+      )}
 
       {open && (
         <div className="absolute left-0 top-full z-30 mt-1 max-h-96 w-64 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">

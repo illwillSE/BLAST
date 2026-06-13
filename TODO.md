@@ -5,7 +5,15 @@ design brief and from development discussions.
 
 ## Features
 
-Om du översätter saker till svenska som berör en kontroll eller ett block så föredrar jag att du inte gör det, men om du måste för att det ska bli bra så skriv den engelska termen efter inom parantes i kursiv stil.
+Copy / paste samples within the app to be able to use same sample in different controls
+Presets for reverb which changes the values of the sliders (small room, big room, concert hall)
+Ping pong option on delay
+the output block should be special, always showing the waveform, also add one more, and basic controls, if we add more advanced later, they can be in the panel
+look into the option to keep the pills visible at all time, even when changing lane
+kolla igenom översättningarna
+the mix inspector - here the controls would clearly fit on one row. Others as well. the vocoder is the same, would look better with all the controls to the right of the sample preview
+default detune should set to a classic superwave
+minimize inspector window
 
 - [ ] **Sample export options** — more control over exported audio
       (format, sample rate, mono/stereo?).

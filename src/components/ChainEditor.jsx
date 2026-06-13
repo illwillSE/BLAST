@@ -1,112 +1,162 @@
-import { useRef, useState } from 'react'
-import { isSource } from '../state/model'
-import { disabledSourceParams } from '../blocks/registry'
-import BlockCard from './BlockCard'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { MASTER, findLane } from '../state/model'
 import AddBlockMenu from './AddBlockMenu'
-import OutputVisualizer from './OutputVisualizer'
-import { Slider, Select } from './ui'
+import LaneRow from './LaneRow'
+import LaneTimeline from './LaneTimeline'
+import InspectorDock from './InspectorDock'
+import Chip from './Chip'
 
-const OUTPUT_VOLUME_DEF = {
-  key: 'outputVolume', label: 'Level', type: 'range',
-  min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB`,
-}
-
-const OUTPUT_VIEW_DEF = {
-  key: 'outputView', label: 'Display', type: 'select', default: 'wave',
-  options: [
-    { value: 'wave', label: 'waveform' },
-    { value: 'spectrum', label: 'spectrum' },
-    { value: 'fire', label: 'fire' },
-    { value: 'off', label: 'off' },
-  ],
-}
-
-const Arrow = ({ active }) => (
-  <div className={`flex h-10 shrink-0 items-center self-start text-lg ${active ? 'text-amber-500/70' : 'text-slate-700'}`}>
-    ─▶
-  </div>
-)
+const Conn = () => <span className="text-[13px] text-slate-600">›</span>
 
 export default function ChainEditor({
-  sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource, onOutputVolume, onOutputView,
+  sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
+  onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onOutputView,
 }) {
-  const dragIndex = useRef(null)
-  const [dropTarget, setDropTarget] = useState(null)
-  // Source controls another block currently overrides (greyed out in the card).
-  const sourceLocks = disabledSourceParams(sound)
+  const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
+  const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
 
-  // Drag SOURCE lives on the grip handle only, not the whole card — otherwise
-  // the native element-drag swallows mouse interaction with anything rich
-  // inside the card (WaveSurfer regions, the sample-editor modal, canvases).
-  function dragHandleProps(block, index) {
-    if (isSource(block)) return null // source stays pinned at the front
-    return {
-      draggable: true,
-      onDragStart: (e) => {
-        dragIndex.current = index
-        e.dataTransfer.effectAllowed = 'move'
-      },
-      onDragEnd: () => { dragIndex.current = null; setDropTarget(null) },
-    }
+  // Reset selection/focus when switching to a different sound.
+  useEffect(() => {
+    setSelectedKeys([sound.sources[0]?.id])
+    setFocusedLane(sound.sources[0]?.id)
+  }, [sound.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep selection valid if blocks/lanes disappear (remove, mute rebuild, etc.).
+  const valid = (k) => k === 'output' || (k?.startsWith('mix:') && sound.sources.some((s) => s.id === k.slice(4)))
+    || (k && findLane(sound, k)) || (k && sound.master.some((b) => b.id === k))
+  useEffect(() => {
+    const kept = selectedKeys.filter(valid)
+    if (kept.length !== selectedKeys.length) setSelectedKeys(kept.length ? kept : [sound.sources[0]?.id])
+    if (!sound.sources.some((s) => s.id === focusedLane)) setFocusedLane(sound.sources[0]?.id)
+  }) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function select(key, additive) {
+    setSelectedKeys((cur) => {
+      if (additive) return cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]
+      return [key]
+    })
+    const laneId = key.startsWith('mix:') ? key.slice(4) : findLane(sound, key)?.id
+    if (laneId && !additive) setFocusedLane(laneId)
   }
 
-  // Drop TARGET stays the whole card so you can release anywhere over it.
-  function dropProps(block, index) {
-    if (isSource(block)) return {}
-    return {
-      onDragOver: (e) => {
-        if (dragIndex.current === null || dragIndex.current === index) return
-        e.preventDefault()
-        setDropTarget(index)
-      },
-      onDrop: (e) => {
-        e.preventDefault()
-        if (dragIndex.current !== null && dragIndex.current !== index) {
-          onMove(dragIndex.current, index)
-        }
-        dragIndex.current = null
-        setDropTarget(null)
-      },
-      style: dropTarget === index ? { outline: '2px dashed #f59e0b', outlineOffset: '2px' } : undefined,
-    }
+  function focusLane(laneId) {
+    setFocusedLane(laneId)
+    const src = sound.sources.find((s) => s.id === laneId)
+    if (src) setSelectedKeys([src.id])
   }
+
+  // --- bezier connectors from each lane's output port to the mix bus -------
+  const wrapRef = useRef(null)
+  const busRef = useRef(null)
+  const portRefs = useRef(new Map())
+  const [paths, setPaths] = useState([])
+  const setPortRef = (id) => (el) => { el ? portRefs.current.set(id, el) : portRefs.current.delete(id) }
+
+  useLayoutEffect(() => {
+    const compute = () => {
+      const wrap = wrapRef.current
+      const bus = busRef.current
+      if (!wrap || !bus) return
+      const wr = wrap.getBoundingClientRect()
+      const br = bus.getBoundingClientRect()
+      const bx = br.left - wr.left
+      const by = br.top - wr.top + br.height / 2
+      const next = []
+      for (const lane of sound.sources) {
+        const el = portRefs.current.get(lane.id)
+        if (!el) continue
+        const r = el.getBoundingClientRect()
+        const x1 = r.right - wr.left
+        const y1 = r.top - wr.top + r.height / 2
+        const dx = Math.max(24, (bx - x1) * 0.5)
+        next.push({ id: lane.id, enabled: lane.enabled, d: `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${bx - dx} ${by}, ${bx} ${by}` })
+      }
+      setPaths(next)
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    if (wrapRef.current) ro.observe(wrapRef.current)
+    if (busRef.current) ro.observe(busRef.current)
+    window.addEventListener('resize', compute)
+    return () => { ro.disconnect(); window.removeEventListener('resize', compute) }
+  }, [sound, focusedLane, selectedKeys])
+
+  const isSel = (k) => selectedKeys.includes(k)
+  const multiLane = sound.sources.length > 1
+  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView }
 
   return (
-    <div className="flex items-start gap-2 overflow-x-auto p-4 pb-6">
-      {sound.blocks.map((block, i) => (
-        <div key={block.id} className="flex items-start gap-2">
-          {i > 0 && <Arrow active={block.enabled || isSource(block)} />}
-          <BlockCard
-            block={block}
-            soundId={sound.id}
-            isSource={isSource(block)}
-            onParam={(key, value) => onParam(block.id, key, value)}
-            onToggle={() => onToggle(block.id)}
-            onRemove={() => onRemove(block.id)}
-            onSwapSource={(type) => onSwapSource(block.id, type)}
-            disabledParams={isSource(block) ? sourceLocks : undefined}
-            dropProps={dropProps(block, i)}
-            dragHandleProps={dragHandleProps(block, i)}
-          />
-        </div>
-      ))}
+    <div className="flex h-full min-h-0 flex-col">
+      {multiLane && <LaneTimeline sound={sound} onLaneProp={onLaneProp} />}
 
-      <Arrow active />
-      <AddBlockMenu onAdd={onAdd} />
-      <Arrow active />
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        <div ref={wrapRef} className="relative flex items-stretch gap-6">
+          <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" style={{ overflow: 'visible' }}>
+            <defs>
+              <marker id="lane-arrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="context-stroke" />
+              </marker>
+            </defs>
+            {paths.map((p) => (
+              <path key={p.id} d={p.d} fill="none" stroke={p.enabled ? '#f59e0b' : '#475569'}
+                strokeOpacity={p.enabled ? 0.7 : 0.4} strokeWidth="1.5" markerEnd="url(#lane-arrow)" />
+            ))}
+          </svg>
 
-      <div className="w-52 shrink-0 self-start rounded-lg border border-slate-500/40 bg-slate-900/80 shadow-lg">
-        <div className="border-b border-slate-800 px-2.5 py-1.5">
-          <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">Output</span>
-        </div>
-        <div className="space-y-2 p-2.5">
-          <Slider def={OUTPUT_VOLUME_DEF} value={sound.outputVolume ?? 0} onChange={onOutputVolume} />
-          <Select def={OUTPUT_VIEW_DEF} value={sound.outputView ?? 'wave'} onChange={onOutputView} />
-          {(sound.outputView ?? 'wave') !== 'off' && (
-            <OutputVisualizer mode={sound.outputView ?? 'wave'} />
-          )}
+          {/* lanes */}
+          <div className="relative z-10 flex flex-col gap-2">
+            {sound.sources.map((lane, i) => (
+              <LaneRow
+                key={lane.id}
+                lane={lane}
+                laneNumber={i + 1}
+                focused={focusedLane === lane.id}
+                selectedKeys={selectedKeys}
+                onSelect={select}
+                onFocusLane={focusLane}
+                onMove={onMove}
+                onAdd={onAdd}
+                outputRef={setPortRef(lane.id)}
+              />
+            ))}
+            <div className="flex items-center gap-2 pl-8">
+              <button
+                onClick={onAddSource}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-amber-700/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-amber-500/80 transition-colors hover:border-amber-500/70 hover:text-amber-400"
+              >
+                <span className="text-base leading-none">+</span> Source
+              </button>
+            </div>
+          </div>
+
+          {/* mix bus → master → output, centered against the lane stack */}
+          <div className="relative z-10 flex items-center gap-2 self-center">
+            <div ref={busRef} className="rounded-lg border border-slate-600/50 bg-slate-800/50 px-3 py-2 text-center">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">∑ Bus</div>
+              <div className="text-[9px] text-slate-600">all lanes</div>
+            </div>
+            {sound.master.map((b) => (
+              <span key={b.id} className="flex items-center gap-2">
+                <Conn />
+                <Chip block={b} selected={isSel(b.id)} onClick={(e) => select(b.id, e.shiftKey || e.metaKey)} />
+              </span>
+            ))}
+            <Conn />
+            <AddBlockMenu variant="chip" excludeKinds={['control']} label="Add Master" onAdd={(type) => onAdd(MASTER, type)} />
+            <Conn />
+            <button
+              onClick={(e) => select('output', e.shiftKey || e.metaKey)}
+              className={`rounded-lg border bg-slate-900/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                isSel('output') ? 'border-amber-500 text-amber-200 ring-1 ring-amber-500/70' : 'border-slate-600/50 text-slate-300 hover:border-slate-400/60'
+              }`}
+            >
+              Out
+            </button>
+          </div>
         </div>
       </div>
+
+      <InspectorDock sound={sound} selectedKeys={selectedKeys} handlers={handlers} />
     </div>
   )
 }

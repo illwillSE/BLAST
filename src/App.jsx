@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { newProject, newSound, newBlock, uid } from './state/model'
+import {
+  newProject, newSound, newBlock, newLane, uid,
+  mapBlock, removeBlock, addBlock, moveBlock, swapSource,
+} from './state/model'
 import { liveEngine } from './audio/engine'
 import { renderSoundToWav, downloadBlob, safeFileName } from './audio/render'
 import { getSample, setSample } from './audio/sampleCache'
@@ -96,15 +99,22 @@ export default function App() {
   function duplicateSound(soundId) {
     const src = project.sounds.find((s) => s.id === soundId)
     if (!src) return
+    // Clone a block, giving it a fresh id and copying any embedded sample.
+    const cloneBlock = (b) => {
+      const nb = { ...structuredClone(b), id: uid('blk') }
+      const sample = getSample(b.id)
+      if (sample) setSample(nb.id, sample)
+      return nb
+    }
     const copy = {
       ...structuredClone({ ...src, name: `${src.name} copy` }),
       id: uid('snd'),
-      blocks: src.blocks.map((b) => {
-        const nb = { ...structuredClone(b), id: uid('blk') }
-        const sample = getSample(b.id)
-        if (sample) setSample(nb.id, sample)
-        return nb
+      sources: src.sources.map((lane) => {
+        const nl = cloneBlock(lane) // new id + sample for the source head
+        nl.chain = lane.chain.map(cloneBlock)
+        return nl
       }),
+      master: src.master.map(cloneBlock),
     }
     setProject((p) => {
       const i = p.sounds.findIndex((s) => s.id === soundId)
@@ -124,40 +134,46 @@ export default function App() {
   }
 
   // ---- block actions ------------------------------------------------------
+  // A block lives either in a lane's chain (target = lane/source id) or in the
+  // master chain (target = 'master'). Param/toggle/remove find it by id.
 
   const onParam = (blockId, key, value) =>
-    updateSound(sound.id, (s) => ({
-      ...s,
-      blocks: s.blocks.map((b) =>
-        b.id === blockId ? { ...b, params: { ...b.params, [key]: value } } : b,
-      ),
-    }))
+    updateSound(sound.id, (s) =>
+      mapBlock(s, blockId, (b) => ({ ...b, params: { ...b.params, [key]: value } })),
+    )
 
   const onToggle = (blockId) =>
+    updateSound(sound.id, (s) => mapBlock(s, blockId, (b) => ({ ...b, enabled: !b.enabled })))
+
+  const onRemove = (blockId) => updateSound(sound.id, (s) => removeBlock(s, blockId))
+
+  const onAdd = (target, type) =>
+    updateSound(sound.id, (s) => addBlock(s, target, newBlock(type)))
+
+  const onMove = (target, from, to) =>
+    updateSound(sound.id, (s) => moveBlock(s, target, from, to))
+
+  const onSwapSource = (laneId, type) =>
     updateSound(sound.id, (s) => ({
       ...s,
-      blocks: s.blocks.map((b) => (b.id === blockId ? { ...b, enabled: !b.enabled } : b)),
+      sources: s.sources.map((src) => (src.id === laneId ? swapSource(src, type) : src)),
     }))
 
-  const onRemove = (blockId) =>
-    updateSound(sound.id, (s) => ({ ...s, blocks: s.blocks.filter((b) => b.id !== blockId) }))
+  // ---- lane actions -------------------------------------------------------
 
-  const onAdd = (type) =>
-    updateSound(sound.id, (s) => ({ ...s, blocks: [...s.blocks, newBlock(type)] }))
-
-  const onMove = (from, to) =>
-    updateSound(sound.id, (s) => {
-      const blocks = [...s.blocks]
-      const [moved] = blocks.splice(from, 1)
-      blocks.splice(to, 0, moved)
-      return { ...s, blocks }
-    })
-
-  const onSwapSource = (blockId, type) =>
+  const onLaneProp = (laneId, key, value) =>
     updateSound(sound.id, (s) => ({
       ...s,
-      blocks: s.blocks.map((b) => (b.id === blockId ? newBlock(type) : b)),
+      sources: s.sources.map((src) => (src.id === laneId ? { ...src, [key]: value } : src)),
     }))
+
+  const onAddSource = () =>
+    updateSound(sound.id, (s) => ({ ...s, sources: [...s.sources, newLane('synth')] }))
+
+  const onRemoveLane = (laneId) =>
+    updateSound(sound.id, (s) =>
+      s.sources.length <= 1 ? s : { ...s, sources: s.sources.filter((src) => src.id !== laneId) },
+    )
 
   const onOutputVolume = (v) => updateSound(sound.id, (s) => ({ ...s, outputVolume: v }))
 
@@ -215,7 +231,7 @@ export default function App() {
                   {exporting ? 'Rendering…' : 'Export WAV'}
                 </Button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1">
                 <ChainEditor
                   sound={sound}
                   onParam={onParam}
@@ -224,6 +240,9 @@ export default function App() {
                   onMove={onMove}
                   onAdd={onAdd}
                   onSwapSource={onSwapSource}
+                  onLaneProp={onLaneProp}
+                  onAddSource={onAddSource}
+                  onRemoveLane={onRemoveLane}
                   onOutputVolume={onOutputVolume}
                   onOutputView={onOutputView}
                 />

@@ -12,6 +12,14 @@ export const CAT_STYLES = {
   utility: { text: 'text-slate-400', border: 'border-slate-400/30', dot: 'bg-slate-400', glow: 'shadow-slate-500/10' },
 }
 
+// The signal-flow connector between cards. `active` lights it amber when audio
+// actually passes (an enabled block or a source), dim otherwise.
+export const Arrow = ({ active }) => (
+  <div className={`flex h-10 shrink-0 items-center self-start text-lg ${active ? 'text-amber-500/70' : 'text-slate-700'}`}>
+    ─▶
+  </div>
+)
+
 function toPos(value, def) {
   if (def.scale === 'log') return Math.log(value / def.min) / Math.log(def.max / def.min)
   return (value - def.min) / (def.max - def.min)
@@ -180,7 +188,7 @@ export function HarmonicsEditor({ def, value, onChange }) {
         onPointerUp={() => { draggingRef.current = false }}
         onPointerCancel={() => { draggingRef.current = false }}
         title="Drag the bars to set each harmonic’s level — draw your own waveform"
-        className="w-full cursor-crosshair rounded bg-slate-950 touch-none"
+        className="h-16 w-full cursor-crosshair rounded bg-slate-950 touch-none"
       />
     </div>
   )
