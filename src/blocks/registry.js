@@ -231,6 +231,10 @@ export const BLOCK_DEFS = {
     ],
     // Band count changes the number of audio nodes, so it forces a rebuild.
     structureParams: ['bands'],
+    // The held carrier is stretched to the modulator's length, so the synth's
+    // own Length no longer governs — grey it out (replaced in the engine, see
+    // `vocoderHold`/`noteDur`). Like the Sample Envelope's natural mode.
+    overrides: () => ['duration'],
     // The chain signal is the carrier; an embedded speech sample (loaded/recorded
     // into this block, played fresh on every trigger via onTrigger) is the
     // modulator. N band-pass pairs split both; a Follower per band tracks the

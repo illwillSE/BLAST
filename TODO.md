@@ -5,6 +5,8 @@ design brief and from development discussions.
 
 ## Features
 
+Om du översätter saker till svenska som berör en kontroll eller ett block så föredrar jag att du inte gör det, men om du måste för att det ska bli bra så skriv den engelska termen efter inom parantes i kursiv stil.
+
 - [ ] **Sample export options** — more control over exported audio
       (format, sample rate, mono/stereo?).
 - [ ] **Sound rename** — renaming beyond the double-click in the sound
@@ -30,6 +32,30 @@ design brief and from development discussions.
         id, so an envelope sample serializes today.
       - Future door: the extracted curve as a generic modulation source
         (cutoff = auto-wah, pitch, …).
+- [ ] **Modulation LFO** — a control block that wobbles *another block's*
+      parameter (auto-wah on a Filter, tremolo on a Gain, etc.), generalizing
+      today's hardcoded Pitch LFO. **Scope A — Signal targets only** (the
+      Tone-native, audio-rate path; skip control-rate modulation of plain
+      non-signal params like wave type/oversample). Design sketch:
+      - **Targets:** params backed by a Tone `Signal`/AudioParam — filter
+        cutoff, gain/volume, pan, delay time, wet. Mark these `modulatable:
+        true` in the registry and expose the underlying node by a known key.
+      - **Wiring:** the LFO stores `{ targetBlockId, targetParam }`; the
+        engine looks up the node's Signal and connects the LFO **additively**.
+        Reuse the pitch-detune trick — a sum/`Add` node per target so the
+        base value from `apply()` and the modulation coexist instead of the
+        signal-connect *overriding* `.value` (the documented Tone gotcha).
+      - **Refactor cost:** each modulatable effect routes its param through a
+        summable node instead of a bare `node.x.value =`.
+      - **Cross-block reference (new):** first inter-block link in the model.
+        `normalizeProject` must handle dangling targets (target deleted/
+        bypassed/reordered) on ZIP load.
+      - **UI:** a new "target picker" param control — dropdown of modulatable
+        params across the chain. Auto-generated cards have no such control yet.
+      - **Stacking:** two LFOs on one target sum for free via the additive
+        nodes. Stays `kind: 'control'`, chain position irrelevant.
+      - Works offline (pure audio-graph connection, like the Pitch LFO).
+        This is the generic version of the Sample Envelope's "future door."
 - [x] **Vocoder block** — insert effect: the chain signal is the carrier,
       a speech sample embedded in the block (drop/record, like Sample
       Envelope) is the modulator. Design sketch:

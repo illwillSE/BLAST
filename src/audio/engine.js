@@ -188,7 +188,10 @@ export async function buildChain(sound, destination) {
     return hold
   }
 
-  function trigger(when = Tone.now()) {
+  // `transpose` (semitones) shifts the played note — keyboard play feeds it in;
+  // it defaults to 0 so offline export and plain Play are unchanged. The pitch
+  // LFO/envelope layer on top of the transposed base, like a real instrument.
+  function trigger(when = Tone.now(), transpose = 0) {
     let sourceDuration = 0
     const carrierHold = vocoderHold()
 
@@ -204,9 +207,12 @@ export async function buildChain(sound, destination) {
         // In natural-length mode the envelope can outlast the synth's Length,
         // so the note is held for whatever the curve spans. A vocoder modulator
         // does the same — hold the carrier long enough to vocode the whole clip.
+        // Both *replace* Length (not floor it): when a vocoder holds the carrier,
+        // its modulator length governs, so the synth's Length is ignored.
         const ampDur = scheduleAmpEnv(nodes.envGain, when, p.duration)
-        const noteDur = Math.max(ampDur ?? p.duration, carrierHold)
-        nodes.synth.triggerAttackRelease(p.freq, noteDur, when)
+        const base = ampDur ?? (carrierHold > 0 ? carrierHold : p.duration)
+        const noteDur = Math.max(base, carrierHold)
+        nodes.synth.triggerAttackRelease(p.freq * semisToRate(transpose), noteDur, when)
         sourceDuration = Math.max(sourceDuration, noteDur + p.release)
       }
 
@@ -220,7 +226,7 @@ export async function buildChain(sound, destination) {
         activeSampleSources.clear()
 
         const p = freshParams(block)
-        const baseRate = semisToRate(p.pitch)
+        const baseRate = semisToRate(p.pitch + transpose)
         // Non-destructive trim: play only the selected slice of the buffer.
         const full = sample.audioBuffer.duration
         const trimStart = Math.max(0, p.trimStart ?? 0)
@@ -422,12 +428,12 @@ export class LiveEngine {
     this.soundId = sound.id
   }
 
-  async play(sound) {
+  async play(sound, transpose = 0) {
     await Tone.start()
     await this.sync(sound)
     if (!this.handle) return { duration: 0 }
     this.handle.apply(sound)
-    const duration = this.handle.trigger()
+    const duration = this.handle.trigger(undefined, transpose)
     return { duration }
   }
 

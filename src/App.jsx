@@ -29,12 +29,12 @@ export default function App() {
     }))
   }, [])
 
-  const playSound = useCallback(async (soundId) => {
+  const playSound = useCallback(async (soundId, transpose = 0) => {
     setSelectedId(soundId)
     setProject((p) => {
       const target = p.sounds.find((s) => s.id === soundId)
       if (target) {
-        liveEngine.play(target).then(({ duration }) => {
+        liveEngine.play(target, transpose).then(({ duration }) => {
           emitPlay({ soundId, duration })
         })
       }
@@ -55,6 +55,31 @@ export default function App() {
       if (isTextEntry) return
       e.preventDefault()
       playSound(selectedId)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId, playSound])
+
+  // QWERTY piano: play the selected sound at different pitches. Keyed by
+  // physical position (`e.code`, not `e.key`) so the layout works the same on
+  // any keyboard. Offsets are semitones from the source's own Pitch (q = root),
+  // so the chromatic octave rides on top of the Pitch control. Monophonic —
+  // the engine has a single synth voice and samples retrigger.
+  useEffect(() => {
+    const KEY_SEMIS = {
+      KeyQ: 0, Digit2: 1, KeyW: 2, Digit3: 3, KeyE: 4, KeyR: 5, Digit5: 6,
+      KeyT: 7, Digit6: 8, KeyY: 9, Digit7: 10, KeyU: 11, KeyI: 12,
+    }
+    const onKey = (e) => {
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return
+      const semis = KEY_SEMIS[e.code]
+      if (semis === undefined) return
+      const el = document.activeElement
+      const isTextEntry =
+        el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
+      if (isTextEntry) return
+      e.preventDefault()
+      playSound(selectedId, semis)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
