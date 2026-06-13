@@ -5,8 +5,7 @@ import { onPlay } from '../utils/bus'
 import { SampleLoadControls } from './ui'
 import { useSampleLoader } from './useSampleLoader'
 import SampleEditorModal from './SampleEditorModal'
-
-const REGION_COLOR = 'rgba(245, 158, 11, 0.12)'
+import { getColor } from '../theme/colors'
 
 // Waveform display with playback cursor, trim region, edit tools, and the
 // two ways to fill the sample buffer: file load (drop/browse) and mic.
@@ -30,8 +29,8 @@ export default function SampleEditor({ block, soundId, onParam }) {
     const ws = WaveSurfer.create({
       container: containerRef.current,
       height: 64,
-      waveColor: '#f59e0b88',
-      progressColor: '#f59e0b88',
+      waveColor: getColor('accent-deep', '88'),
+      progressColor: getColor('accent-deep', '88'),
       cursorWidth: 0,
       interact: false,
       normalize: true,
@@ -44,7 +43,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
       const region = regions.addRegion({
         start,
         end: end > start ? end : duration,
-        color: REGION_COLOR,
+        color: getColor('accent-deep', '1f'), // amber wash ≈ rgba(…,0.12)
         drag: true,
         resize: true,
       })
@@ -92,7 +91,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
   return (
     <div
       {...dragProps}
-      className={`rounded border ${dragOver ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700/80 bg-slate-900/60'} p-2 transition-colors`}
+      className={`rounded border ${dragOver ? 'border-accent bg-accent-deep/10' : 'border-edge bg-surface/70'} p-2 transition-colors`}
     >
       {sample ? (
         <div>
@@ -100,26 +99,26 @@ export default function SampleEditor({ block, soundId, onParam }) {
             <div ref={containerRef} />
             <div
               ref={cursorRef}
-              className="pointer-events-none absolute top-0 z-10 h-full w-px bg-amber-300 opacity-0"
+              className="pointer-events-none absolute top-0 z-10 h-full w-px bg-accent-bright opacity-0"
               style={{ left: 0 }}
             />
           </div>
           <div className="mt-1 flex items-center justify-between gap-2">
-            <span className="truncate font-mono text-[10px] text-slate-500" title={sample.fileName}>
+            <span className="truncate font-mono text-[10px] text-muted" title={sample.fileName}>
               {sample.fileName} · {sample.audioBuffer.duration.toFixed(2)}s
               {trimmed && ' · trimmed'}
             </span>
             <button
               onClick={() => setEditorOpen(true)}
               title="Open the full-size editor — zoom, exact in/out points, edit tools"
-              className="shrink-0 rounded border border-slate-700 px-1.5 py-0.5 text-[10px] font-medium text-slate-300 transition-colors hover:border-amber-500/50 hover:text-amber-300"
+              className="shrink-0 rounded border border-edge px-1.5 py-0.5 text-[10px] font-medium text-ink-soft transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
             >
               ✎ Edit
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex h-16 items-center justify-center text-center text-[11px] text-slate-500">
+        <div className="flex h-16 items-center justify-center text-center text-[11px] text-muted">
           {recording ? 'Recording…' : 'Drop an audio file here'}
         </div>
       )}

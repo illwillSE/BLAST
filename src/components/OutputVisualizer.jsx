@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { liveEngine } from '../audio/engine'
+import { getColor } from '../theme/colors'
 
 // Live view of the sound's final output. mode: 'wave' (oscilloscope),
 // 'spectrum' (FFT bars) or 'fire' (mirrored gradient bars with falling
@@ -11,6 +12,13 @@ export default function OutputVisualizer({ mode }) {
 
   useEffect(() => {
     let raf
+    // Palette tokens resolved once (CSS is loaded by mount); used in the loop.
+    const fireLo = getColor('fire-lo')
+    const accentDeep = getColor('accent-deep')
+    const fireHi = getColor('fire-hi')
+    const firePeak = getColor('fire-peak')
+    const spectrum = getColor('spectrum')
+    const accent = getColor('accent')
 
     const draw = () => {
       raf = requestAnimationFrame(draw)
@@ -39,10 +47,10 @@ export default function OutputVisualizer({ mode }) {
         const barW = width / n
         const mid = height / 2
         const gradient = ctx.createLinearGradient(0, height, 0, 0)
-        gradient.addColorStop(0, '#7c2d12')
-        gradient.addColorStop(0.5, '#f59e0b')
-        gradient.addColorStop(1, '#fde047')
-        ctx.shadowColor = '#f59e0b'
+        gradient.addColorStop(0, fireLo)
+        gradient.addColorStop(0.5, accentDeep)
+        gradient.addColorStop(1, fireHi)
+        ctx.shadowColor = accentDeep
         ctx.shadowBlur = 6
         for (let i = 0; i < n; i++) {
           const norm = Math.max(0, (values[i] + 100) / 100) // dB → 0..1
@@ -53,7 +61,7 @@ export default function OutputVisualizer({ mode }) {
           ctx.fillRect(i * barW + 0.5, mid - h, Math.max(1, barW - 1.5), h * 2)
           const peakY = peaks[i] * mid
           if (peakY > 1) {
-            ctx.fillStyle = '#fef3c7'
+            ctx.fillStyle = firePeak
             ctx.fillRect(i * barW + 0.5, mid - peakY - 1.5, Math.max(1, barW - 1.5), 1.5)
             ctx.fillRect(i * barW + 0.5, mid + peakY, Math.max(1, barW - 1.5), 1.5)
           }
@@ -61,14 +69,14 @@ export default function OutputVisualizer({ mode }) {
         ctx.shadowBlur = 0
       } else if (mode === 'spectrum') {
         const barW = width / values.length
-        ctx.fillStyle = '#34d399'
+        ctx.fillStyle = spectrum
         for (let i = 0; i < values.length; i++) {
           const norm = Math.max(0, (values[i] + 100) / 100) // dB → 0..1
           const h = norm * height
           ctx.fillRect(i * barW, height - h, Math.max(1, barW - 1), h)
         }
       } else {
-        ctx.strokeStyle = '#fbbf24'
+        ctx.strokeStyle = accent
         ctx.lineWidth = 1.5
         ctx.beginPath()
         for (let i = 0; i < values.length; i++) {
@@ -85,5 +93,5 @@ export default function OutputVisualizer({ mode }) {
     return () => cancelAnimationFrame(raf)
   }, [mode])
 
-  return <canvas ref={canvasRef} width={184} height={64} className="w-full rounded bg-slate-950" />
+  return <canvas ref={canvasRef} width={184} height={64} className="w-full rounded bg-well" />
 }

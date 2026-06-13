@@ -6,8 +6,9 @@ import LaneTimeline from './LaneTimeline'
 import InspectorDock from './InspectorDock'
 import Chip from './Chip'
 import OutputVisualizer from './OutputVisualizer'
+import { getColor } from '../theme/colors'
 
-const Conn = () => <span className="text-[13px] text-slate-600">›</span>
+const Conn = () => <span className="text-[13px] text-faint">›</span>
 
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
@@ -113,8 +114,8 @@ export default function ChainEditor({
               </marker>
             </defs>
             {paths.map((p) => (
-              <path key={p.id} d={p.d} fill="none" stroke={p.enabled ? '#f59e0b' : '#475569'}
-                strokeOpacity={p.enabled ? 0.7 : 0.4} strokeWidth="1.5" markerEnd="url(#lane-arrow)" />
+              <path key={p.id} d={p.d} fill="none" stroke={p.enabled ? getColor('accent-deep') : getColor('faint')}
+                strokeOpacity={p.enabled ? 0.8 : 0.5} strokeWidth="1.5" markerEnd="url(#lane-arrow)" />
             ))}
           </svg>
 
@@ -137,7 +138,7 @@ export default function ChainEditor({
             <div className="flex items-center gap-2 pl-8">
               <button
                 onClick={handleAddSource}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-amber-700/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-amber-500/80 transition-colors hover:border-amber-500/70 hover:text-amber-400"
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/80 transition-colors hover:border-accent-deep/70 hover:text-accent"
               >
                 <span className="text-base leading-none">+</span> Source
               </button>
@@ -146,9 +147,9 @@ export default function ChainEditor({
 
           {/* mix bus → master → output, centered against the lane stack */}
           <div className="relative z-10 flex items-center gap-2 self-center">
-            <div ref={busRef} className="rounded-lg border border-slate-600/50 bg-slate-800/50 px-3 py-2 text-center">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">∑ Bus</div>
-              <div className="text-[9px] text-slate-600">all lanes</div>
+            <div ref={busRef} className="rounded-lg border border-edge bg-surface px-3 py-2 text-center shadow-sm">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text">∑ Bus</div>
+              <div className="text-[9px] text-faint">all lanes</div>
             </div>
             {sound.master.map((b) => (
               <span key={b.id} className="flex items-center gap-2">
@@ -162,16 +163,16 @@ export default function ChainEditor({
             <button
               onClick={(e) => select('output', e.shiftKey || e.metaKey)}
               className={`overflow-hidden rounded-lg border transition-colors ${
-                isSel('output') ? 'border-amber-500 ring-1 ring-amber-500/70' : 'border-slate-600/50 hover:border-slate-400/60'
-              }`}
+                isSel('output') ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
+              } shadow-sm`}
             >
-              <div className="bg-slate-950/60 px-2 pt-1.5">
+              <div className="bg-well px-2 pt-1.5">
                 <OutputVisualizer mode={sound.outputView ?? 'wave'} />
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-900/70 px-2.5 py-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Out</span>
-                <span className="text-[10px] tabular-nums text-slate-500">{(sound.outputVolume ?? 0).toFixed(1)}dB</span>
-                <span className="text-[10px] text-slate-600">· {sound.outputView ?? 'wave'}</span>
+              <div className="flex items-center gap-1.5 bg-surface px-2.5 py-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">Out</span>
+                <span className="text-[10px] tabular-nums text-muted">{(sound.outputVolume ?? 0).toFixed(1)}dB</span>
+                <span className="text-[10px] text-faint">· {sound.outputView ?? 'wave'}</span>
               </div>
             </button>
           </div>

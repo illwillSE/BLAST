@@ -4,8 +4,7 @@ import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
 import { reverseBuffer, normalizeBuffer, fadeBuffer } from '../audio/bufferOps'
 import { Button } from './ui'
-
-const REGION_COLOR = 'rgba(245, 158, 11, 0.14)'
+import { getColor } from '../theme/colors'
 
 function ToolButton({ children, onClick, disabled, title }) {
   return (
@@ -13,7 +12,7 @@ function ToolButton({ children, onClick, disabled, title }) {
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="rounded border border-slate-700 bg-slate-800/80 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 disabled:cursor-default disabled:opacity-30"
+      className="rounded border border-edge bg-surface px-2 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-edge-hover hover:text-ink disabled:cursor-default disabled:opacity-30"
     >
       {children}
     </button>
@@ -32,7 +31,7 @@ function TimeField({ label, value, onCommit }) {
 
   return (
     <label className="flex items-center gap-1.5">
-      <span className="text-[11px] uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="text-[11px] uppercase tracking-wide text-muted">{label}</span>
       <input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -42,9 +41,9 @@ function TimeField({ label, value, onCommit }) {
           if (e.key === 'Escape') setDraft(value.toFixed(3))
           e.stopPropagation() // keep Esc-in-field from closing the modal
         }}
-        className="w-20 rounded border border-slate-700 bg-slate-950 px-1.5 py-0.5 font-mono text-[12px] text-slate-200 outline-none focus:border-amber-500/60"
+        className="w-20 rounded border border-edge bg-well px-1.5 py-0.5 font-mono text-[12px] text-ink outline-none focus:border-accent-deep/60"
       />
-      <span className="text-[10px] text-slate-600">s</span>
+      <span className="text-[10px] text-faint">s</span>
     </label>
   )
 }
@@ -77,9 +76,9 @@ export default function SampleEditorModal({
     const ws = WaveSurfer.create({
       container: containerRef.current,
       height: 200,
-      waveColor: '#f59e0b88',
-      progressColor: '#fbbf24',
-      cursorColor: '#fde047',
+      waveColor: getColor('accent-deep', '88'),
+      progressColor: getColor('accent'),
+      cursorColor: getColor('cursor'),
       cursorWidth: 1,
       interact: false,
       normalize: true,
@@ -96,7 +95,7 @@ export default function SampleEditorModal({
       const region = regions.addRegion({
         start,
         end: end > start ? end : duration,
-        color: REGION_COLOR,
+        color: getColor('accent-deep', '24'), // amber wash ≈ rgba(…,0.14)
         drag: true,
         resize: true,
       })
@@ -153,25 +152,25 @@ export default function SampleEditorModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="flex w-full max-w-5xl flex-col gap-3 rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-2xl">
+      <div className="flex w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl">
         <div className="flex items-center gap-3">
-          <span className="text-[13px] font-semibold uppercase tracking-wider text-amber-400">
+          <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">
             Sample Editor
           </span>
-          <span className="flex-1 truncate font-mono text-[11px] text-slate-500">
+          <span className="flex-1 truncate font-mono text-[11px] text-muted">
             {sample.fileName} · {full.toFixed(2)}s
           </span>
           <button
             onClick={onClose}
             title="Close (Esc)"
-            className="text-slate-500 transition-colors hover:text-slate-200"
+            className="text-muted transition-colors hover:text-ink"
           >
             ✕
           </button>
         </div>
 
-        <div ref={containerRef} className="rounded border border-slate-800 bg-slate-950/60" />
-        <div className="text-[10px] text-slate-600">
+        <div ref={containerRef} className="rounded border border-divider bg-well" />
+        <div className="text-[10px] text-faint">
           Mouse wheel to zoom · drag the highlighted region's edges to set in/out points
         </div>
 

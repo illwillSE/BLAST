@@ -224,15 +224,15 @@ export default function App() {
         <main className="flex min-w-0 flex-1 flex-col">
           {sound ? (
             <>
-              <div className="flex items-center gap-3 border-b border-slate-800/60 px-4 py-2.5">
+              <div className="flex items-center gap-3 border-b border-divider px-4 py-2.5">
                 <button
                   onClick={() => playSound(sound.id)}
                   title="Play (Space)"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-500/60 bg-amber-500/15 text-sm text-amber-300 transition-all hover:scale-105 hover:bg-amber-500/30 active:scale-95"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-accent-deep/60 bg-accent-deep/15 text-sm text-accent-bright transition-all hover:scale-105 hover:bg-accent-deep/30 active:scale-95"
                 >
                   ▶
                 </button>
-                <h2 className="flex-1 truncate text-[14px] font-semibold text-slate-200">{sound.name}</h2>
+                <h2 className="flex-1 truncate text-[14px] font-semibold text-ink">{sound.name}</h2>
                 <Button onClick={exportWav} variant="primary" disabled={exporting}>
                   {exporting ? 'Rendering…' : 'Export WAV'}
                 </Button>
@@ -255,7 +255,7 @@ export default function App() {
               </div>
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center text-slate-600">
+            <div className="flex flex-1 items-center justify-center text-muted">
               Add a sound to get started
             </div>
           )}

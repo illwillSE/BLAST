@@ -22,13 +22,13 @@ export default function Chip({ block, selected, onClick, drag }) {
     <button
       onClick={onClick}
       {...(drag || {})}
-      className={`flex items-center gap-1.5 rounded-lg border bg-slate-900/85 px-2.5 py-1.5 text-[12px] transition-colors ${
-        selected ? 'border-amber-500 ring-1 ring-amber-500/70' : 'border-slate-600/40 hover:border-slate-400/60'
+      className={`flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-colors ${
+        selected ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
       } ${bypassed ? 'opacity-45' : ''}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
       <span className={`font-semibold ${cat.text} ${bypassed ? 'line-through' : ''}`}>{def.name}</span>
-      {summary && <span className="text-[10px] tabular-nums text-slate-500">{summary}</span>}
+      {summary && <span className="text-[10px] tabular-nums text-muted">{summary}</span>}
     </button>
   )
 }

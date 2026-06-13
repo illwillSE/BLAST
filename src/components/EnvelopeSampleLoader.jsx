@@ -4,6 +4,7 @@ import { extractEnvelope } from '../audio/envelope'
 import { SampleLoadControls } from './ui'
 import { useSampleLoader } from './useSampleLoader'
 import SampleEditorModal from './SampleEditorModal'
+import { getColor } from '../theme/colors'
 
 const GRAB_PX = 10 // how close to a handle a click counts as grabbing it
 
@@ -38,17 +39,17 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
       const y = height - Math.min(1, curve[i]) * (height - 2) - 1
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
     }
-    ctx.strokeStyle = '#38bdf8'
+    ctx.strokeStyle = getColor('info')
     ctx.lineWidth = 1.5
     ctx.stroke()
     // Dim everything outside the trim selection.
     const x0 = (start / full) * width
     const x1 = (end / full) * width
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.62)'
+    ctx.fillStyle = getColor('well', '9e') // ≈ rgba(2,6,23,0.62)
     ctx.fillRect(0, 0, x0, height)
     ctx.fillRect(x1, 0, width - x1, height)
     // Handle lines at in/out.
-    ctx.strokeStyle = '#7dd3fc'
+    ctx.strokeStyle = getColor('info-bright')
     ctx.lineWidth = 2
     for (const x of [x0, x1]) {
       ctx.beginPath()
@@ -102,7 +103,7 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       title="Drag the start / end lines to trim the envelope"
-      className="w-full cursor-ew-resize rounded bg-slate-950 touch-none"
+      className="w-full cursor-ew-resize rounded bg-well touch-none"
     />
   )
 }
@@ -123,7 +124,7 @@ export default function EnvelopeSampleLoader({ block, onParam }) {
   return (
     <div
       {...dragProps}
-      className={`rounded border ${dragOver ? 'border-sky-400 bg-sky-500/10' : 'border-slate-700/80 bg-slate-900/60'} p-2 transition-colors`}
+      className={`rounded border ${dragOver ? 'border-info bg-info-deep/10' : 'border-edge bg-surface/70'} p-2 transition-colors`}
     >
       {sample ? (
         <div>
@@ -136,7 +137,7 @@ export default function EnvelopeSampleLoader({ block, onParam }) {
             onParam={onParam}
           />
           <div className="mt-1 flex items-center justify-between gap-2">
-            <span className="truncate font-mono text-[10px] text-slate-500" title={sample.fileName}>
+            <span className="truncate font-mono text-[10px] text-muted" title={sample.fileName}>
               {sample.fileName} · {sample.audioBuffer.duration.toFixed(2)}s
               {trimmed && ' · trimmed'}
             </span>
@@ -144,14 +145,14 @@ export default function EnvelopeSampleLoader({ block, onParam }) {
               <button
                 onClick={() => setEditorOpen(true)}
                 title="Open the full-size editor — zoom, exact in/out points, edit tools"
-                className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] font-medium text-slate-300 transition-colors hover:border-sky-500/50 hover:text-sky-300"
+                className="rounded border border-edge px-1.5 py-0.5 text-[10px] font-medium text-ink-soft transition-colors hover:border-info-deep/50 hover:text-info-bright"
               >
                 ✎ Edit
               </button>
               <button
                 onClick={() => removeSample(block.id)}
                 title="Remove the envelope sample"
-                className="text-slate-600 transition-colors hover:text-red-400"
+                className="text-muted transition-colors hover:text-danger"
               >
                 ✕
               </button>
@@ -159,7 +160,7 @@ export default function EnvelopeSampleLoader({ block, onParam }) {
           </div>
         </div>
       ) : (
-        <div className="flex h-12 items-center justify-center text-center text-[11px] text-slate-500">
+        <div className="flex h-12 items-center justify-center text-center text-[11px] text-muted">
           {recording ? 'Recording…' : 'Drop an audio file here'}
         </div>
       )}

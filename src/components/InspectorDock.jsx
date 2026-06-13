@@ -18,18 +18,18 @@ function MixControls({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, on
   return (
     <div className="min-w-[260px]">
       <div className="flex items-center gap-2">
-        <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">Lane {laneNumber} · Mix</span>
+        <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">Lane {laneNumber} · Mix</span>
         <div className="ml-auto flex items-center gap-1.5 text-[10px]">
           <button
             onClick={onToggleMute}
             className={`rounded border px-2 py-0.5 transition-colors ${
-              lane.enabled ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300' : 'border-red-400/50 bg-red-400/15 text-red-300'
+              lane.enabled ? 'border-on/50 bg-on/15 text-on-bright' : 'border-danger/50 bg-danger/15 text-danger-bright'
             }`}
           >
             {lane.enabled ? '⏻ on' : '⏻ muted'}
           </button>
           {canRemove && (
-            <button onClick={onRemoveLane} className="rounded border border-slate-700 px-2 py-0.5 text-slate-400 transition-colors hover:border-red-400/50 hover:text-red-300">
+            <button onClick={onRemoveLane} className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright">
               ✕ lane
             </button>
           )}
@@ -47,7 +47,7 @@ function MixControls({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, on
 function OutputControls({ sound, onOutputVolume, onOutputView }) {
   return (
     <div className="min-w-[260px]">
-      <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">Output</span>
+      <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">Output</span>
       <div className="mt-3 grid w-56 gap-3">
         <Slider def={OUT_VOLUME_DEF} value={sound.outputVolume ?? 0} onChange={onOutputVolume} />
         <Select def={OUT_VIEW_DEF} value={sound.outputView ?? 'wave'} onChange={onOutputView} />
@@ -60,11 +60,11 @@ function Summary({ sound }) {
   const lanes = sound.sources?.length ?? 0
   const master = sound.master?.length ?? 0
   return (
-    <div className="flex h-full items-center text-[12px] text-slate-500">
+    <div className="flex h-full items-center text-[12px] text-muted">
       <span>
         {lanes} source{lanes === 1 ? '' : 's'} · master {master} block{master === 1 ? '' : 's'} ·
         ~{estimateDuration(sound).toFixed(2)}s · out {(sound.outputVolume ?? 0).toFixed(1)}dB
-        <span className="ml-2 text-slate-600">— select a block to edit</span>
+        <span className="ml-2 text-faint">— select a block to edit</span>
       </span>
     </div>
   )
@@ -110,10 +110,10 @@ function Panel({ keyId, sound, handlers }) {
 export default function InspectorDock({ sound, selectedKeys, handlers }) {
   const keys = selectedKeys.filter((k) => k === 'output' || k.startsWith('mix:') || findBlock(sound, k))
   return (
-    <div className="shrink-0 border-t border-slate-700/70 bg-slate-900/70">
-      <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Inspector</span>
-        {keys.length > 1 && <span className="text-[10px] text-slate-500">{keys.length} blocks · shift-click to add</span>}
+    <div className="shrink-0 border-t border-divider bg-panel">
+      <div className="flex items-center gap-2 border-b border-divider px-4 py-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">Inspector</span>
+        {keys.length > 1 && <span className="text-[10px] text-muted">{keys.length} blocks · shift-click to add</span>}
       </div>
       <div className="flex gap-8 overflow-x-auto p-4" style={{ minHeight: 168 }}>
         {keys.length === 0 ? (
@@ -121,7 +121,7 @@ export default function InspectorDock({ sound, selectedKeys, handlers }) {
         ) : (
           keys.map((k, i) => (
             <div key={k} className="flex min-w-0 flex-1 gap-8">
-              {i > 0 && <div className="w-px self-stretch bg-slate-800" />}
+              {i > 0 && <div className="w-px self-stretch bg-surface-hover" />}
               <Panel keyId={k} sound={sound} handlers={handlers} />
             </div>
           ))

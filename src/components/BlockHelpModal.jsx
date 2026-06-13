@@ -37,8 +37,8 @@ export default function BlockHelpModal({ type, onClose }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
+      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-edge bg-panel shadow-2xl">
+        <div className="flex items-center gap-2 border-b border-divider px-4 py-3">
           <span className={`h-2 w-2 rounded-full ${cat.dot}`} />
           <span className={`flex-1 text-[13px] font-semibold uppercase tracking-wider ${cat.text}`}>
             {def.name}
@@ -53,34 +53,34 @@ export default function BlockHelpModal({ type, onClose }) {
           <button
             onClick={onClose}
             title="Close (Esc)"
-            className="text-slate-500 transition-colors hover:text-slate-200"
+            className="text-muted transition-colors hover:text-ink"
           >
             ✕
           </button>
         </div>
 
         <div className="space-y-4 overflow-y-auto px-4 py-3">
-          <p className="text-[13px] leading-relaxed text-slate-300">
+          <p className="text-[13px] leading-relaxed text-text">
             {block.summary ?? blockEn.summary ?? def.description}
           </p>
 
           {def.params.length > 0 && (
             <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">
                 {t.headings.controls}
               </div>
               <dl className="space-y-2.5">
                 {def.params.map((p) => (
                   <div key={p.key}>
                     <dt className="flex items-baseline gap-2">
-                      <span className="text-[12px] font-semibold text-slate-200">{p.label}</span>
+                      <span className="text-[12px] font-semibold text-ink">{p.label}</span>
                       {p.type === 'range' && (
-                        <span className="font-mono text-[10px] text-slate-600">
+                        <span className="font-mono text-[10px] text-faint">
                           {formatValue(p, p.min)} – {formatValue(p, p.max)}
                         </span>
                       )}
                     </dt>
-                    <dd className="text-[12px] leading-relaxed text-slate-400">
+                    <dd className="text-[12px] leading-relaxed text-muted">
                       {paramHelp(p.key) ?? p.label}
                     </dd>
                   </div>
@@ -91,13 +91,13 @@ export default function BlockHelpModal({ type, onClose }) {
 
           {(block.notes ?? blockEn.notes)?.length > 0 && (
             <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">
                 {t.headings.notes}
               </div>
               <ul className="space-y-1.5">
                 {(block.notes ?? blockEn.notes).map((note, i) => (
-                  <li key={i} className="flex gap-1.5 text-[12px] leading-relaxed text-slate-400">
-                    <span className="text-slate-600">·</span>
+                  <li key={i} className="flex gap-1.5 text-[12px] leading-relaxed text-muted">
+                    <span className="text-faint">·</span>
                     {note}
                   </li>
                 ))}

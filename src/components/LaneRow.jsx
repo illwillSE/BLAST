@@ -2,13 +2,14 @@ import { useRef, useState } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import AddBlockMenu from './AddBlockMenu'
 import Chip from './Chip'
+import { getColor } from '../theme/colors'
 
 const panLabel = (v) => (Math.abs(v) < 0.01 ? '⟂C' : v < 0 ? `${Math.round(-v * 100)}L` : `${Math.round(v * 100)}R`)
 const delayLabel = (v) => (!v ? '' : v < 1 ? ` · ⧖${Math.round(v * 1000)}ms` : ` · ⧖${v.toFixed(2)}s`)
 const mixReadout = (lane) => `${(lane.level ?? 0).toFixed(0)}dB · ${panLabel(lane.pan ?? 0)}${delayLabel(lane.delay)}`
 
-const Conn = () => <span className="text-[13px] text-slate-600">›</span>
-const Port = ({ portRef }) => <span ref={portRef} className="ml-1 h-2 w-2 shrink-0 rounded-full bg-slate-600" />
+const Conn = () => <span className="text-[13px] text-faint">›</span>
+const Port = ({ portRef }) => <span ref={portRef} className="ml-1 h-2 w-2 shrink-0 rounded-full bg-edge-2" />
 
 export default function LaneRow({
   lane, laneNumber, focused, selectedKeys, onSelect, onFocusLane, onMove, onAdd, outputRef,
@@ -22,7 +23,7 @@ export default function LaneRow({
   if (!focused) {
     return (
       <div className="flex items-center gap-2">
-        <button onClick={() => onFocusLane(lane.id)} className="w-6 text-center text-[11px] font-bold text-slate-500 hover:text-amber-400">
+        <button onClick={() => onFocusLane(lane.id)} className="w-6 text-center text-[11px] font-bold text-muted hover:text-accent">
           ▸{laneNumber}
         </button>
         <Chip block={lane} selected={isSel(lane.id)} onClick={click(lane.id)} />
@@ -33,9 +34,9 @@ export default function LaneRow({
           </span>
         ))}
         <Conn />
-        <div className={`ml-1 flex items-center gap-1.5 rounded-lg border border-slate-600/40 bg-slate-800/50 px-2.5 py-1.5 text-[12px] ${!lane.enabled ? 'opacity-50' : ''}`}>
-          <span className="font-semibold text-slate-300">Mix</span>
-          <span className="text-[10px] tabular-nums text-slate-500">{mixReadout(lane)}</span>
+        <div className={`ml-1 flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-2.5 py-1.5 text-[12px] shadow-sm ${!lane.enabled ? 'opacity-50' : ''}`}>
+          <span className="font-semibold text-ink-soft">Mix</span>
+          <span className="text-[10px] tabular-nums text-muted">{mixReadout(lane)}</span>
         </div>
         <Port portRef={outputRef} />
       </div>
@@ -59,13 +60,13 @@ export default function LaneRow({
         dragIndex.current = null
         setDropTarget(null)
       },
-      style: dropTarget === index ? { outline: '2px dashed #f59e0b', outlineOffset: '2px', borderRadius: '8px' } : undefined,
+      style: dropTarget === index ? { outline: `2px dashed ${getColor('accent-deep')}`, outlineOffset: '2px', borderRadius: '8px' } : undefined,
     }
   }
 
   return (
     <div className="flex items-center gap-2">
-      <button onClick={() => onFocusLane(lane.id)} className="w-6 text-center text-[11px] font-bold text-amber-400">
+      <button onClick={() => onFocusLane(lane.id)} className="w-6 text-center text-[11px] font-bold text-accent">
         ▾{laneNumber}
       </button>
       <Chip block={lane} selected={isSel(lane.id)} onClick={click(lane.id)} />
@@ -79,12 +80,12 @@ export default function LaneRow({
       <AddBlockMenu variant="chip" onAdd={(type) => onAdd(lane.id, type)} />
       <button
         onClick={click(`mix:${lane.id}`)}
-        className={`ml-1 flex items-center gap-1.5 rounded-lg border bg-slate-800/50 px-2.5 py-1.5 text-[12px] transition-colors ${
-          isSel(`mix:${lane.id}`) ? 'border-amber-500 ring-1 ring-amber-500/70' : 'border-slate-600/40 hover:border-slate-400/60'
+        className={`ml-1 flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-colors ${
+          isSel(`mix:${lane.id}`) ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
         } ${lane.enabled ? '' : 'opacity-50'}`}
       >
-        <span className="font-semibold text-slate-300">Mix</span>
-        <span className="text-[10px] tabular-nums text-slate-500">{mixReadout(lane)}</span>
+        <span className="font-semibold text-ink-soft">Mix</span>
+        <span className="text-[10px] tabular-nums text-muted">{mixReadout(lane)}</span>
       </button>
       <Port portRef={outputRef} />
     </div>

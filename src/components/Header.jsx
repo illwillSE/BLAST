@@ -31,10 +31,10 @@ export default function Header({ project, onRenameProject, onLoadProject }) {
   }
 
   return (
-    <header className="flex items-center gap-4 border-b border-slate-800 bg-slate-950/80 px-4 py-2.5">
+    <header className="flex items-center gap-4 border-b border-divider bg-panel px-4 py-2.5">
       <div className="flex items-baseline gap-2">
-        <span className="text-lg font-black tracking-[0.2em] text-amber-400">BLAST</span>
-        <span className="hidden text-[10px] uppercase tracking-wider text-slate-600 md:block">
+        <span className="text-lg font-black tracking-[0.2em] text-accent">BLAST</span>
+        <span className="hidden text-[10px] uppercase tracking-wider text-faint md:block">
           Big Loud Awesome Sound Tool
         </span>
       </div>
@@ -43,10 +43,10 @@ export default function Header({ project, onRenameProject, onLoadProject }) {
         value={project.name}
         onChange={(e) => onRenameProject(e.target.value)}
         spellCheck={false}
-        className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-[13px] text-slate-200 outline-none transition-colors hover:border-slate-700 focus:border-amber-500/50 focus:bg-slate-900"
+        className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-[13px] text-ink outline-none transition-colors hover:border-edge focus:border-accent-deep/50 focus:bg-well"
       />
 
-      {error && <span className="max-w-64 truncate text-[11px] text-red-400" title={error}>{error}</span>}
+      {error && <span className="max-w-64 truncate text-[11px] text-danger" title={error}>{error}</span>}
 
       <div className="flex gap-1.5">
         <Button onClick={save} disabled={busy !== null}>

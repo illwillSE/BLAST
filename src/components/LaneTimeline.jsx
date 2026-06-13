@@ -45,12 +45,12 @@ export default function LaneTimeline({ sound, onLaneProp }) {
   for (let t = 0; t <= maxEnd + 0.25; t += 0.5) ticks.push(t)
 
   return (
-    <div className="border-b border-slate-800/60 bg-slate-950/40">
+    <div className="border-b border-divider bg-panel/60">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1.5 px-4 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-200"
+        className="flex w-full items-center gap-1.5 px-4 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text hover:text-ink"
       >
-        <span className="text-slate-600">{open ? '▾' : '▸'}</span>
+        <span className="text-faint">{open ? '▾' : '▸'}</span>
         Timeline — start offsets
       </button>
 
@@ -58,10 +58,10 @@ export default function LaneTimeline({ sound, onLaneProp }) {
         <div className="overflow-x-auto px-4 pb-3">
           <div className="relative" style={{ width }}>
             {/* ruler */}
-            <div className="relative mb-1 h-4 border-b border-slate-800">
+            <div className="relative mb-1 h-4 border-b border-divider">
               {ticks.map((t) => (
-                <div key={t} className="absolute top-0 text-[9px] text-slate-600" style={{ left: t * PX_PER_SEC }}>
-                  <div className="h-2 w-px bg-slate-700" />
+                <div key={t} className="absolute top-0 text-[9px] text-faint" style={{ left: t * PX_PER_SEC }}>
+                  <div className="h-2 w-px bg-edge" />
                   <span className="absolute left-0.5 top-0">{t === 0 ? '0' : `${t.toFixed(1)}s`}</span>
                 </div>
               ))}
@@ -77,12 +77,12 @@ export default function LaneTimeline({ sound, onLaneProp }) {
                     <div
                       onMouseDown={(e) => onBarDown(e, lane)}
                       title={`Lane ${i + 1} — start ${fmt(delay)}, length ${fmt(len)}. Drag to offset.`}
-                      className={`absolute top-0 flex h-6 cursor-ew-resize items-center overflow-hidden rounded border ${cat.border} bg-amber-500/15 px-1.5 ${
+                      className={`absolute top-0 flex h-6 cursor-ew-resize items-center overflow-hidden rounded border ${cat.border} bg-accent-deep/15 px-1.5 ${
                         muted ? 'opacity-40' : ''
                       }`}
                       style={{ left: delay * PX_PER_SEC, width: Math.max(8, len * PX_PER_SEC) }}
                     >
-                      <span className="truncate text-[10px] font-medium text-amber-200">
+                      <span className="truncate text-[10px] font-medium text-accent-soft">
                         {i + 1} · {lane.type}{delay > 0.001 ? ` @${fmt(delay)}` : ''}
                       </span>
                     </div>

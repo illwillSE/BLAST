@@ -1,0 +1,68 @@
+/* ---------------------------------------------------------------------------
+   BLAST color palette — the single source of truth for every color.
+
+   These semantic tokens are defined as Tailwind v4 `@theme` colors, so each one
+   generates utilities (`bg-surface`, `text-muted`, `border-edge`, `ring-…`,
+   opacity modifiers like `bg-accent-deep/15`) AND is exposed as a CSS custom
+   property on :root — which the canvas/SVG drawing code reads via
+   `getColor()` in `theme/colors.js`. Change a value here and it propagates
+   everywhere (utilities + canvas + the body/slider rules in index.css).
+
+   Tier names share slate values today but stay distinct roles so text and
+   borders can diverge later. Category (per-block) colors live in
+   `theme/categories.js` because they need several related shades per hue.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  /* surfaces (dark → light) */
+  --color-bg: #0b0d11;            /* page background */
+  --color-well: #020617;          /* recessed/inset: canvases, popups, switches */
+  --color-panel: #0f172a;         /* chrome: header, sidebar, inspector, modals */
+  --color-surface: #1e293b;       /* raised: chips, cards, mix/bus/out, buttons */
+  --color-surface-hover: #334155; /* surface hover */
+
+  /* borders (subtle → strong) */
+  --color-divider: #334155;       /* structural lines between regions */
+  --color-edge: #475569;          /* default element borders */
+  --color-edge-2: #64748b;        /* emphasized borders */
+  --color-edge-hover: #94a3b8;    /* hovered borders */
+
+  /* text (brightest → dimmest) */
+  --color-ink: #f1f5f9;           /* primary readouts, names, values */
+  --color-ink-soft: #e2e8f0;      /* secondary primary */
+  --color-text: #cbd5e1;          /* standard body text */
+  --color-muted: #94a3b8;         /* labels, secondary */
+  --color-faint: #64748b;         /* dim readouts, hints, connectors */
+  --color-dim: #475569;           /* faintest */
+
+  /* accent (amber) */
+  --color-accent: #fbbf24;        /* brand, source category, harmonic fundamental */
+  --color-accent-bright: #fcd34d; /* active text */
+  --color-accent-soft: #fde68a;   /* selected-sound text */
+  --color-accent-deep: #f59e0b;   /* selection rings, focus, slider fill, wires */
+  --color-accent-dim: #b45309;    /* amber-700: muted dashed "+ Source" outline */
+
+  /* state / secondary — emerald (on), red (danger), sky (info) */
+  --color-on: #34d399;            /* emerald-400: enabled borders/fills */
+  --color-on-bright: #6ee7b7;     /* emerald-300: enabled text */
+  --color-danger: #f87171;        /* red-400: mute, errors */
+  --color-danger-deep: #ef4444;   /* red-500: danger button */
+  --color-danger-bright: #fca5a5; /* red-300: danger text */
+  --color-info: #38bdf8;          /* sky-400: info, envelope contour */
+  --color-info-bright: #7dd3fc;   /* sky-300: info text/hover, env soft */
+  --color-info-deep: #0ea5e9;     /* sky-500: info edit hover */
+
+  /* control chrome (sliders, scrollbars) */
+  --color-track: #2a3140;          /* slider empty track */
+  --color-thumb: #e2e8f0;          /* slider thumb */
+  --color-scrollbar: #3a4558;
+  --color-scrollbar-hover: #4a566e;
+
+  /* visualization-only hues (consumed by canvas/SVG via getColor) */
+  --color-cursor: #fde047;        /* waveform playhead */
+  --color-overtone: #d97706;      /* harmonic overtone bars */
+  --color-fire-lo: #7c2d12;       /* output "fire" gradient — base */
+  --color-fire-hi: #fde047;       /* output "fire" gradient — top */
+  --color-fire-peak: #fef3c7;     /* output "fire" — peak caps */
+  --color-spectrum: #34d399;      /* spectrum analyzer bars (emerald) */
+}

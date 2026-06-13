@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./theme.css"; /* all colors live here — semantic @theme tokens */
 
 :root {
   color-scheme: dark;
@@ -6,8 +7,8 @@
 
 body {
   margin: 0;
-  background: #0c0e12;
-  color: #d4d8e0;
+  background: var(--color-bg);
+  color: var(--color-ink-soft);
   font-family: "Inter", "SF Pro Text", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -23,7 +24,7 @@ body {
 .blast-slider::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, #f59e0b var(--fill, 50%), #252b36 var(--fill, 50%));
+  background: linear-gradient(to right, var(--color-accent-deep) var(--fill, 50%), var(--color-track) var(--fill, 50%));
 }
 .blast-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -32,21 +33,21 @@ body {
   height: 14px;
   width: 7px;
   border-radius: 2px;
-  background: #e2e8f0;
-  border: 1px solid #0c0e12;
+  background: var(--color-thumb);
+  border: 1px solid var(--color-bg);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 .blast-slider::-moz-range-track {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, #f59e0b var(--fill, 50%), #252b36 var(--fill, 50%));
+  background: linear-gradient(to right, var(--color-accent-deep) var(--fill, 50%), var(--color-track) var(--fill, 50%));
 }
 .blast-slider::-moz-range-thumb {
   height: 14px;
   width: 7px;
   border-radius: 2px;
-  background: #e2e8f0;
-  border: 1px solid #0c0e12;
+  background: var(--color-thumb);
+  border: 1px solid var(--color-bg);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
@@ -58,9 +59,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a3140;
+  background: var(--color-scrollbar);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a4356;
+  background: var(--color-scrollbar-hover);
 }

@@ -1,21 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
+import { getColor } from '../theme/colors'
 
 // Shared control primitives — every control always shows its current value.
 
-export const CAT_STYLES = {
-  source: { text: 'text-amber-400', border: 'border-amber-400/30', dot: 'bg-amber-400', glow: 'shadow-amber-500/10' },
-  dynamics: { text: 'text-sky-400', border: 'border-sky-400/30', dot: 'bg-sky-400', glow: 'shadow-sky-500/10' },
-  filter: { text: 'text-emerald-400', border: 'border-emerald-400/30', dot: 'bg-emerald-400', glow: 'shadow-emerald-500/10' },
-  time: { text: 'text-violet-400', border: 'border-violet-400/30', dot: 'bg-violet-400', glow: 'shadow-violet-500/10' },
-  pitch: { text: 'text-rose-400', border: 'border-rose-400/30', dot: 'bg-rose-400', glow: 'shadow-rose-500/10' },
-  distortion: { text: 'text-orange-400', border: 'border-orange-400/30', dot: 'bg-orange-400', glow: 'shadow-orange-500/10' },
-  utility: { text: 'text-slate-400', border: 'border-slate-400/30', dot: 'bg-slate-400', glow: 'shadow-slate-500/10' },
-}
+// Per-block category colors live next to the rest of the palette.
+export { CAT_STYLES } from '../theme/categories'
 
 // The signal-flow connector between cards. `active` lights it amber when audio
 // actually passes (an enabled block or a source), dim otherwise.
 export const Arrow = ({ active }) => (
-  <div className={`flex h-10 shrink-0 items-center self-start text-lg ${active ? 'text-amber-500/70' : 'text-slate-700'}`}>
+  <div className={`flex h-10 shrink-0 items-center self-start text-lg ${active ? 'text-accent-deep/80' : 'text-dim'}`}>
     ─▶
   </div>
 )
@@ -59,7 +53,7 @@ function ValueEntry({ def, value, onChange, onClose }) {
   }
 
   return (
-    <div className="absolute bottom-full right-0 z-40 mb-1 rounded border border-amber-500/60 bg-slate-950 p-1 shadow-xl">
+    <div className="absolute bottom-full right-0 z-40 mb-1 rounded border border-accent-deep/60 bg-panel p-1 shadow-xl">
       <input
         autoFocus
         type="text"
@@ -72,9 +66,9 @@ function ValueEntry({ def, value, onChange, onClose }) {
           if (e.key === 'Enter') commit()
           if (e.key === 'Escape') onClose()
         }}
-        className="w-20 bg-transparent px-1 font-mono text-[12px] text-amber-200 outline-none"
+        className="w-20 bg-transparent px-1 font-mono text-[12px] text-accent-soft outline-none"
       />
-      <div className="px-1 font-mono text-[9px] text-slate-600">
+      <div className="px-1 font-mono text-[9px] text-faint">
         {Number((def.min * factor).toFixed(decimals))}–{Number((def.max * factor).toFixed(decimals))}
         {def.percent ? '%' : ''}
       </div>
@@ -89,13 +83,13 @@ export function Slider({ def, value, onChange }) {
   return (
     <div className="block select-none" title="Double-click slider to reset · double-click value to type it">
       <div className="mb-0.5 flex items-baseline justify-between gap-2">
-        <span className="text-[11px] uppercase tracking-wide text-slate-500">{def.label}</span>
+        <span className="text-[11px] uppercase tracking-wide text-muted">{def.label}</span>
         <span className="relative">
           {editing && (
             <ValueEntry def={def} value={value} onChange={onChange} onClose={() => setEditing(false)} />
           )}
           <span
-            className="cursor-text font-mono text-[11px] text-slate-200 hover:text-amber-300"
+            className="cursor-text font-mono text-[11px] text-ink hover:text-accent-bright"
             onDoubleClick={(e) => { e.preventDefault(); setEditing(true) }}
             title="Double-click to enter an exact value"
           >
@@ -129,11 +123,11 @@ export function Slider({ def, value, onChange }) {
 export function Select({ def, value, onChange }) {
   return (
     <label className="block select-none">
-      <div className="mb-0.5 text-[11px] uppercase tracking-wide text-slate-500">{def.label}</div>
+      <div className="mb-0.5 text-[11px] uppercase tracking-wide text-muted">{def.label}</div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded border border-slate-700 bg-slate-900 px-1.5 py-1 font-mono text-[12px] text-slate-200 outline-none focus:border-amber-500/60"
+        className="w-full rounded border border-edge bg-surface px-1.5 py-1 font-mono text-[12px] text-ink outline-none focus:border-accent-deep/60"
       >
         {def.options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -158,10 +152,12 @@ export function HarmonicsEditor({ def, value, onChange }) {
     const { width, height } = canvas
     ctx.clearRect(0, 0, width, height)
     const slot = width / partials.length
+    const fundamental = getColor('accent') // brighter than overtones
+    const overtone = getColor('overtone')
     for (let i = 0; i < partials.length; i++) {
       const v = Math.min(1, Math.max(0, partials[i]))
       const barH = v * (height - 2)
-      ctx.fillStyle = i === 0 ? '#fbbf24' : '#d97706' // fundamental brighter than overtones
+      ctx.fillStyle = i === 0 ? fundamental : overtone
       ctx.fillRect(i * slot + 1, height - barH, slot - 2, barH)
     }
   }, [partials])
@@ -178,7 +174,7 @@ export function HarmonicsEditor({ def, value, onChange }) {
 
   return (
     <div className="block select-none">
-      <div className="mb-0.5 text-[11px] uppercase tracking-wide text-slate-500">{def.label}</div>
+      <div className="mb-0.5 text-[11px] uppercase tracking-wide text-muted">{def.label}</div>
       <canvas
         ref={canvasRef}
         width={208}
@@ -188,7 +184,7 @@ export function HarmonicsEditor({ def, value, onChange }) {
         onPointerUp={() => { draggingRef.current = false }}
         onPointerCancel={() => { draggingRef.current = false }}
         title="Drag the bars to set each harmonic’s level — draw your own waveform"
-        className="h-16 w-full cursor-crosshair rounded bg-slate-950 touch-none"
+        className="h-16 w-full cursor-crosshair rounded bg-well ring-1 ring-divider/60 touch-none"
       />
     </div>
   )
@@ -201,9 +197,9 @@ export function Toggle({ def, value, onChange }) {
         type="checkbox"
         checked={!!value}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-3.5 w-3.5 accent-amber-500"
+        className="h-3.5 w-3.5 accent-accent-deep"
       />
-      <span className="text-[11px] uppercase tracking-wide text-slate-500">{def.label}</span>
+      <span className="text-[11px] uppercase tracking-wide text-muted">{def.label}</span>
     </label>
   )
 }
@@ -227,16 +223,16 @@ export function SampleLoadControls({ recording, onBrowse, onStartRecording, onSt
           <Button onClick={onStartRecording} variant="danger" className="flex-1">● Record</Button>
         )}
       </div>
-      {error && <div className="mt-1.5 text-[11px] text-red-400">{error}</div>}
+      {error && <div className="mt-1.5 text-[11px] text-danger">{error}</div>}
     </>
   )
 }
 
 export function Button({ children, onClick, variant = 'default', className = '', ...rest }) {
   const variants = {
-    default: 'border-slate-700 bg-slate-800/80 text-slate-200 hover:border-slate-500 hover:bg-slate-700/80',
-    primary: 'border-amber-500/60 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25',
-    danger: 'border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20',
+    default: 'border-edge bg-surface text-ink hover:border-edge-2 hover:bg-surface-hover',
+    primary: 'border-accent-deep/60 bg-accent-deep/15 text-accent-bright hover:bg-accent-deep/25',
+    danger: 'border-danger-deep/40 bg-danger-deep/10 text-danger-bright hover:bg-danger-deep/20',
   }
   return (
     <button

@@ -29,7 +29,7 @@ export default function AddBlockMenu({ onAdd, excludeKinds = [], label = 'Add Bl
         <button
           onClick={() => setOpen((o) => !o)}
           title={label}
-          className="flex items-center gap-1 rounded-lg border border-dashed border-slate-700 px-2.5 py-1.5 text-[12px] text-slate-500 transition-colors hover:border-amber-500/50 hover:text-amber-400"
+          className="flex items-center gap-1 rounded-lg border border-dashed border-edge px-2.5 py-1.5 text-[12px] text-muted transition-colors hover:border-accent-deep/50 hover:text-accent"
         >
           <span className="text-base leading-none">+</span>
           {label !== 'Add Block' && <span className="text-[10px] uppercase tracking-wider">{label.replace(/^Add /, '')}</span>}
@@ -37,7 +37,7 @@ export default function AddBlockMenu({ onAdd, excludeKinds = [], label = 'Add Bl
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-700 text-slate-500 transition-colors hover:border-amber-500/50 hover:text-amber-400"
+          className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-edge text-muted transition-colors hover:border-accent-deep/50 hover:text-accent"
         >
           <span className="text-xl leading-none">+</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
@@ -45,21 +45,21 @@ export default function AddBlockMenu({ onAdd, excludeKinds = [], label = 'Add Bl
       )}
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 max-h-96 w-64 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
+        <div className="absolute left-0 top-full z-30 mt-1 max-h-96 w-64 overflow-y-auto rounded-lg border border-edge bg-panel p-1.5 shadow-2xl">
           {categories.map((cat) => (
             <div key={cat.id} className="mb-1.5 last:mb-0">
-              <div className="px-1.5 pb-0.5 pt-1 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+              <div className="px-1.5 pb-0.5 pt-1 text-[10px] font-bold uppercase tracking-widest text-faint">
                 {cat.label}
               </div>
               {cat.blocks.map((def) => (
                 <button
                   key={def.type}
                   onClick={() => { onAdd(def.type); setOpen(false) }}
-                  className="flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left transition-colors hover:bg-slate-800"
+                  className="flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left transition-colors hover:bg-surface"
                 >
                   <span className={`h-1.5 w-1.5 shrink-0 self-center rounded-full ${CAT_STYLES[def.category].dot}`} />
-                  <span className="text-[12px] font-medium text-slate-200">{def.name}</span>
-                  <span className="truncate text-[10px] text-slate-500">{def.description}</span>
+                  <span className="text-[12px] font-medium text-ink">{def.name}</span>
+                  <span className="truncate text-[10px] text-muted">{def.description}</span>
                 </button>
               ))}
             </div>
