@@ -6,7 +6,7 @@
 
 export const HELP = {
   en: {
-    headings: { controls: 'Controls', notes: 'Good to know' },
+    headings: { controls: 'Controls', notes: 'Good to know', examples: 'Examples — click to apply' },
     common: {
       wet: 'How much of the effect you hear, mixed against the dry (unprocessed) signal. 0% = effect off, 100% = effect only.',
       wave: 'Waveform shape: sine is pure and smooth, triangle is mellow, square is hollow and buzzy, sawtooth is bright and brassy.',
@@ -198,7 +198,7 @@ export const HELP = {
   },
 
   sv: {
-    headings: { controls: 'Kontroller', notes: 'Bra att veta' },
+    headings: { controls: 'Kontroller', notes: 'Bra att veta', examples: 'Exempel — klicka för att tillämpa' },
     common: {
       wet: 'Hur mycket av effekten du hör, blandat mot den obehandlade signalen. 0 % = ingen effekt, 100 % = bara effekt.',
       wave: 'Vågform: sinus är ren och mjuk, triangel är dov, fyrkant är ihålig och surrig, sågtand är ljus och vass.',

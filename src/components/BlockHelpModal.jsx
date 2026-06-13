@@ -8,7 +8,7 @@ const LANG_KEY = 'blast-help-lang'
 // Help window opened from the (i) icon in a block's title bar. Content is
 // looked up by block type, so every block type gets this for free. The flag
 // toggles English/Swedish; the choice is remembered across blocks/sessions.
-export default function BlockHelpModal({ type, onClose }) {
+export default function BlockHelpModal({ type, onParam, onClose }) {
   const def = BLOCK_DEFS[type]
   const cat = CAT_STYLES[def.category]
   const [lang, setLang] = useState(() => (localStorage.getItem(LANG_KEY) === 'sv' ? 'sv' : 'en'))
@@ -63,6 +63,27 @@ export default function BlockHelpModal({ type, onClose }) {
           <p className="text-[13px] leading-relaxed text-text">
             {block.summary ?? blockEn.summary ?? def.description}
           </p>
+
+          {def.examples?.length > 0 && onParam && (
+            <div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">
+                {t.headings.examples}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {def.examples.map((ex) => (
+                  <button
+                    key={ex.label}
+                    onClick={() => { Object.entries(ex.params).forEach(([k, v]) => onParam(k, v)); onClose() }}
+                    title={ex.hint}
+                    className="rounded border border-edge bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-accent-deep/60 hover:text-accent-bright"
+                  >
+                    {ex.label}
+                    {ex.hint && <span className="ml-1.5 text-[10px] font-normal text-faint">{ex.hint}</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {def.params.length > 0 && (
             <div>

@@ -147,6 +147,15 @@ export const BLOCK_DEFS = {
       { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.4, scale: 'log', format: sec },
       { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.2, scale: 'log', format: sec },
     ],
+    // Click-to-apply starting points, shown in the help modal.
+    examples: [
+      { label: 'Cymbal / hi-hat', hint: 'bright and noisy',
+        params: { freq: 300, harmonicity: 5.1, modIndex: 40, resonance: 6000, octaves: 1.5, duration: 0.1, attack: 0.001, decay: 0.5, release: 0.3 } },
+      { label: 'Bell', hint: 'clear ringing tone',
+        params: { freq: 440, harmonicity: 3, modIndex: 8, resonance: 1500, octaves: 1, duration: 0.4, attack: 0.001, decay: 1.2, release: 0.6 } },
+      { label: 'Clang', hint: 'dissonant metallic hit',
+        params: { freq: 150, harmonicity: 1.4, modIndex: 60, resonance: 3000, octaves: 2, duration: 0.2, attack: 0.001, decay: 0.4, release: 0.3 } },
+    ],
     // Node keyed `synth` so the engine's source path treats Metal exactly like
     // the Synth: MetalSynth shares `.detune`, `.envelope`, and the
     // triggerAttackRelease(freq, dur, when) call (see `isSynthSource` in engine.js).

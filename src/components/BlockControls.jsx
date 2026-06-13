@@ -157,7 +157,7 @@ export default function BlockControls({
         )}
       </div>
 
-      {helpOpen && <BlockHelpModal type={block.type} onClose={() => setHelpOpen(false)} />}
+      {helpOpen && <BlockHelpModal type={block.type} onParam={onParam} onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }
