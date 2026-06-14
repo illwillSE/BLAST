@@ -165,6 +165,7 @@ export default function EnvelopeSampleLoader({ block, onParam }) {
         </div>
       )}
       <SampleLoadControls
+        block={block}
         recording={recording}
         onBrowse={browse}
         onStartRecording={startRecording}

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { MASTER, findLane } from '../state/model'
+import { MASTER, findLane, findBlock, isSource } from '../state/model'
+import { useClipboard, getClipboard, copyBlock } from '../state/clipboard'
 import AddBlockMenu from './AddBlockMenu'
 import LaneRow from './LaneRow'
 import LaneTimeline from './LaneTimeline'
@@ -13,6 +14,7 @@ const Conn = () => <span className="text-[13px] text-faint">›</span>
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
   onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onOutputView,
+  onPasteBlock, onPasteSourceLane, onPasteValues,
 }) {
   const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
   const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
@@ -61,6 +63,48 @@ export default function ChainEditor({
     setSelectedKeys([id])
   }
 
+  function handlePaste(target) {
+    const id = onPasteBlock(target)
+    if (!id) return
+    setSelectedKeys([id])
+    if (target !== MASTER) setFocusedLane(target)
+  }
+
+  function handlePasteSource() {
+    const id = onPasteSourceLane()
+    if (!id) return
+    setFocusedLane(id)
+    setSelectedKeys([id])
+  }
+
+  // Cmd/Ctrl-C copies the single selected block; Cmd/Ctrl-V pastes into the
+  // focused lane (a copied source becomes a new lane). Text entry keeps the
+  // browser's own copy/paste.
+  const clip = useClipboard()
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+      const el = document.activeElement
+      const isTextEntry = el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
+      if (isTextEntry) return
+      const key = e.key.toLowerCase()
+      if (key === 'c') {
+        const sel = selectedKeys.filter((k) => k !== 'output' && !k.startsWith('mix:'))
+        const block = sel.length === 1 ? findBlock(sound, sel[0]) : null
+        if (!block) return
+        e.preventDefault()
+        copyBlock(block)
+      } else if (key === 'v') {
+        const c = getClipboard()
+        if (c?.kind !== 'block') return
+        e.preventDefault()
+        isSource(c.block) ? handlePasteSource() : handlePaste(focusedLane)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }) // eslint-disable-line react-hooks/exhaustive-deps
+
   // --- bezier connectors from each lane's output port to the mix bus -------
   const wrapRef = useRef(null)
   const busRef = useRef(null)
@@ -99,7 +143,7 @@ export default function ChainEditor({
 
   const isSel = (k) => selectedKeys.includes(k)
   const multiLane = sound.sources.length > 1
-  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView }
+  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView, onPasteValues }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -132,6 +176,7 @@ export default function ChainEditor({
                 onFocusLane={focusLane}
                 onMove={onMove}
                 onAdd={handleAdd}
+                onPaste={handlePaste}
                 outputRef={setPortRef(lane.id)}
               />
             ))}
@@ -142,6 +187,14 @@ export default function ChainEditor({
               >
                 <span className="text-base leading-none">+</span> Source
               </button>
+              {clip?.kind === 'block' && isSource(clip.block) && (
+                <button
+                  onClick={handlePasteSource}
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/80 transition-colors hover:border-accent-deep/70 hover:text-accent"
+                >
+                  <span className="text-base leading-none">⇲</span> Paste source
+                </button>
+              )}
             </div>
           </div>
 
@@ -158,7 +211,7 @@ export default function ChainEditor({
               </span>
             ))}
             <Conn />
-            <AddBlockMenu variant="chip" excludeKinds={['control']} label="Add Master" onAdd={(type) => handleAdd(MASTER, type)} />
+            <AddBlockMenu variant="chip" excludeKinds={['control']} label="Add Master" onAdd={(type) => handleAdd(MASTER, type)} onPaste={() => handlePaste(MASTER)} />
             <Conn />
             <button
               onClick={(e) => select('output', e.shiftKey || e.metaKey)}

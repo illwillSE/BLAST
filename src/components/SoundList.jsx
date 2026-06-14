@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useClipboard } from '../state/clipboard'
 
 function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, onDelete, canDelete }) {
   const [editing, setEditing] = useState(false)
@@ -68,18 +69,30 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
   )
 }
 
-export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd, onRename, onDuplicate, onDelete }) {
+export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd, onRename, onDuplicate, onDelete, onPasteAsNewSound }) {
+  const clip = useClipboard()
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-divider bg-panel">
       <div className="flex items-center justify-between border-b border-divider px-3 py-2">
         <span className="text-[11px] font-bold uppercase tracking-widest text-muted">Sounds</span>
-        <button
-          onClick={onAdd}
-          title="Add sound"
-          className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
-        >
-          +
-        </button>
+        <div className="flex items-center gap-1.5">
+          {clip?.kind === 'sample' && (
+            <button
+              onClick={onPasteAsNewSound}
+              title="Paste the copied sample as a new sound"
+              className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
+            >
+              ⇲
+            </button>
+          )}
+          <button
+            onClick={onAdd}
+            title="Add sound"
+            className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
+          >
+            +
+          </button>
+        </div>
       </div>
       <div className="flex-1 space-y-0.5 overflow-y-auto p-1.5">
         {sounds.map((s) => (

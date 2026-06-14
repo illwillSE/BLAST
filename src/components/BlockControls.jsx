@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { liveEngine } from '../audio/engine'
+import { useClipboard, copyBlock } from '../state/clipboard'
 import { CAT_STYLES, ParamControl } from './ui'
 import SampleEditor from './SampleEditor'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
@@ -80,11 +81,13 @@ function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
 // in a responsive 2-column grid; the rich editors (sample waveform, harmonics)
 // span the full width above the grid.
 export default function BlockControls({
-  block, soundId, isSource, onParam, onToggle, onRemove, onSwapSource, disabledParams,
+  block, soundId, isSource, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams,
 }) {
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
   const [helpOpen, setHelpOpen] = useState(false)
+  const clip = useClipboard()
+  const canPasteValues = clip?.kind === 'block' && clip.block.type === block.type
 
   const visibleParams = def.params.filter((p) => !p.show || p.show(block.params))
 
@@ -101,28 +104,46 @@ export default function BlockControls({
           i
         </button>
         {isSource && <span className="ml-1"><SourceTypeSwitch block={block} onSwapSource={onSwapSource} /></span>}
-        {!isSource && (
-          <div className="ml-auto flex items-center gap-1.5 text-[10px]">
+        <div className="ml-auto flex items-center gap-1.5 text-[10px]">
+          <button
+            onClick={() => copyBlock(block)}
+            title="Copy this block (params + sample)"
+            className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
+          >
+            ⧉ copy
+          </button>
+          {canPasteValues && (
             <button
-              onClick={onToggle}
-              title={block.enabled ? 'Bypass' : 'Enable'}
-              className={`rounded border px-2 py-0.5 transition-colors ${
-                block.enabled
-                  ? 'border-on/50 bg-on/15 text-on-bright'
-                  : 'border-edge-2 text-muted'
-              }`}
+              onClick={onPasteValues}
+              title={`Paste values from the copied ${def.name}`}
+              className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
             >
-              ⏻ {block.enabled ? 'on' : 'bypassed'}
+              ⇲ values
             </button>
-            <button
-              onClick={onRemove}
-              title="Remove block"
-              className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
-            >
-              ✕ remove
-            </button>
-          </div>
-        )}
+          )}
+          {!isSource && (
+            <>
+              <button
+                onClick={onToggle}
+                title={block.enabled ? 'Bypass' : 'Enable'}
+                className={`rounded border px-2 py-0.5 transition-colors ${
+                  block.enabled
+                    ? 'border-on/50 bg-on/15 text-on-bright'
+                    : 'border-edge-2 text-muted'
+                }`}
+              >
+                ⏻ {block.enabled ? 'on' : 'bypassed'}
+              </button>
+              <button
+                onClick={onRemove}
+                title="Remove block"
+                className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
+              >
+                ✕ remove
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 space-y-3">

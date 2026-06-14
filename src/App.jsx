@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   newProject, newSound, newBlock, newLane, uid,
-  mapBlock, removeBlock, addBlock, moveBlock, swapSource,
+  mapBlock, removeBlock, addBlock, moveBlock, swapSource, isSource,
 } from './state/model'
 import { liveEngine } from './audio/engine'
 import { renderSoundToWav, downloadBlob, safeFileName } from './audio/render'
-import { getSample, setSample } from './audio/sampleCache'
+import { getSample, setSample, decodeBlob } from './audio/sampleCache'
+import { getClipboard, setClipboard } from './state/clipboard'
 import { emitPlay } from './utils/bus'
 import Header from './components/Header'
 import SoundList from './components/SoundList'
 import ChainEditor from './components/ChainEditor'
 import { Button } from './components/ui'
+
+// Clone a block (or lane), giving it a fresh id and copying an embedded sample
+// into the new id. Shared by sound duplication and clipboard paste.
+function cloneWithSample(block, sample) {
+  const nb = { ...structuredClone(block), id: uid('blk') }
+  if (sample) setSample(nb.id, sample)
+  return nb
+}
 
 export default function App() {
   const [project, setProject] = useState(newProject)
@@ -99,13 +108,7 @@ export default function App() {
   function duplicateSound(soundId) {
     const src = project.sounds.find((s) => s.id === soundId)
     if (!src) return
-    // Clone a block, giving it a fresh id and copying any embedded sample.
-    const cloneBlock = (b) => {
-      const nb = { ...structuredClone(b), id: uid('blk') }
-      const sample = getSample(b.id)
-      if (sample) setSample(nb.id, sample)
-      return nb
-    }
+    const cloneBlock = (b) => cloneWithSample(b, getSample(b.id))
     const copy = {
       ...structuredClone({ ...src, name: `${src.name} copy` }),
       id: uid('snd'),
@@ -198,6 +201,69 @@ export default function App() {
     setExporting(false)
   }
 
+  // ---- clipboard paste (copy lives in the clipboard module) ---------------
+
+  // Paste a non-source block as a clone into a lane chain (target = lane id) or
+  // the master chain (target = MASTER). Returns the new block id for selection.
+  const pasteBlock = (target) => {
+    const c = getClipboard()
+    if (c?.kind !== 'block' || isSource(c.block)) return
+    const block = cloneWithSample(c.block, c.sample)
+    updateSound(sound.id, (s) => addBlock(s, target, block))
+    return block.id
+  }
+
+  // A copied source always pastes as a new source lane (empty chain).
+  const pasteSourceLane = () => {
+    const c = getClipboard()
+    if (c?.kind !== 'block' || !isSource(c.block)) return
+    const lane = { ...newLane(c.block.type), params: structuredClone(c.block.params), enabled: c.block.enabled }
+    if (c.sample) setSample(lane.id, c.sample)
+    updateSound(sound.id, (s) => ({ ...s, sources: [...s.sources, lane] }))
+    return lane.id
+  }
+
+  // Overwrite an existing block's params from a copied block of the same type.
+  const pasteValues = (blockId) => {
+    const c = getClipboard()
+    if (c?.kind !== 'block') return
+    updateSound(sound.id, (s) =>
+      mapBlock(s, blockId, (b) =>
+        b.type === c.block.type ? { ...b, params: structuredClone(c.block.params) } : b),
+    )
+  }
+
+  // Drop a copied sample into a brand-new sound as a Sample source.
+  const pasteAsNewSound = () => {
+    const c = getClipboard()
+    if (c?.kind !== 'sample') return
+    const s = newSound(c.label || 'Sample')
+    s.sources[0] = swapSource(s.sources[0], 'sample')
+    setSample(s.sources[0].id, c.sample)
+    setProject((p) => ({ ...p, sounds: [...p.sounds, s] }))
+    setSelectedId(s.id)
+  }
+
+  // Render the current sound to audio and put it on the clipboard as a sample.
+  async function copyOutputAsSample() {
+    const blob = await renderSoundToWav(sound)
+    const audioBuffer = await decodeBlob(blob)
+    setClipboard({ kind: 'sample', sample: { blob, fileName: `${sound.name}.wav`, audioBuffer }, label: `${sound.name}_copy` })
+  }
+
+  // Toolbar one-click: render output → new Sample sound (also leaves it on the
+  // clipboard, so it can instead be pasted into an existing sample block).
+  async function outputToSampleSound() {
+    setExporting(true)
+    try {
+      await copyOutputAsSample()
+      pasteAsNewSound()
+    } catch (e) {
+      console.error('Render to sample failed', e)
+    }
+    setExporting(false)
+  }
+
   function loadProject(loaded) {
     setProject(loaded)
     setSelectedId(loaded.sounds[0]?.id)
@@ -220,6 +286,7 @@ export default function App() {
           onRename={(id, name) => updateSound(id, (s) => ({ ...s, name }))}
           onDuplicate={duplicateSound}
           onDelete={deleteSound}
+          onPasteAsNewSound={pasteAsNewSound}
         />
         <main className="flex min-w-0 flex-1 flex-col">
           {sound ? (
@@ -233,6 +300,9 @@ export default function App() {
                   ▶
                 </button>
                 <h2 className="flex-1 truncate text-[14px] font-semibold text-ink">{sound.name}</h2>
+                <Button onClick={outputToSampleSound} disabled={exporting} title="Render this sound and drop it into a new Sample sound">
+                  → Sample sound
+                </Button>
                 <Button onClick={exportWav} variant="primary" disabled={exporting}>
                   {exporting ? 'Rendering…' : 'Export WAV'}
                 </Button>
@@ -251,6 +321,9 @@ export default function App() {
                   onRemoveLane={onRemoveLane}
                   onOutputVolume={onOutputVolume}
                   onOutputView={onOutputView}
+                  onPasteBlock={pasteBlock}
+                  onPasteSourceLane={pasteSourceLane}
+                  onPasteValues={pasteValues}
                 />
               </div>
             </>

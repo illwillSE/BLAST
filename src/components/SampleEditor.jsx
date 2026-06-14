@@ -126,6 +126,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
         </div>
       )}
       <SampleLoadControls
+        block={block}
         recording={recording}
         onBrowse={browse}
         onStartRecording={startRecording}

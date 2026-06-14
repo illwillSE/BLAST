@@ -103,6 +103,7 @@ function Panel({ keyId, sound, handlers }) {
       onToggle={() => handlers.onToggle(block.id)}
       onRemove={() => handlers.onRemove(block.id)}
       onSwapSource={(type) => handlers.onSwapSource(block.id, type)}
+      onPasteValues={() => handlers.onPasteValues(block.id)}
     />
   )
 }

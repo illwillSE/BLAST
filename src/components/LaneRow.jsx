@@ -12,7 +12,7 @@ const Conn = () => <span className="text-[13px] text-faint">›</span>
 const Port = ({ portRef }) => <span ref={portRef} className="ml-1 h-2 w-2 shrink-0 rounded-full bg-edge-2" />
 
 export default function LaneRow({
-  lane, laneNumber, focused, selectedKeys, onSelect, onFocusLane, onMove, onAdd, outputRef,
+  lane, laneNumber, focused, selectedKeys, onSelect, onFocusLane, onMove, onAdd, onPaste, outputRef,
 }) {
   const dragIndex = useRef(null)
   const [dropTarget, setDropTarget] = useState(null)
@@ -77,7 +77,7 @@ export default function LaneRow({
         </span>
       ))}
       <Conn />
-      <AddBlockMenu variant="chip" onAdd={(type) => onAdd(lane.id, type)} />
+      <AddBlockMenu variant="chip" onAdd={(type) => onAdd(lane.id, type)} onPaste={() => onPaste(lane.id)} />
       <button
         onClick={click(`mix:${lane.id}`)}
         className={`ml-1 flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-colors ${

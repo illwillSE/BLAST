@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getColor } from '../theme/colors'
+import { getSample, setSample } from '../audio/sampleCache'
+import { useClipboard, getClipboard, copySample } from '../state/clipboard'
 
 // Shared control primitives — every control always shows its current value.
 
@@ -212,7 +214,10 @@ export function ParamControl({ def, value, onChange }) {
 }
 
 // Browse / Record button row + error line, shared by the sample blocks.
-export function SampleLoadControls({ recording, onBrowse, onStartRecording, onStopRecording, error }) {
+export function SampleLoadControls({ block, recording, onBrowse, onStartRecording, onStopRecording, error }) {
+  const clip = useClipboard()
+  const hasSample = !!getSample(block.id)
+  const canPaste = clip?.kind === 'sample'
   return (
     <>
       <div className="mt-2 flex gap-1.5">
@@ -222,6 +227,10 @@ export function SampleLoadControls({ recording, onBrowse, onStartRecording, onSt
         ) : (
           <Button onClick={onStartRecording} variant="danger" className="flex-1">● Record</Button>
         )}
+      </div>
+      <div className="mt-1.5 flex gap-1.5">
+        <Button onClick={() => copySample(block)} disabled={!hasSample} className="flex-1 disabled:opacity-40">⧉ Copy sample</Button>
+        <Button onClick={() => setSample(block.id, getClipboard().sample)} disabled={!canPaste} className="flex-1 disabled:opacity-40">⇲ Paste sample</Button>
       </div>
       {error && <div className="mt-1.5 text-[11px] text-danger">{error}</div>}
     </>
