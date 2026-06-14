@@ -26,8 +26,13 @@ export default function App() {
   const [project, setProject] = useState(newProject)
   const [selectedId, setSelectedId] = useState(() => project.sounds[0].id)
   const [exporting, setExporting] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
 
   const sound = project.sounds.find((s) => s.id === selectedId) ?? project.sounds[0]
+
+  // Cancel inline name editing when switching sounds.
+  useEffect(() => { setEditingName(false) }, [selectedId])
 
   // Keep the audio graph in step with the UI. sync() rebuilds only when the
   // chain structure changed; otherwise it just applies parameter values.
@@ -303,7 +308,31 @@ export default function App() {
                 >
                   ▶
                 </button>
-                <h2 className="flex-1 truncate text-[14px] font-semibold text-ink">{sound.name}</h2>
+                {editingName ? (
+                  <input
+                    autoFocus
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onBlur={() => {
+                      setEditingName(false)
+                      const name = nameDraft.trim()
+                      if (name && name !== sound.name) updateSound(sound.id, (s) => ({ ...s, name }))
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur()
+                      if (e.key === 'Escape') { setEditingName(false) }
+                    }}
+                    className="flex-1 rounded border border-accent-deep/50 bg-well px-2 py-0.5 text-[14px] font-semibold text-ink outline-none"
+                  />
+                ) : (
+                  <h2
+                    className="flex-1 cursor-text truncate text-[14px] font-semibold text-ink"
+                    onDoubleClick={() => { setEditingName(true); setNameDraft(sound.name) }}
+                    title="Double-click to rename"
+                  >
+                    {sound.name}
+                  </h2>
+                )}
                 <Button onClick={outputToSampleSound} disabled={exporting} title="Render this sound and drop it into a new Sample sound">
                   → Sample sound
                 </Button>
