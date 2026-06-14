@@ -5,15 +5,16 @@ design brief and from development discussions.
 
 ## Features
 
-- [ ] **Sample editor help window** — help/tips for the sample editor.
-- [ ] **Copy/paste samples** — reuse the same sample across multiple blocks (Sample, Sample Envelope, Vocoder).
+- [x] **Sample editor help window** — help/tips for the sample editor.
+- [x] **Copy/paste samples** — reuse the same sample across multiple blocks (Sample, Sample Envelope, Vocoder).
 - [ ] **Review translations** — audit Swedish/English strings in help.js for accuracy and completeness.
 - [ ] **Minimize inspector** — add a collapse/minimize toggle for the inspector panel.
 - [ ] **Background visualization** — a subtle deterministic visual effect in the background, driven by selected nodes/lanes and their control values (envelopes, levels, etc.).
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce zipper noise on slider edits.
 - [ ] **Tone.js feature audit** — investigate other Tone.js features not yet used that could be useful.
-- [ ] **Sample export options** — more control over exported audio
-      (format, sample rate, mono/stereo?).
+- [x] **Sample export options** — more control over exported audio
+      (format, sample rate, mono/stereo). Settings live on the project (saved
+      in the ZIP) and drive both Export WAV and copy-to-sample / → Sample sound.
 - [ ] **Sound rename** — renaming beyond the double-click in the sound
       list (e.g. from the chain header).
 - [ ] **Export sample from sample source** — download the (edited) sample

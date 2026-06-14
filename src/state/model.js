@@ -1,4 +1,5 @@
 import { BLOCK_DEFS } from '../blocks/registry'
+import { DEFAULT_EXPORT } from '../audio/render'
 
 let counter = 0
 export function uid(prefix = 'id') {
@@ -43,7 +44,7 @@ export function newSound(name) {
 }
 
 export function newProject() {
-  return { name: 'Untitled Project', version: 1, sounds: [newSound('Sound 1')] }
+  return { name: 'Untitled Project', version: 1, export: { ...DEFAULT_EXPORT }, sounds: [newSound('Sound 1')] }
 }
 
 export function isSource(block) {

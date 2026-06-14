@@ -11,6 +11,7 @@ import { emitPlay } from './utils/bus'
 import Header from './components/Header'
 import SoundList from './components/SoundList'
 import ChainEditor from './components/ChainEditor'
+import ExportSettings from './components/ExportSettings'
 import { Button } from './components/ui'
 
 // Clone a block (or lane), giving it a fresh id and copying an embedded sample
@@ -190,10 +191,13 @@ export default function App() {
 
   // ---- export -------------------------------------------------------------
 
+  const setExport = (patch) =>
+    setProject((p) => ({ ...p, export: { ...p.export, ...patch } }))
+
   async function exportWav() {
     setExporting(true)
     try {
-      const blob = await renderSoundToWav(sound)
+      const blob = await renderSoundToWav(sound, project.export)
       downloadBlob(blob, `${safeFileName(sound.name)}.wav`)
     } catch (e) {
       console.error('Export failed', e)
@@ -246,7 +250,7 @@ export default function App() {
 
   // Render the current sound to audio and put it on the clipboard as a sample.
   async function copyOutputAsSample() {
-    const blob = await renderSoundToWav(sound)
+    const blob = await renderSoundToWav(sound, project.export)
     const audioBuffer = await decodeBlob(blob)
     setClipboard({ kind: 'sample', sample: { blob, fileName: `${sound.name}.wav`, audioBuffer }, label: `${sound.name}_copy` })
   }
@@ -303,6 +307,7 @@ export default function App() {
                 <Button onClick={outputToSampleSound} disabled={exporting} title="Render this sound and drop it into a new Sample sound">
                   → Sample sound
                 </Button>
+                <ExportSettings settings={project.export} onChange={setExport} />
                 <Button onClick={exportWav} variant="primary" disabled={exporting}>
                   {exporting ? 'Rendering…' : 'Export WAV'}
                 </Button>

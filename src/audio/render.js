@@ -2,8 +2,22 @@ import * as Tone from 'tone'
 import toWav from 'audiobuffer-to-wav'
 import { buildChain, estimateDuration } from './engine'
 
-// Renders a sound offline to a stereo 44.1kHz WAV blob.
-export async function renderSoundToWav(sound) {
+// Export options — the single source of truth for both the settings UI and the
+// renderer. `format` picks the WAV sample format (16-bit PCM vs 32-bit float).
+export const SAMPLE_RATES = [11025, 22050, 44100]
+export const EXPORT_CHANNELS = [
+  { value: 2, label: 'Stereo' },
+  { value: 1, label: 'Mono' },
+]
+export const EXPORT_FORMATS = [
+  { value: 'pcm16', label: '16-bit PCM' },
+  { value: 'float32', label: '32-bit float' },
+]
+export const DEFAULT_EXPORT = { sampleRate: 44100, channels: 2, format: 'pcm16' }
+
+// Renders a sound offline to a WAV blob using the given export options.
+export async function renderSoundToWav(sound, opts) {
+  const { sampleRate, channels, format } = { ...DEFAULT_EXPORT, ...opts }
   const duration = estimateDuration(sound)
   const toneBuffer = await Tone.Offline(
     async ({ destination }) => {
@@ -11,10 +25,10 @@ export async function renderSoundToWav(sound) {
       handle.trigger(0.01)
     },
     duration + 0.05,
-    2,
-    44100,
+    channels,
+    sampleRate,
   )
-  const wavData = toWav(toneBuffer.get())
+  const wavData = toWav(toneBuffer.get(), { float32: format === 'float32' })
   return new Blob([wavData], { type: 'audio/wav' })
 }
 

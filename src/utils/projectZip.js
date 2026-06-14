@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import { allSamples, setSample, decodeBlob } from '../audio/sampleCache'
-import { downloadBlob, safeFileName } from '../audio/render'
+import { downloadBlob, safeFileName, DEFAULT_EXPORT } from '../audio/render'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { defaultParams, isSource, allBlocks } from '../state/model'
 
@@ -29,6 +29,7 @@ function newLaneFallback() {
 // partials/width/harmonics) and lane-level props, so older files open with
 // sensible defaults.
 function normalizeProject(project) {
+  project.export = { ...DEFAULT_EXPORT, ...project.export }
   project.sounds = project.sounds.map((raw) => {
     const sound = migrateSound(raw)
     if (!sound.master) sound.master = []
