@@ -3,6 +3,7 @@ import { BLOCK_DEFS } from '../blocks/registry'
 import { useClipboard, copyBlock } from '../state/clipboard'
 import { CAT_STYLES, ParamControl } from './ui'
 import SampleEditor from './SampleEditor'
+import ConfirmButton from './ConfirmButton'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
 import BlockHelpModal from './BlockHelpModal'
 
@@ -136,13 +137,12 @@ export default function BlockControls({
               >
                 ⏻ {block.enabled ? 'on' : 'bypassed'}
               </button>
-              <button
-                onClick={onRemove}
-                title="Remove block"
+              <ConfirmButton
+                onConfirm={onRemove}
                 className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
               >
                 ✕ remove
-              </button>
+              </ConfirmButton>
             </>
           )}
         </div>

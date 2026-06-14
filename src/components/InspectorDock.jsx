@@ -3,6 +3,7 @@ import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
 import { Slider, Select } from './ui'
 import BlockControls from './BlockControls'
+import ConfirmButton from './ConfirmButton'
 import SequencerEditor from './SequencerEditor'
 
 const LEVEL_DEF = { key: 'level', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
@@ -30,9 +31,9 @@ function MixControls({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, on
             {lane.enabled ? '⏻ on' : '⏻ muted'}
           </button>
           {canRemove && (
-            <button onClick={onRemoveLane} className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright">
+            <ConfirmButton onConfirm={onRemoveLane} className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright">
               ✕ lane
-            </button>
+            </ConfirmButton>
           )}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useClipboard } from '../state/clipboard'
+import ConfirmButton from './ConfirmButton'
 
 function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, onDelete, canDelete }) {
   const [editing, setEditing] = useState(false)
@@ -57,13 +58,13 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
         ⧉
       </button>
       {canDelete && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete() }}
-          title="Delete sound"
+        <ConfirmButton
+          onConfirm={onDelete}
           className="hidden text-[11px] text-muted hover:text-danger group-hover:block"
+          armedClassName="text-[11px] rounded border border-danger bg-danger px-1 text-white transition-colors"
         >
           ✕
-        </button>
+        </ConfirmButton>
       )}
     </div>
   )
