@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
@@ -48,6 +48,31 @@ function TimeField({ label, value, onCommit }) {
   )
 }
 
+const LANG_KEY = 'blast-help-lang'
+
+const HELP_ITEMS = {
+  en: [
+    { label: 'Zoom', text: 'Mouse wheel zooms the waveform. Scroll left/right when zoomed in.' },
+    { label: 'Trim', text: "Drag the highlighted region's edges to set in/out points. Only the trimmed part plays." },
+    { label: 'In / Out', text: 'Type exact times in the fields for precise cuts. Enter or blur to apply.' },
+    { label: 'Play region', text: 'Auditions only the trimmed slice — lets you check your edit before committing.' },
+    { label: 'Reverse', text: 'Flips the sample backwards. Destructive — use Undo to revert.' },
+    { label: 'Normalize', text: 'Boosts the peak to full volume. Destructive — use Undo to revert.' },
+    { label: 'Fade in / out', text: 'Applies a linear fade over the full sample start or end. Destructive.' },
+    { label: '✂ Crop', text: 'Permanently trims the file to the current region — active only when a region is set. Destructive.' },
+  ],
+  sv: [
+    { label: 'Zoom', text: 'Mushjulet zoomar vågformen. Scrolla vänster/höger när du zoomat in.' },
+    { label: 'Trim', text: 'Dra i regionens kanter för att sätta in/ut-punkter. Bara den trimmade delen spelas.' },
+    { label: 'In / Out', text: 'Skriv exakta tider i fälten för precisa klipp. Enter eller klick utanför för att bekräfta.' },
+    { label: 'Play region', text: 'Spelar upp bara den trimmade biten — låter dig kontrollera klippet innan du sparar.' },
+    { label: 'Reverse', text: 'Vänder samplet bakåt. Destruktiv — använd Ångra för att återgå.' },
+    { label: 'Normalize', text: 'Höjer toppnivån till full volym. Destruktiv — använd Ångra för att återgå.' },
+    { label: 'Fade in / out', text: 'Lägger på en linjär fade i början eller slutet av samplet. Destruktiv.' },
+    { label: '✂ Crop', text: 'Klipper permanent samplet till den markerade regionen — aktiv bara när en region är satt. Destruktiv.' },
+  ],
+}
+
 // Full-screen sample editor: zoomable waveform (mouse wheel), draggable
 // trim region with exact in/out fields, edit tools, region audition.
 export default function SampleEditorModal({
@@ -57,6 +82,14 @@ export default function SampleEditorModal({
   const wsRef = useRef(null)
   const regionRef = useRef(null)
   const [playing, setPlaying] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [lang, setLang] = useState(() => (localStorage.getItem(LANG_KEY) === 'sv' ? 'sv' : 'en'))
+
+  function toggleLang() {
+    const next = lang === 'en' ? 'sv' : 'en'
+    setLang(next)
+    localStorage.setItem(LANG_KEY, next)
+  }
   const paramsRef = useRef(block.params)
   paramsRef.current = block.params
 
@@ -161,6 +194,13 @@ export default function SampleEditorModal({
             {sample.fileName} · {full.toFixed(2)}s
           </span>
           <button
+            onClick={() => setHelpOpen((v) => !v)}
+            title={helpOpen ? 'Hide help' : 'Show help'}
+            className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors ${helpOpen ? 'bg-accent-deep/20 text-accent-bright' : 'text-muted hover:text-ink'}`}
+          >
+            ?
+          </button>
+          <button
             onClick={onClose}
             title="Close (Esc)"
             className="text-muted transition-colors hover:text-ink"
@@ -168,6 +208,31 @@ export default function SampleEditorModal({
             ✕
           </button>
         </div>
+
+        {helpOpen && (
+          <div className="rounded border border-divider bg-well px-3 py-2.5">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-faint">
+                {lang === 'en' ? 'How to use' : 'Så här fungerar det'}
+              </span>
+              <button
+                onClick={toggleLang}
+                title={lang === 'en' ? 'Visa på svenska' : 'Show in English'}
+                className="rounded px-1 text-[15px] leading-none transition-transform hover:scale-110"
+              >
+                {lang === 'en' ? '🇸🇪' : '🇬🇧'}
+              </button>
+            </div>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+              {HELP_ITEMS[lang].map(({ label, text }) => (
+                <Fragment key={label}>
+                  <dt className="whitespace-nowrap text-[11px] font-semibold text-ink-soft">{label}</dt>
+                  <dd className="text-[11px] text-muted">{text}</dd>
+                </Fragment>
+              ))}
+            </dl>
+          </div>
+        )}
 
         <div ref={containerRef} className="rounded border border-divider bg-well" />
         <div className="text-[10px] text-faint">
