@@ -38,7 +38,7 @@ export default function Header({ project, onRenameProject, onLoadProject }) {
         <span className="hidden text-[10px] uppercase tracking-[0.05em] text-faint md:block">
           {[['B','ig'],['L','oud'],['A','wesome'],['S','ound'],['T','ool']].map(([first, rest]) => (
             <span key={first}>
-              <span className="text-[13px] font-bold text-yellow-400">{first}</span>{rest}{' '}
+              <span className="text-[13px] font-bold text-yellow-400">{first}</span><span className="text-zinc-400">{rest}</span>{' '}
             </span>
           ))}
         </span>
