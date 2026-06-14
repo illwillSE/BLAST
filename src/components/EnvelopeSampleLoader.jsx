@@ -4,6 +4,7 @@ import { extractEnvelope } from '../audio/envelope'
 import { SampleLoadControls } from './ui'
 import { useSampleLoader } from './useSampleLoader'
 import SampleEditorModal from './SampleEditorModal'
+import SampleLibraryModal from './SampleLibraryModal'
 import { getColor } from '../theme/colors'
 
 const GRAB_PX = 10 // how close to a handle a click counts as grabbing it
@@ -114,9 +115,10 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
 export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
   const {
     sample, dragOver, recording, error, dragProps,
-    browse, startRecording, stopRecording,
+    browse, loadBlob, startRecording, stopRecording,
     applyEdit, crop, undo, canUndo,
     editorOpen, setEditorOpen,
+    libraryOpen, setLibraryOpen,
   } = useSampleLoader(block, onParam)
 
   const trimmed = sample && (block.params.trimStart != null || block.params.trimEnd != null)
@@ -170,6 +172,7 @@ export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
         onBrowse={browse}
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
+        onOpenLibrary={() => setLibraryOpen(true)}
         error={error}
       />
       {editorOpen && sample && (
@@ -183,6 +186,13 @@ export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
           onUndo={undo}
           canUndo={canUndo}
           onClose={() => setEditorOpen(false)}
+        />
+      )}
+      {libraryOpen && (
+        <SampleLibraryModal
+          sample={sample}
+          onLoad={loadBlob}
+          onClose={() => setLibraryOpen(false)}
         />
       )}
     </div>

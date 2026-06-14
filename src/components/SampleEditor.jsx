@@ -4,6 +4,7 @@ import { onPlay } from '../utils/bus'
 import { SampleLoadControls } from './ui'
 import { useSampleLoader } from './useSampleLoader'
 import SampleEditorModal from './SampleEditorModal'
+import SampleLibraryModal from './SampleLibraryModal'
 import { getColor } from '../theme/colors'
 
 // Waveform display with playback cursor, trim region, edit tools, and the
@@ -17,9 +18,10 @@ export default function SampleEditor({ block, soundId, onParam }) {
 
   const {
     sample, dragOver, recording, error, dragProps,
-    browse, startRecording, stopRecording,
+    browse, loadBlob, startRecording, stopRecording,
     applyEdit, crop, undo, canUndo,
     editorOpen, setEditorOpen,
+    libraryOpen, setLibraryOpen,
   } = useSampleLoader(block, onParam)
 
   // (Re)draw waveform when the sample changes.
@@ -108,6 +110,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
         onBrowse={browse}
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
+        onOpenLibrary={() => setLibraryOpen(true)}
         error={error}
       />
       {editorOpen && sample && (
@@ -121,6 +124,13 @@ export default function SampleEditor({ block, soundId, onParam }) {
           onUndo={undo}
           canUndo={canUndo}
           onClose={() => setEditorOpen(false)}
+        />
+      )}
+      {libraryOpen && (
+        <SampleLibraryModal
+          sample={sample}
+          onLoad={loadBlob}
+          onClose={() => setLibraryOpen(false)}
         />
       )}
     </div>

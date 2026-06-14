@@ -20,6 +20,7 @@ export function useSampleLoader(block, onParam) {
   const [error, setError] = useState(null)
   const [historyTick, setHistoryTick] = useState(0) // refresh undo-button state
   const [editorOpen, setEditorOpen] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const recorderRef = useRef(null)
   const paramsRef = useRef(block.params)
   paramsRef.current = block.params
@@ -88,6 +89,16 @@ export function useSampleLoader(block, onParam) {
     if (file) loadFile(file)
   }, [loadFile])
 
+  const loadBlob = useCallback(async (blob, fileName) => {
+    try {
+      const audioBuffer = await decodeBlob(blob)
+      setSample(block.id, { blob, fileName, audioBuffer })
+      resetTrim()
+    } catch {
+      setError('Could not decode this audio file')
+    }
+  }, [block.id, resetTrim])
+
   const browse = useCallback(() => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -135,9 +146,10 @@ export function useSampleLoader(block, onParam) {
 
   return {
     sample, dragOver, recording, error, dragProps,
-    browse, startRecording, stopRecording,
+    browse, loadBlob, startRecording, stopRecording,
     applyEdit, crop, undo, canUndo: hasHistory(block.id),
     editorOpen, setEditorOpen,
+    libraryOpen, setLibraryOpen,
     historyTick, // exposed so consumers re-render on edit/undo
   }
 }

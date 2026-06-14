@@ -5,20 +5,14 @@ design brief and from development discussions.
 
 ## Features
 
-- [x] **Sample editor help window** — help/tips for the sample editor.
-- [x] **Copy/paste samples** — reuse the same sample across multiple blocks (Sample, Sample Envelope, Vocoder).
+- [ ] **Auto-save sample persistence** — extend auto-save to include sample
+      blobs via IndexedDB so Sample/Vocoder/SampleEnv blocks survive a page
+      reload without manual re-upload.
 - [ ] **Review translations** — audit Swedish/English strings in help.js for accuracy and completeness.
 - [ ] **Minimize inspector** — add a collapse/minimize toggle for the inspector panel.
 - [ ] **Background visualization** — a subtle deterministic visual effect in the background, driven by selected nodes/lanes and their control values (envelopes, levels, etc.). Make it toggle on or off. I'm thinking a dot cloud with soft round shapes for soft sounds and more spikes for harsh sounds. when no sound is played just a faint circle rotating
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce zipper noise on slider edits.
 - [ ] **Tone.js feature audit** — investigate other Tone.js features not yet used that could be useful.
-- [x] **Sample export options** — more control over exported audio
-      (format, sample rate, mono/stereo). Settings live on the project (saved
-      in the ZIP) and drive both Export WAV and copy-to-sample / → Sample sound.
-- [x] **Sound rename** — renaming beyond the double-click in the sound
-      list (e.g. from the chain header).
-- [x] **Export sample from sample source** — download the (edited) sample
-      straight from the Sample block, for ease of use.
 - [ ] **Modulation LFO** — a control block that wobbles *another block's*
       parameter (auto-wah on a Filter, tremolo on a Gain, etc.), generalizing
       today's hardcoded Pitch LFO. **Scope A — Signal targets only** (the
@@ -53,15 +47,6 @@ design brief and from development discussions.
       sounds (engines, wind); regions plugin emits the needed events.
 - [ ] **Sample editor polish** — arrow-key nudging of in/out points,
       optional snap-to-zero-crossing.
-
-## From the original brief (build later, don't preclude)
-
-- [ ] **Layered sources** — multiple source blocks per sound (e.g. low
-      rumble + high whine) mixed before the effects chain. Engine already
-      mixes sources into a bus; UI assumes a single source.
-- [ ] **Sequencer block** — short melodic sequences (2–10 notes) played
-      through the sound's chain: pitch + duration per step, tempo control.
-      For coin pickups, jingles, game-over tunes.
 
 ## Polish / housekeeping
 

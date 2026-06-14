@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   newSound, newBlock, newLane, uid,
-  mapBlock, removeBlock, addBlock, moveBlock, swapSource, isSource,
+  mapBlock, removeBlock, addBlock, moveBlock, swapSource, isSource, allBlocks,
 } from './state/model'
 import { presetProject } from './state/presets'
 import { liveEngine } from './audio/engine'
 import { newSequencer, sequenceToNotes } from './audio/sequencer'
 import { renderSoundToWav, downloadBlob, safeFileName } from './audio/render'
-import { getSample, setSample, decodeBlob } from './audio/sampleCache'
+import { getSample, setSample, decodeBlob, allSamples } from './audio/sampleCache'
+import { loadAutosaveSamples, saveAutosaveSamples } from './utils/sampleLibrary'
 import { getClipboard, setClipboard } from './state/clipboard'
+import { normalizeProject } from './utils/projectZip'
 import { emitPlay } from './utils/bus'
 import Header from './components/Header'
 import SoundList from './components/SoundList'
@@ -25,7 +27,16 @@ function cloneWithSample(block, sample) {
 }
 
 export default function App() {
-  const [project, setProject] = useState(presetProject)
+  const [project, setProject] = useState(() => {
+    try {
+      const raw = localStorage.getItem('blast_autosave')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        return normalizeProject(parsed.project ?? parsed) // compat: old format was a bare project
+      }
+    } catch {}
+    return presetProject()
+  })
   const [selectedId, setSelectedId] = useState(() => project.sounds[0].id)
   const [exporting, setExporting] = useState(false)
   const [editingName, setEditingName] = useState(false)
@@ -41,6 +52,35 @@ export default function App() {
   useEffect(() => {
     if (sound) liveEngine.sync(sound)
   }, [sound])
+
+  // On mount: restore sample blobs from IndexedDB using the manifest stored in localStorage.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('blast_autosave')
+      const { sampleManifest = {} } = raw ? JSON.parse(raw) : {}
+      loadAutosaveSamples(sampleManifest).then(async (entries) => {
+        for (const { blockId, blob, fileName } of entries) {
+          setSample(blockId, { blob, fileName, audioBuffer: await decodeBlob(blob) })
+        }
+      })
+    } catch {}
+  }, [])
+
+  // Auto-save project JSON + sample manifest on every change (debounced 1 s).
+  // Skip the first render so we never overwrite a loaded autosave with presets.
+  const firstRender = useRef(true)
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return }
+    const timer = setTimeout(async () => {
+      const usedIds = new Set(project.sounds.flatMap(s => allBlocks(s).map(b => b.id)))
+      const samples = allSamples()
+        .filter(([id]) => usedIds.has(id))
+        .map(([blockId, { blob, fileName }]) => ({ blockId, blob, fileName }))
+      const sampleManifest = await saveAutosaveSamples(samples)
+      try { localStorage.setItem('blast_autosave', JSON.stringify({ project, sampleManifest })) } catch {}
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [project])
 
   const updateSound = useCallback((soundId, fn) => {
     setProject((p) => ({

@@ -214,7 +214,7 @@ export function ParamControl({ def, value, onChange }) {
 }
 
 // Browse / Record button row + error line, shared by the sample blocks.
-export function SampleLoadControls({ block, recording, onBrowse, onStartRecording, onStopRecording, error }) {
+export function SampleLoadControls({ block, recording, onBrowse, onStartRecording, onStopRecording, onOpenLibrary, error }) {
   const clip = useClipboard()
   const hasSample = !!getSample(block.id)
   const canPaste = clip?.kind === 'sample'
@@ -227,6 +227,7 @@ export function SampleLoadControls({ block, recording, onBrowse, onStartRecordin
         ) : (
           <Button onClick={onStartRecording} variant="danger" className="flex-1">● Record</Button>
         )}
+        <Button onClick={onOpenLibrary} title="Open sample library">⊞ Library</Button>
       </div>
       <div className="mt-1.5 flex gap-1.5">
         <Button onClick={() => copySample(block)} disabled={!hasSample} className="flex-1 disabled:opacity-40">⧉ Copy sample</Button>

@@ -24,15 +24,19 @@ Order matters — a filter before distortion sounds different than after. Drag b
 - **Sample source** — drag & drop / browse an audio file (WAV, MP3, OGG…) **or** record straight from the microphone. Waveform display with trim region and playback cursor. **Grain Player mode**: decouple pitch from playback speed, set grain size and overlap — great for textural drones and glitchy effects
 - **Metal Synth source** — percussive metallic source block (`Tone.MetalSynth`) for cymbals, bells, and clangs
 - **Noise source** — white / pink / brown noise with its own ADSR envelope (`Tone.NoiseSynth`) for wind, snares, explosions, and gunshots
+- **Layered sources** — stack multiple source lanes per sound (e.g. low rumble + high whine), each with its own insert chain, level, pan, and delay, all mixed before the master chain
 - **Effect blocks** — reverb (with one-click room-size presets), delay (with ping-pong L/R mode), EQ, filter, compressor, gate, pitch shift, detune, overdrive, bitcrusher, volume, pan, spectrum analyzer
+- **Master chain** — effects applied to the final mix of all source lanes; includes a master limiter with a clip meter
 - **Vocoder** — insert block: chain signal is the carrier, a dropped/recorded speech sample is the modulator. N band-pass pairs + sibilance high-pass passthrough for clear S/T sounds
 - **Pitch modulation** — first-class blocks for classic game-sfx movement:
   - *Pitch LFO* — vibrato, sirens, wobbles
   - *Pitch Envelope* — rising power-ups, falling lasers, sweeps
 - **Sample Envelope** — control block that extracts the amplitude contour from a dropped or recorded sample and uses it to shape the synth's volume. Drop a "pew-pew" voice recording; the synth follows your timing and dynamics
+- **Step sequencer** — a per-sound step sequencer with a piano-roll pop-out. Each step carries pitch and length; triggers run through the voice pool so step tails ring out polyphonically instead of cutting off
 - **Multiple sounds per project** — each independently named and configured
+- **Auto-save** — project state (sounds, chains, params, sequencer) saves to the browser automatically; reloading the page restores the last session
 - **Project save/load** — everything (settings + original samples) packed into a single ZIP
-- **WAV export** — render any sound to stereo 44.1 kHz WAV, offline and fast
+- **WAV export** — render any sound to WAV with configurable sample rate, channel count, and format
 
 ### Controls
 
@@ -59,10 +63,10 @@ npm run dev      # → http://localhost:5173
 
 ## Architecture notes
 
-- Sounds are plain serializable objects; each block is `{ id, type, enabled, params }` and the block *registry* (`src/blocks/registry.js`) defines params + Tone.js wiring per type — adding a new effect is one registry entry.
+- Sounds are plain serializable objects. Each block is `{ id, type, enabled, params }` and the block *registry* (`src/blocks/registry.js`) defines params + Tone.js wiring per type — adding a new effect is one registry entry.
+- A sound is a **hybrid per-lane model**: one or more source lanes (each with its own insert chain, level, pan, delay) mix at a shared bus before the master chain. The voice pool (`src/audio/voicePool.js`) lets overlapping triggers ring out polyphonically.
 - The audio graph is built from the same code path for live playback and offline WAV rendering.
-- Sources mix into a bus before the effect chain, so **layered sources** (e.g. rumble + whine) can be added later without rewiring.
-- The chain is an ordered list with no structural assumptions blocking a future **sequencer block** (short note patterns — coins, jingles, game-over tunes).
+- The step sequencer is sound-level (not a chain block) — it governs trigger timing and is edited through a pop-out piano roll.
 
 ## Project format
 

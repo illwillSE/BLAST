@@ -71,11 +71,40 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
 
 export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd, onRename, onDuplicate, onDelete, onPasteAsNewSound }) {
   const clip = useClipboard()
+  const [collapsed, setCollapsed] = useState(false)
+
+  if (collapsed) {
+    return (
+      <aside className="flex w-8 shrink-0 flex-col items-center border-r border-divider bg-panel pt-2 gap-2">
+        <button
+          onClick={() => setCollapsed(false)}
+          title="Show sounds"
+          className="text-[12px] text-muted hover:text-ink"
+        >
+          ›
+        </button>
+        <span
+          className="text-[11px] font-bold uppercase tracking-widest text-muted"
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        >
+          Sounds
+        </span>
+      </aside>
+    )
+  }
+
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-divider bg-panel">
       <div className="flex items-center justify-between border-b border-divider px-3 py-2">
         <span className="text-[11px] font-bold uppercase tracking-widest text-muted">Sounds</span>
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setCollapsed(true)}
+            title="Collapse panel"
+            className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
+          >
+            ‹
+          </button>
           {clip?.kind === 'sample' && (
             <button
               onClick={onPasteAsNewSound}

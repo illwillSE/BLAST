@@ -29,7 +29,7 @@ function newLaneFallback() {
 // Backfill params introduced after a project was saved (e.g. the synth's
 // partials/width/harmonics) and lane-level props, so older files open with
 // sensible defaults.
-function normalizeProject(project) {
+export function normalizeProject(project) {
   project.export = { ...DEFAULT_EXPORT, ...project.export }
   project.sounds = project.sounds.map((raw) => {
     const sound = migrateSound(raw)
