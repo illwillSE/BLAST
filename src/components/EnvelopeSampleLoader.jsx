@@ -111,7 +111,7 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
 // File load (drop/browse) and mic recording for the Sample Envelope block,
 // plus the shared full editor (zoom, trim, crop/reverse/normalize). Stores
 // into the same sample cache keyed by block id, so save/load is free.
-export default function EnvelopeSampleLoader({ block, onParam }) {
+export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
   const {
     sample, dragOver, recording, error, dragProps,
     browse, startRecording, stopRecording,
@@ -176,6 +176,7 @@ export default function EnvelopeSampleLoader({ block, onParam }) {
         <SampleEditorModal
           block={block}
           sample={sample}
+          soundId={soundId}
           onParam={onParam}
           onApplyEdit={applyEdit}
           onCrop={crop}

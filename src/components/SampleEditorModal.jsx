@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import WaveSurfer from 'wavesurfer.js'
+import { onPlay } from '../utils/bus'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
 import { reverseBuffer, normalizeBuffer, fadeBuffer } from '../audio/bufferOps'
@@ -76,11 +77,12 @@ const HELP_ITEMS = {
 // Full-screen sample editor: zoomable waveform (mouse wheel), draggable
 // trim region with exact in/out fields, edit tools, region audition.
 export default function SampleEditorModal({
-  block, sample, onParam, onApplyEdit, onCrop, onUndo, canUndo, onClose,
+  block, sample, soundId, onParam, onApplyEdit, onCrop, onUndo, canUndo, onClose,
 }) {
   const containerRef = useRef(null)
   const wsRef = useRef(null)
   const regionRef = useRef(null)
+  const animRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [lang, setLang] = useState(() => (localStorage.getItem(LANG_KEY) === 'sv' ? 'sv' : 'en'))
@@ -159,6 +161,29 @@ export default function SampleEditorModal({
       regionRef.current = null
     }
   }, [sample]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => onPlay(({ soundId: playedId }) => {
+    const ws = wsRef.current
+    if (playedId !== soundId || !ws || !sample?.audioBuffer) return
+    cancelAnimationFrame(animRef.current)
+    if (ws.isPlaying()) ws.pause()
+    const p = paramsRef.current
+    const full = sample.audioBuffer.duration
+    const trimStart = Math.max(0, p.trimStart ?? 0)
+    const trimEnd = Math.min(full, p.trimEnd ?? full)
+    const rate = Math.pow(2, (p.pitch ?? 0) / 12)
+    const dur = Math.max(0.01, (trimEnd - trimStart) / Math.max(0.05, rate))
+    const t0 = performance.now()
+    const step = (now) => {
+      const t = (now - t0) / 1000 / dur
+      if (t >= 1 || !wsRef.current) return
+      wsRef.current.setTime(trimStart + t * (trimEnd - trimStart))
+      animRef.current = requestAnimationFrame(step)
+    }
+    animRef.current = requestAnimationFrame(step)
+  }), [soundId, sample]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => cancelAnimationFrame(animRef.current), [])
 
   function setTrim(start, end) {
     const s = Math.max(0, Math.min(start, full))

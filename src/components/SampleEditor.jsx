@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import WaveSurfer from 'wavesurfer.js'
-import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import { onPlay } from '../utils/bus'
 import { SampleLoadControls } from './ui'
 import { useSampleLoader } from './useSampleLoader'
@@ -23,7 +22,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
     editorOpen, setEditorOpen,
   } = useSampleLoader(block, onParam)
 
-  // (Re)draw waveform + trim region when the sample changes.
+  // (Re)draw waveform when the sample changes.
   useEffect(() => {
     if (!containerRef.current || !sample?.blob) return
     const ws = WaveSurfer.create({
@@ -34,25 +33,6 @@ export default function SampleEditor({ block, soundId, onParam }) {
       cursorWidth: 0,
       interact: false,
       normalize: true,
-    })
-    const regions = ws.registerPlugin(RegionsPlugin.create())
-    ws.on('decode', (duration) => {
-      const p = paramsRef.current
-      const start = Math.min(Math.max(0, p.trimStart ?? 0), duration)
-      const end = Math.min(p.trimEnd ?? duration, duration)
-      const region = regions.addRegion({
-        start,
-        end: end > start ? end : duration,
-        color: getColor('accent-deep', '1f'), // amber wash ≈ rgba(…,0.12)
-        drag: true,
-        resize: true,
-      })
-      region.on('update-end', () => {
-        // Full-width region means "no trim" — store nothing.
-        const atFull = region.start < 0.005 && region.end > duration - 0.005
-        onParam('trimStart', atFull ? null : region.start)
-        onParam('trimEnd', atFull ? null : region.end)
-      })
     })
     ws.loadBlob(sample.blob)
     return () => ws.destroy()
@@ -98,7 +78,11 @@ export default function SampleEditor({ block, soundId, onParam }) {
     >
       {sample ? (
         <div>
-          <div className="relative">
+          <div
+            className="relative cursor-pointer"
+            onClick={() => setEditorOpen(true)}
+            title="Click to open the sample editor"
+          >
             <div ref={containerRef} />
             <div
               ref={cursorRef}
@@ -106,18 +90,11 @@ export default function SampleEditor({ block, soundId, onParam }) {
               style={{ left: 0 }}
             />
           </div>
-          <div className="mt-1 flex items-center justify-between gap-2">
+          <div className="mt-1">
             <span className="truncate font-mono text-[10px] text-muted" title={sample.fileName}>
               {sample.fileName} · {sample.audioBuffer.duration.toFixed(2)}s
               {trimmed && ' · trimmed'}
             </span>
-            <button
-              onClick={() => setEditorOpen(true)}
-              title="Open the full-size editor — zoom, exact in/out points, edit tools"
-              className="shrink-0 rounded border border-edge px-1.5 py-0.5 text-[10px] font-medium text-ink-soft transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
-            >
-              ✎ Edit
-            </button>
           </div>
         </div>
       ) : (
@@ -137,6 +114,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
         <SampleEditorModal
           block={block}
           sample={sample}
+          soundId={soundId}
           onParam={onParam}
           onApplyEdit={applyEdit}
           onCrop={crop}

@@ -148,7 +148,7 @@ export default function BlockControls({
 
       <div className="mt-3 space-y-3">
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
-        {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} onParam={onParam} />}
+        {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'analyzer' && <SpectrumCanvas blockId={block.id} />}
         {def.presets && (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -169,7 +169,7 @@ export default function BlockControls({
         {block.type === 'vocoder' ? (
           <div className="flex w-full items-start gap-6">
             <div className="w-64 shrink-0">
-              <EnvelopeSampleLoader block={block} onParam={onParam} />
+              <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />
             </div>
             <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
           </div>
