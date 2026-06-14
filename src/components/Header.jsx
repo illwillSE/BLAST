@@ -34,8 +34,13 @@ export default function Header({ project, onRenameProject, onLoadProject }) {
     <header className="flex items-center gap-4 border-b border-divider bg-panel px-4 py-2.5">
       <div className="flex items-baseline gap-2">
         <span className="text-lg font-black tracking-[0.2em] text-accent">BLAST</span>
-        <span className="hidden text-[10px] uppercase tracking-wider text-faint md:block">
-          Big Loud Awesome Sound Tool
+        <span className="text-[10px] font-semibold text-faint">0.9</span>
+        <span className="hidden text-[10px] uppercase tracking-[0.05em] text-faint md:block">
+          {[['B','ig'],['L','oud'],['A','wesome'],['S','ound'],['T','ool']].map(([first, rest]) => (
+            <span key={first}>
+              <span className="text-[13px] font-bold text-yellow-400">{first}</span>{rest}{' '}
+            </span>
+          ))}
         </span>
       </div>
 
