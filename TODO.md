@@ -12,6 +12,7 @@ sample editor help window
 - [x] **Ping-pong delay** — add a ping-pong (alternating L/R) mode to the Delay block.
 - [x] **Output block enhancements** — always show waveform; expose basic output controls inline; reserve advanced options for a panel.
 - [x] **Persistent lane pills** — keep source-lane pills visible when switching between lanes.
+- [x] **Click pill to activate lane** — clicking any pill in another lane (block chips already did; now the Mix pill too) focuses that lane.
 - [ ] **Review translations** — audit Swedish/English strings in help.js for accuracy and completeness.
 - [x] **Inspector layout** — fit mix-inspector controls on one row (they clearly fit); Vocoder controls should sit to the right of the sample preview.
 - [x] **Default detune** — set the Detune block's default to a classic supersaw/superwave configuration.
