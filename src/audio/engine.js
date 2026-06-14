@@ -233,6 +233,12 @@ export async function buildChain(sound, destination) {
     const carrierHold = isSynthSource(lane.src.type) ? vocoderHold(lane) : 0
     let dur = 0
 
+    // Reset LFO phase so each play starts from the beginning of the waveform.
+    for (const { lfo } of lane.lfos) {
+      lfo.stop(when)
+      lfo.start(when)
+    }
+
     if (isSynthSource(src.type)) {
       const p = freshParams(src)
       if (nodes.envSignal && lane.envBlocks.length > 0) {
