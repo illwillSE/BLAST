@@ -4,6 +4,7 @@ import {
   mapBlock, removeBlock, addBlock, moveBlock, swapSource, isSource, allBlocks,
 } from './state/model'
 import { presetProject } from './state/presets'
+import { useUndoableProject } from './state/useUndoableProject'
 import { liveEngine } from './audio/engine'
 import { newSequencer, sequenceToNotes } from './audio/sequencer'
 import { renderSoundToWav, downloadBlob, safeFileName } from './audio/render'
@@ -27,7 +28,7 @@ function cloneWithSample(block, sample) {
 }
 
 export default function App() {
-  const [project, setProject] = useState(() => {
+  const { project, dispatch, reset, undo, redo } = useUndoableProject(() => {
     try {
       const raw = localStorage.getItem('blast_autosave')
       if (raw) {
@@ -82,16 +83,16 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [project])
 
-  const updateSound = useCallback((soundId, fn) => {
-    setProject((p) => ({
+  const updateSound = useCallback((soundId, fn, coalesceKey) => {
+    dispatch((p) => ({
       ...p,
       sounds: p.sounds.map((s) => (s.id === soundId ? fn(s) : s)),
-    }))
-  }, [])
+    }), coalesceKey)
+  }, [dispatch])
 
   const playSound = useCallback(async (soundId, transpose = 0) => {
     setSelectedId(soundId)
-    setProject((p) => {
+    dispatch((p) => {
       const target = p.sounds.find((s) => s.id === soundId)
       if (target) {
         // When the sequencer is on, Play runs the whole sequence (the held
@@ -103,7 +104,7 @@ export default function App() {
       }
       return p
     })
-  }, [])
+  }, [dispatch])
 
   // Spacebar always plays — like a DAW transport. Only true text entry
   // (name fields, value popups) keeps Space for typing; focused sliders,
@@ -148,11 +149,31 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selectedId, playSound])
 
+  // Undo / redo. Skipped in text-entry fields so the browser's native text
+  // undo keeps working in name fields and value popups.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+      const isUndo = e.key === 'z' && !e.shiftKey
+      const isRedo = (e.key === 'z' && e.shiftKey) || e.key === 'y'
+      if (!isUndo && !isRedo) return
+      const el = document.activeElement
+      const isTextEntry =
+        el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
+      if (isTextEntry) return
+      e.preventDefault()
+      if (isUndo) undo()
+      else redo()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [undo, redo])
+
   // ---- sound actions ------------------------------------------------------
 
   function addSound() {
     const s = newSound(`Sound ${project.sounds.length + 1}`)
-    setProject((p) => ({ ...p, sounds: [...p.sounds, s] }))
+    dispatch((p) => ({ ...p, sounds: [...p.sounds, s] }))
     setSelectedId(s.id)
   }
 
@@ -170,7 +191,7 @@ export default function App() {
       }),
       master: src.master.map(cloneBlock),
     }
-    setProject((p) => {
+    dispatch((p) => {
       const i = p.sounds.findIndex((s) => s.id === soundId)
       const sounds = [...p.sounds]
       sounds.splice(i + 1, 0, copy)
@@ -180,7 +201,7 @@ export default function App() {
   }
 
   function deleteSound(soundId) {
-    setProject((p) => {
+    dispatch((p) => {
       const sounds = p.sounds.filter((s) => s.id !== soundId)
       if (soundId === selectedId && sounds.length > 0) setSelectedId(sounds[0].id)
       return { ...p, sounds }
@@ -194,6 +215,7 @@ export default function App() {
   const onParam = (blockId, key, value) =>
     updateSound(sound.id, (s) =>
       mapBlock(s, blockId, (b) => ({ ...b, params: { ...b.params, [key]: value } })),
+      `param:${blockId}:${key}`,
     )
 
   const onToggle = (blockId) =>
@@ -222,7 +244,7 @@ export default function App() {
     updateSound(sound.id, (s) => ({
       ...s,
       sources: s.sources.map((src) => (src.id === laneId ? { ...src, [key]: value } : src)),
-    }))
+    }), `lane:${laneId}:${key}`)
 
   const onAddSource = () => {
     const lane = newLane('synth')
@@ -235,7 +257,7 @@ export default function App() {
       s.sources.length <= 1 ? s : { ...s, sources: s.sources.filter((src) => src.id !== laneId) },
     )
 
-  const onOutputVolume = (v) => updateSound(sound.id, (s) => ({ ...s, outputVolume: v }))
+  const onOutputVolume = (v) => updateSound(sound.id, (s) => ({ ...s, outputVolume: v }), 'output:volume')
 
   const onOutputView = (v) => updateSound(sound.id, (s) => ({ ...s, outputView: v }))
 
@@ -246,7 +268,7 @@ export default function App() {
   // ---- export -------------------------------------------------------------
 
   const setExport = (patch) =>
-    setProject((p) => ({ ...p, export: { ...p.export, ...patch } }))
+    dispatch((p) => ({ ...p, export: { ...p.export, ...patch } }))
 
   async function exportWav() {
     setExporting(true)
@@ -298,7 +320,7 @@ export default function App() {
     const s = newSound(c.label || 'Sample')
     s.sources[0] = swapSource(s.sources[0], 'sample')
     setSample(s.sources[0].id, c.sample)
-    setProject((p) => ({ ...p, sounds: [...p.sounds, s] }))
+    dispatch((p) => ({ ...p, sounds: [...p.sounds, s] }))
     setSelectedId(s.id)
   }
 
@@ -323,7 +345,7 @@ export default function App() {
   }
 
   function loadProject(loaded) {
-    setProject(loaded)
+    reset(loaded)
     setSelectedId(loaded.sounds[0]?.id)
   }
 
@@ -331,7 +353,7 @@ export default function App() {
     <div className="flex h-screen flex-col">
       <Header
         project={project}
-        onRenameProject={(name) => setProject((p) => ({ ...p, name }))}
+        onRenameProject={(name) => dispatch((p) => ({ ...p, name }))}
         onLoadProject={loadProject}
       />
       <div className="flex min-h-0 flex-1">
