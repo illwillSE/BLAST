@@ -171,7 +171,10 @@ export default function SampleEditorModal({
     const full = sample.audioBuffer.duration
     const trimStart = Math.max(0, p.trimStart ?? 0)
     const trimEnd = Math.min(full, p.trimEnd ?? full)
-    const rate = Math.pow(2, (p.pitch ?? 0) / 12)
+    // A looping grain cloud has no single sweep — leave the cursor put.
+    if (p.mode === 'granular' && p.loop) return
+    // Granular speed is decoupled from pitch; normal mode is pitch-as-varispeed.
+    const rate = p.mode === 'granular' ? Math.max(0.1, p.speed || 1) : Math.pow(2, (p.pitch ?? 0) / 12)
     const dur = Math.max(0.01, (trimEnd - trimStart) / Math.max(0.05, rate))
     const t0 = performance.now()
     const step = (now) => {
