@@ -268,35 +268,59 @@ export async function buildChain(sound, destination) {
         if (trimEnd - trimStart > 0.002 && (trimStart > 0.001 || trimEnd < full - 0.001)) {
           buf = buf.slice(trimStart, trimEnd)
         }
-        const srcNode = new Tone.ToneBufferSource(buf)
-        srcNode.playbackRate.value = baseRate
 
-        let minRate = baseRate
-        if (lane.envBlocks.length > 0) {
-          const env = freshParams(lane.envBlocks[0])
-          const startRate = baseRate * centsToRate(env.start)
-          const endRate = baseRate * centsToRate(env.end)
-          srcNode.playbackRate.setValueAtTime(startRate, when)
-          srcNode.playbackRate.exponentialRampToValueAtTime(endRate, when + env.time)
-          minRate = Math.min(minRate, startRate, endRate)
-        }
-        for (const { block: lb, lfo } of lane.lfos) {
-          const delta = baseRate * (centsToRate(freshParams(lb).depth) - 1)
-          lfo.min = -delta
-          lfo.max = delta
-          lfo.connect(srcNode.playbackRate)
-        }
+        // Granular mode: a Tone.GrainPlayer replays the (trimmed) buffer as a
+        // cloud of overlapping grains, with pitch (detune) and speed (playback
+        // rate) independent. Spawned per-trigger and tracked exactly like the
+        // ToneBufferSource below. Pitch LFO/Envelope don't apply — GrainPlayer's
+        // detune/playbackRate are plain numbers, not connectable Signals.
+        if (p.mode === 'granular') {
+          const overlapSec = Math.min(p.grainSize * 0.95, p.overlap * p.grainSize)
+          const player = new Tone.GrainPlayer({ url: buf, grainSize: p.grainSize, overlap: overlapSec, loop: p.loop })
+          player.playbackRate = Math.max(0.1, p.speed)
+          player.detune = (p.pitch + transpose) * 100
+          player.connect(nodes.gain)
+          player.onstop = () => {
+            lane.activeSampleSources.delete(player)
+            try { player.disconnect(); player.dispose() } catch { /* disposed */ }
+          }
+          lane.activeSampleSources.add(player)
+          player.start(when)
+          const playLen = p.loop ? p.length : (trimEnd - trimStart) / Math.max(0.1, p.speed)
+          player.stop(when + playLen + (p.loop ? 0 : 0.05))
+          scheduleAmpEnv(lane, when, playLen)
+          dur = playLen
+        } else {
+          const srcNode = new Tone.ToneBufferSource(buf)
+          srcNode.playbackRate.value = baseRate
 
-        srcNode.connect(nodes.gain)
-        srcNode.onended = () => {
-          lane.activeSampleSources.delete(srcNode)
-          try { srcNode.disconnect(); srcNode.dispose() } catch { /* disposed */ }
+          let minRate = baseRate
+          if (lane.envBlocks.length > 0) {
+            const env = freshParams(lane.envBlocks[0])
+            const startRate = baseRate * centsToRate(env.start)
+            const endRate = baseRate * centsToRate(env.end)
+            srcNode.playbackRate.setValueAtTime(startRate, when)
+            srcNode.playbackRate.exponentialRampToValueAtTime(endRate, when + env.time)
+            minRate = Math.min(minRate, startRate, endRate)
+          }
+          for (const { block: lb, lfo } of lane.lfos) {
+            const delta = baseRate * (centsToRate(freshParams(lb).depth) - 1)
+            lfo.min = -delta
+            lfo.max = delta
+            lfo.connect(srcNode.playbackRate)
+          }
+
+          srcNode.connect(nodes.gain)
+          srcNode.onended = () => {
+            lane.activeSampleSources.delete(srcNode)
+            try { srcNode.disconnect(); srcNode.dispose() } catch { /* disposed */ }
+          }
+          lane.activeSampleSources.add(srcNode)
+          srcNode.start(when)
+          const playLen = (trimEnd - trimStart) / Math.max(0.05, minRate)
+          scheduleAmpEnv(lane, when, playLen)
+          dur = playLen
         }
-        lane.activeSampleSources.add(srcNode)
-        srcNode.start(when)
-        const playLen = (trimEnd - trimStart) / Math.max(0.05, minRate)
-        scheduleAmpEnv(lane, when, playLen)
-        dur = playLen
       }
     }
 
@@ -415,19 +439,28 @@ export function laneDuration(src) {
   if (src.type === 'sample') {
     const sample = getSample(src.id)
     if (sample?.audioBuffer) {
-      let minRate = semisToRate(src.params.pitch)
-      const env = (src.chain ?? []).find((b) => b.type === 'pitchenv' && b.enabled)
-      if (env) {
-        minRate = Math.min(
-          minRate,
-          minRate * centsToRate(env.params.start),
-          minRate * centsToRate(env.params.end),
-        )
-      }
       const full = sample.audioBuffer.duration
       const playedLen =
         Math.min(full, src.params.trimEnd ?? full) - Math.max(0, src.params.trimStart ?? 0)
-      laneDur = Math.max(laneDur, playedLen / Math.max(0.05, minRate))
+      if (src.params.mode === 'granular') {
+        // Granular decouples pitch from speed: a loop drones for `length`,
+        // otherwise the slice plays through at `speed` (pitch env/LFO don't apply).
+        laneDur = Math.max(
+          laneDur,
+          src.params.loop ? src.params.length : playedLen / Math.max(0.1, src.params.speed),
+        )
+      } else {
+        let minRate = semisToRate(src.params.pitch)
+        const env = (src.chain ?? []).find((b) => b.type === 'pitchenv' && b.enabled)
+        if (env) {
+          minRate = Math.min(
+            minRate,
+            minRate * centsToRate(env.params.start),
+            minRate * centsToRate(env.params.end),
+          )
+        }
+        laneDur = Math.max(laneDur, playedLen / Math.max(0.05, minRate))
+      }
     }
   }
 

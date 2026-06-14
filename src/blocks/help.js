@@ -42,16 +42,23 @@ export const HELP = {
         },
       },
       sample: {
-        summary: 'Plays an audio file or microphone recording.',
+        summary: 'Plays an audio file or microphone recording — straight back, or granularly.',
         params: {
-          pitch: 'Shifts the sample pitch in semitones by changing playback speed — pitching down also makes it longer and darker, up shorter and brighter.',
+          pitch: 'In normal mode, shifts pitch by changing playback speed (down = longer/darker, up = shorter/brighter). In granular mode it shifts pitch only, independent of speed.',
           gain: 'Volume of the sample before it enters the effects chain.',
+          mode: 'normal plays the buffer straight; granular replays it as a cloud of small overlapping grains, decoupling pitch from speed.',
+          grainSize: 'Length of each grain. Tiny grains sound buzzy and metallic; larger grains preserve more of the original character.',
+          overlap: 'How much consecutive grains overlap, as a fraction of grain size. More overlap = smoother and denser; less = choppier and more rhythmic.',
+          speed: 'Playback speed in granular mode, independent of pitch — stretch (slow) or compress (fast) the sample without changing its pitch.',
+          loop: 'Loops the trimmed region so the grain cloud sustains as a drone instead of playing once through.',
+          length: 'How long the looped grain cloud sustains.',
         },
         notes: [
           'Drop an audio file on the card, or click Browse… to pick one.',
           '● Record captures from your microphone and replaces the current sample.',
           'Drag the highlighted region’s edges on the waveform — only that part plays.',
           '✎ Edit opens the full-size editor: zoom with the mouse wheel, exact in/out points, reverse, normalize, fades, crop and undo.',
+          'Granular mode (Mode → granular) decouples pitch from speed and can loop into a drone. Note: the Pitch LFO and Pitch Envelope only affect normal mode — granular pitch is static.',
         ],
       },
       compressor: {
@@ -234,16 +241,23 @@ export const HELP = {
         },
       },
       sample: {
-        summary: 'Spelar upp en ljudfil eller en mikrofoninspelning.',
+        summary: 'Spelar upp en ljudfil eller en mikrofoninspelning — rakt av eller granulärt.',
         params: {
-          pitch: 'Ändrar samplingens tonhöjd i halvtoner genom att ändra uppspelningshastigheten — neråt blir också längre och mörkare, uppåt kortare och ljusare.',
+          pitch: 'I normalt läge ändras tonhöjden genom uppspelningshastigheten (neråt = längre/mörkare, uppåt = kortare/ljusare). I granulärt läge ändras bara tonhöjden, oberoende av hastigheten.',
           gain: 'Samplingens volym innan den går in i effektkedjan.',
+          mode: 'normal spelar bufferten rakt av; granular (granulärt) spelar upp den som ett moln av små överlappande korn och frikopplar tonhöjd från hastighet.',
+          grainSize: 'Längden på varje korn (grain). Mycket små korn låter surrande och metalliska; större korn behåller mer av originalkaraktären.',
+          overlap: 'Hur mycket intilliggande korn överlappar, som andel av kornstorleken. Mer överlapp = mjukare och tätare; mindre = hackigare och mer rytmiskt.',
+          speed: 'Uppspelningshastighet i granulärt läge, oberoende av tonhöjd — sträck ut (långsamt) eller pressa ihop (snabbt) utan att ändra tonhöjden.',
+          loop: 'Loopar den trimmade regionen så att kornmolnet ligger kvar som en drone i stället för att spelas en gång.',
+          length: 'Hur länge det loopade kornmolnet ligger kvar.',
         },
         notes: [
           'Släpp en ljudfil på kortet, eller klicka Browse… för att välja en.',
           '● Record spelar in från mikrofonen och ersätter nuvarande sampling.',
           'Dra i den markerade regionens kanter på vågformen — bara den delen spelas upp.',
           '✎ Edit öppnar editorn i fullstorlek: zooma med mushjulet, exakta in/ut-punkter, reverse, normalize, toningar, beskärning och ångra.',
+          'Granulärt läge (Mode → granular) frikopplar tonhöjd från hastighet och kan loopa till en drone. Obs: Pitch LFO och Pitch Envelope påverkar bara normalt läge — i granulärt läge är tonhöjden statisk.',
         ],
       },
       compressor: {

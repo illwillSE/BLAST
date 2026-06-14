@@ -5,6 +5,8 @@ design brief and from development discussions.
 
 ## Features
 
+sample editor help window
+
 - [ ] **Copy/paste samples** — reuse the same sample across multiple blocks (Sample, Sample Envelope, Vocoder).
 - [x] **Reverb presets** — one-click presets that set Reverb sliders to common room sizes (small room, big room, concert hall).
 - [x] **Ping-pong delay** — add a ping-pong (alternating L/R) mode to the Delay block.
@@ -17,7 +19,7 @@ design brief and from development discussions.
 - [x] **Contrast improvements** — improve low-contrast areas throughout the UI.
 - [ ] **Pitch LFO reset** — reset the Pitch LFO phase on each Play trigger; currently appears to share global LFO state.
 - [ ] **Background visualization** — a subtle deterministic visual effect in the background, driven by selected nodes/lanes and their control values (envelopes, levels, etc.).
-- [ ] **Grain player** — sample-based granular source block (`Tone.GrainPlayer`). Unlocks textural and glitchy sounds.
+- [x] **Grain player** — granular playback mode on the Sample source (`Tone.GrainPlayer`): decoupled pitch/speed, grain size + overlap, loop drone. Unlocks textural and glitchy sounds.
 - [x] **Metal synth** — percussive metallic source block (`Tone.MetalSynth`). Unlocks cymbals, bells, and metallic hits.
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce zipper noise on slider edits.
 - [ ] **Tone.js feature audit** — investigate other Tone.js features not yet used that could be useful.

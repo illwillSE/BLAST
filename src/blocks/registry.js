@@ -186,6 +186,20 @@ export const BLOCK_DEFS = {
     params: [
       { key: 'pitch', label: 'Pitch', type: 'range', min: -24, max: 24, step: 0.1, default: 0, format: semis },
       { key: 'gain', label: 'Gain', type: 'range', min: -24, max: 12, step: 0.1, default: 0, format: db },
+      // Granular playback (Tone.GrainPlayer): the buffer is replayed as a cloud
+      // of overlapping grains, decoupling pitch (detune) from speed (playback
+      // rate). The grain params only show in granular mode.
+      { key: 'mode', label: 'Mode', type: 'select', default: 'normal',
+        options: [{ value: 'normal', label: 'normal' }, { value: 'granular', label: 'granular' }] },
+      { key: 'grainSize', label: 'Grain', type: 'range', min: 0.01, max: 0.5, step: 0.005, default: 0.1, format: sec,
+        show: (p) => p.mode === 'granular' },
+      { key: 'overlap', label: 'Overlap', type: 'range', min: 0, max: 0.95, step: 0.01, default: 0.5, percent: true,
+        format: (v) => `${Math.round(v * 100)}%`, show: (p) => p.mode === 'granular' },
+      { key: 'speed', label: 'Speed', type: 'range', min: 0.1, max: 4, step: 0.01, default: 1, scale: 'log',
+        format: (v) => `${v.toFixed(2)}×`, show: (p) => p.mode === 'granular' },
+      { key: 'loop', label: 'Loop', type: 'toggle', default: false, show: (p) => p.mode === 'granular' },
+      { key: 'length', label: 'Length', type: 'range', min: 0.1, max: 8, step: 0.1, default: 1.5, format: sec,
+        show: (p) => p.mode === 'granular' && p.loop },
     ],
     create(params) {
       const gain = new Tone.Volume(params.gain)
