@@ -1,5 +1,6 @@
 import { BLOCK_DEFS } from '../blocks/registry'
 import { DEFAULT_EXPORT } from '../audio/render'
+import { newSequencer } from '../audio/sequencer'
 
 let counter = 0
 export function uid(prefix = 'id') {
@@ -40,6 +41,9 @@ export function newSound(name) {
     // then the master chain processes the mix → output.
     sources: [newLane('synth')],
     master: [],
+    // Sound-level step sequencer (disabled by default). Drives the trigger; not
+    // an audio block. See src/audio/sequencer.js.
+    sequencer: newSequencer(),
   }
 }
 

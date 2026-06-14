@@ -3,6 +3,7 @@ import { allSamples, setSample, decodeBlob } from '../audio/sampleCache'
 import { downloadBlob, safeFileName, DEFAULT_EXPORT } from '../audio/render'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { defaultParams, isSource, allBlocks } from '../state/model'
+import { newSequencer } from '../audio/sequencer'
 
 // Migrate a pre-multi-lane sound (flat `blocks` array) to the lane model:
 // the single source becomes one lane, every other block becomes that lane's
@@ -33,6 +34,15 @@ function normalizeProject(project) {
   project.sounds = project.sounds.map((raw) => {
     const sound = migrateSound(raw)
     if (!sound.master) sound.master = []
+    // Backfill the sequencer onto projects saved before it existed; merge so a
+    // saved sequencer keeps its steps while gaining any newer default fields.
+    sound.sequencer = { ...newSequencer(), ...sound.sequencer }
+    // Migrate early-format steps whose notes were bare semitone numbers to the
+    // { pitch, len } shape that carries per-note length.
+    sound.sequencer.steps = (sound.sequencer.steps ?? []).map((s) => ({
+      ...s,
+      notes: (s.notes ?? []).map((n) => (typeof n === 'number' ? { pitch: n, len: 1 } : n)),
+    }))
     for (const src of sound.sources) {
       if (src.delay == null) src.delay = 0
       if (src.level == null) src.level = 0

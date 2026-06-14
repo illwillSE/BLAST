@@ -1,6 +1,7 @@
 import * as Tone from 'tone'
 import toWav from 'audiobuffer-to-wav'
 import { buildChain, estimateDuration } from './engine'
+import { sequenceToNotes } from './sequencer'
 
 // Export options — the single source of truth for both the settings UI and the
 // renderer. `format` picks the WAV sample format (16-bit PCM vs 32-bit float).
@@ -22,7 +23,7 @@ export async function renderSoundToWav(sound, opts) {
   const toneBuffer = await Tone.Offline(
     async ({ destination }) => {
       const handle = await buildChain(sound, destination)
-      handle.trigger(0.01)
+      handle.trigger(0.01, sequenceToNotes(sound.sequencer))
     },
     duration + 0.05,
     channels,

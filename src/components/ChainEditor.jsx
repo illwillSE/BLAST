@@ -14,7 +14,7 @@ const Conn = () => <span className="text-[13px] text-faint">›</span>
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
   onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onOutputView,
-  onPasteBlock, onPasteSourceLane, onPasteValues,
+  onSequencer, onPasteBlock, onPasteSourceLane, onPasteValues,
 }) {
   const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
   const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
@@ -26,7 +26,7 @@ export default function ChainEditor({
   }, [sound.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep selection valid if blocks/lanes disappear (remove, mute rebuild, etc.).
-  const valid = (k) => k === 'output' || (k?.startsWith('mix:') && sound.sources.some((s) => s.id === k.slice(4)))
+  const valid = (k) => k === 'output' || k === 'seq' || (k?.startsWith('mix:') && sound.sources.some((s) => s.id === k.slice(4)))
     || (k && findLane(sound, k)) || (k && sound.master.some((b) => b.id === k))
   useEffect(() => {
     const kept = selectedKeys.filter(valid)
@@ -143,7 +143,8 @@ export default function ChainEditor({
 
   const isSel = (k) => selectedKeys.includes(k)
   const multiLane = sound.sources.length > 1
-  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView, onPasteValues }
+  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView, onSequencer, onPasteValues }
+  const seqOn = sound.sequencer?.enabled
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -227,6 +228,21 @@ export default function ChainEditor({
                 <span className="text-[10px] tabular-nums text-muted">{(sound.outputVolume ?? 0).toFixed(1)}dB</span>
                 <span className="text-[10px] text-faint">· {sound.outputView ?? 'wave'}</span>
               </div>
+            </button>
+            <Conn />
+            {/* Sound-level step sequencer — drives the trigger, sits after Output. */}
+            <button
+              onClick={(e) => select('seq', e.shiftKey || e.metaKey)}
+              title="Step sequencer — plays a short melody through this sound"
+              className={`flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-colors ${
+                isSel('seq') ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
+              } ${seqOn ? '' : 'opacity-60'}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${seqOn ? 'bg-on-bright' : 'bg-faint'}`} />
+              <span className="font-semibold text-ink-soft">Seq</span>
+              <span className="text-[10px] tabular-nums text-muted">
+                {seqOn ? `${sound.sequencer.steps.length} steps` : 'off'}
+              </span>
             </button>
           </div>
         </div>

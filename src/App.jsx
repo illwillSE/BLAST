@@ -5,6 +5,7 @@ import {
 } from './state/model'
 import { presetProject } from './state/presets'
 import { liveEngine } from './audio/engine'
+import { newSequencer, sequenceToNotes } from './audio/sequencer'
 import { renderSoundToWav, downloadBlob, safeFileName } from './audio/render'
 import { getSample, setSample, decodeBlob } from './audio/sampleCache'
 import { getClipboard, setClipboard } from './state/clipboard'
@@ -53,7 +54,10 @@ export default function App() {
     setProject((p) => {
       const target = p.sounds.find((s) => s.id === soundId)
       if (target) {
-        liveEngine.play(target, transpose).then(({ duration }) => {
+        // When the sequencer is on, Play runs the whole sequence (the held
+        // key transposes it); otherwise it's a single note at `transpose`.
+        const notes = sequenceToNotes(target.sequencer, transpose)
+        liveEngine.play(target, notes).then(({ duration }) => {
           emitPlay({ soundId, duration })
         })
       }
@@ -194,6 +198,10 @@ export default function App() {
   const onOutputVolume = (v) => updateSound(sound.id, (s) => ({ ...s, outputVolume: v }))
 
   const onOutputView = (v) => updateSound(sound.id, (s) => ({ ...s, outputView: v }))
+
+  // Patch the sound-level sequencer (merge so callers send only changed fields).
+  const onSequencer = (patch) =>
+    updateSound(sound.id, (s) => ({ ...s, sequencer: { ...(s.sequencer ?? newSequencer()), ...patch } }))
 
   // ---- export -------------------------------------------------------------
 
@@ -356,6 +364,7 @@ export default function App() {
                   onRemoveLane={onRemoveLane}
                   onOutputVolume={onOutputVolume}
                   onOutputView={onOutputView}
+                  onSequencer={onSequencer}
                   onPasteBlock={pasteBlock}
                   onPasteSourceLane={pasteSourceLane}
                   onPasteValues={pasteValues}

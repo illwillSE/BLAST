@@ -2,6 +2,7 @@ import * as Tone from 'tone'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { getSample } from './sampleCache'
 import { extractEnvelope } from './envelope'
+import { sequenceSpan } from './sequencer'
 
 const centsToRate = (cents) => Math.pow(2, cents / 1200)
 const semisToRate = (semis) => Math.pow(2, semis / 12)
@@ -589,6 +590,11 @@ export function estimateDuration(sound) {
     if (!src.enabled) continue
     end = Math.max(end, (src.delay ?? 0) + laneDuration(src))
   }
+
+  // The sequencer schedules notes out to `sequenceSpan` (last note's end); add
+  // it so the window covers the sequence plus the source's natural ring-out
+  // (release + insert tails, already folded into `end`). Zero when inactive.
+  end += sequenceSpan(sound.sequencer)
 
   // Tails from the shared master chain.
   let masterTail = 0

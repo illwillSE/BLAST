@@ -3,6 +3,7 @@ import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
 import { Slider, Select } from './ui'
 import BlockControls from './BlockControls'
+import SequencerEditor from './SequencerEditor'
 
 const LEVEL_DEF = { key: 'level', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
 const PAN_DEF = { key: 'pan', label: 'Pan', type: 'range', min: -1, max: 1, step: 0.01, default: 0, format: (v) => (Math.abs(v) < 0.01 ? 'center' : v < 0 ? `${Math.round(-v * 100)}L` : `${Math.round(v * 100)}R`) }
@@ -73,6 +74,7 @@ function Summary({ sound }) {
 // Resolve one selection key to a rendered control panel.
 function Panel({ keyId, sound, handlers }) {
   if (keyId === 'output') return <OutputControls sound={sound} {...handlers} />
+  if (keyId === 'seq') return <SequencerEditor sound={sound} onChange={handlers.onSequencer} />
   if (keyId.startsWith('mix:')) {
     const laneId = keyId.slice(4)
     const idx = sound.sources.findIndex((s) => s.id === laneId)
@@ -109,7 +111,7 @@ function Panel({ keyId, sound, handlers }) {
 }
 
 export default function InspectorDock({ sound, selectedKeys, handlers }) {
-  const keys = selectedKeys.filter((k) => k === 'output' || k.startsWith('mix:') || findBlock(sound, k))
+  const keys = selectedKeys.filter((k) => k === 'output' || k === 'seq' || k.startsWith('mix:') || findBlock(sound, k))
   return (
     <div className="shrink-0 border-t border-divider bg-panel">
       <div className="flex items-center gap-2 border-b border-divider px-4 py-1.5">
