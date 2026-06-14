@@ -6,9 +6,17 @@ import { getColor } from '../theme/colors'
 // 'spectrum' (FFT bars) or 'fire' (mirrored gradient bars with falling
 // peak caps). The analyser is retuned per mode in the draw loop since
 // the engine may rebuild it at any time.
+
+// Clip indicator: when the pre-limiter signal peaks at/above 0 dBFS the output is
+// hitting the ceiling (being limited / would clip). We light the graph red and
+// hold it briefly so a transient clip stays visible.
+const CLIP_THRESHOLD = 1.0
+const CLIP_HOLD_MS = 700
+const CLIP_COLOR = '#ff3b30'
 export default function OutputVisualizer({ mode }) {
   const canvasRef = useRef(null)
   const peaksRef = useRef([])
+  const clipUntilRef = useRef(0) // timestamp the clip indicator stays lit until
 
   useEffect(() => {
     let raf
@@ -30,6 +38,20 @@ export default function OutputVisualizer({ mode }) {
 
       const analyser = liveEngine.getOutputAnalyser()
       if (!analyser) return
+
+      // Clip detection from the pre-limiter tap: peak |sample| at/above 0 dBFS
+      // lights the indicator, held briefly so brief clips don't flash past.
+      const clipMeter = liveEngine.getClipMeter?.()
+      if (clipMeter) {
+        const cv = clipMeter.getValue()
+        let peak = 0
+        for (let i = 0; i < cv.length; i++) {
+          const a = Math.abs(cv[i])
+          if (a > peak) peak = a
+        }
+        if (peak >= CLIP_THRESHOLD) clipUntilRef.current = performance.now() + CLIP_HOLD_MS
+      }
+      const clipping = performance.now() < clipUntilRef.current
 
       const wantType = mode === 'wave' ? 'waveform' : 'fft'
       const wantSize = mode === 'wave' ? 1024 : mode === 'fire' ? 64 : 128
@@ -76,16 +98,29 @@ export default function OutputVisualizer({ mode }) {
           ctx.fillRect(i * barW, height - h, Math.max(1, barW - 1), h)
         }
       } else {
-        ctx.strokeStyle = accent
+        ctx.strokeStyle = clipping ? CLIP_COLOR : accent
         ctx.lineWidth = 1.5
         ctx.beginPath()
+        const halfH = height / 2 - 1
         for (let i = 0; i < values.length; i++) {
           const x = (i / (values.length - 1)) * width
-          const y = height / 2 - values[i] * (height / 2 - 1)
+          const y = height / 2 - values[i] * halfH
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
         ctx.stroke()
+      }
+
+      // Clip indicator, drawn over any mode: a red dot + outline so it's obvious
+      // the moment the output hits the ceiling, whichever view is selected.
+      if (clipping) {
+        ctx.strokeStyle = CLIP_COLOR
+        ctx.lineWidth = 1.5
+        ctx.strokeRect(0.75, 0.75, width - 1.5, height - 1.5)
+        ctx.fillStyle = CLIP_COLOR
+        ctx.beginPath()
+        ctx.arc(width - 7, 7, 3.5, 0, Math.PI * 2)
+        ctx.fill()
       }
     }
 

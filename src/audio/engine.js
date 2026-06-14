@@ -6,6 +6,11 @@ import { extractEnvelope } from './envelope'
 const centsToRate = (cents) => Math.pow(2, cents / 1200)
 const semisToRate = (semis) => Math.pow(2, semis / 12)
 
+// Max overlapping sample voices per lane. Retriggers stack up to this, then the
+// oldest is stolen — so fast playing / sequence steps ring out instead of
+// hard-cutting each other (the old behavior stopped every voice on each trigger).
+const MAX_SAMPLE_VOICES = 8
+
 // Synth-family sources share the Tone API the engine's pitch/trigger path needs:
 // a `synth` node with `.detune` (cents), `.envelope` (ADSR), and
 // triggerAttackRelease(freq, dur, when). Tone.Synth and Tone.MetalSynth both qualify.
@@ -19,14 +24,25 @@ const isNoiseSource = (type) => type === 'noise'
 // 0 floor), then the release tail. Synth/Noise are held for their explicit Length.
 const synthHold = (p, type) => (type === 'metal' ? p.attack + p.decay : p.duration)
 
+// Coerce the trigger() `notes` argument into a note-event list. A bare number is
+// the legacy single-note transpose (keyboard play); undefined/empty becomes one
+// note at the source's own pitch. An array of { transpose, offset, duration }
+// passes through — a chord (offset 0) or a sequence (rising offsets).
+function normalizeNotes(notes) {
+  if (typeof notes === 'number') return [{ transpose: notes, offset: 0 }]
+  if (Array.isArray(notes) && notes.length) return notes
+  return [{ transpose: 0, offset: 0 }]
+}
+
 // When a Sample Envelope shapes the amplitude, the synth's own ADSR must get
 // out of the way — flatten it to an always-on gate so the envelope curve (on
-// the source's envGain) is the only thing shaping volume.
+// the source's envGain) is the only thing shaping volume. Pitched sources are
+// VoicePools (no single `.envelope`) so they go through `.set`, which fans out
+// to every voice; the noise source is a plain NoiseSynth singleton.
 function flattenEnv(synth) {
-  synth.envelope.attack = 0.005
-  synth.envelope.decay = 0
-  synth.envelope.sustain = 1
-  synth.envelope.release = 0.01
+  const envelope = { attack: 0.005, decay: 0, sustain: 1, release: 0.01 }
+  if (synth.voices) synth.set({ envelope }) // VoicePool
+  else Object.assign(synth.envelope, envelope) // NoiseSynth singleton
 }
 
 // Builds the full Tone.js graph for one sound and returns a handle with
@@ -127,20 +143,28 @@ export async function buildChain(sound, destination) {
       built.get(block.id).nodes.lfo = lfo
     }
 
-    // Synth sources: LFOs and the pitch envelope feed the detune signal (cents).
+    // Synth sources: wire the pitch LFO and pitch envelope into *every* voice's
+    // detune (cents), so modulation survives polyphony. The LFO is shared (one
+    // node fanned out); the pitch envelope gets a per-voice Signal summed into
+    // detune — connecting a signal into a Tone.Signal overrides its .value, so
+    // the envelope can't ride detune directly. At trigger we schedule whichever
+    // voice was allocated via `lane.voiceEnv`. Base pitch is baked into each
+    // note's frequency (`p.freq * semisToRate(transpose)`), independent of this.
     if (isSynthSource(lane.src.type)) {
+      const pool = lane.nodes.synth
+      lane.voiceEnv = new Map()
       for (const { block: lb, lfo } of lane.lfos) {
         lfo.min = -lb.params.depth
         lfo.max = lb.params.depth
-        lfo.connect(lane.nodes.synth.detune)
       }
-      if (lane.envBlocks.length > 0) {
-        // Connecting a signal into a Tone.Signal overrides its .value, so pitch
-        // envelope automation rides a separate Signal summed into detune.
-        const envSignal = new Tone.Signal(0)
-        disposables.push(envSignal)
-        envSignal.connect(lane.nodes.synth.detune)
-        lane.nodes.envSignal = envSignal
+      for (const voice of pool.voices) {
+        for (const { lfo } of lane.lfos) lfo.connect(voice.detune)
+        if (lane.envBlocks.length > 0) {
+          const envSignal = new Tone.Signal(0)
+          disposables.push(envSignal)
+          envSignal.connect(voice.detune)
+          lane.voiceEnv.set(voice, envSignal)
+        }
       }
     }
   }
@@ -164,14 +188,27 @@ export async function buildChain(sound, destination) {
   }
 
   const masterOut = new Tone.Volume(sound.outputVolume ?? 0)
-  disposables.push(masterOut)
+  // Brickwall just under 0 dBFS so polyphony (stacked voices/chords) can't hard-
+  // clip the output. Single notes sit below the ceiling and pass through clean;
+  // it only engages when summed voices would have clipped anyway. In the graph,
+  // so it protects live playback and offline WAV export alike.
+  const masterLimiter = new Tone.Limiter(-0.5)
+  disposables.push(masterOut, masterLimiter)
   prev.connect(masterOut)
-  masterOut.connect(destination)
+  masterOut.connect(masterLimiter)
+  masterLimiter.connect(destination)
 
-  // Tap on the final output for the Output block's visualizer.
+  // Tap the post-limiter output for the Output block's visualizer (what's heard).
   const outputAnalyser = new Tone.Analyser('waveform', 1024)
   disposables.push(outputAnalyser)
-  masterOut.connect(outputAnalyser)
+  masterLimiter.connect(outputAnalyser)
+
+  // Pre-limiter tap: the true peak feeding the limiter, which can exceed 0 dBFS.
+  // The post-limiter signal never clips, so the clip meter has to read here — the
+  // UI uses it to flag when the output is hitting the ceiling (being limited).
+  const clipMeter = new Tone.Analyser('waveform', 256)
+  disposables.push(clipMeter)
+  masterOut.connect(clipMeter)
 
   // Params like the synth's length/pitch and the pitch envelope are consumed
   // at trigger time, not held by a Tone node — so always read them from the
@@ -234,10 +271,13 @@ export async function buildChain(sound, destination) {
     return hold
   }
 
-  // Fire a single lane at `when`. Returns the lane's playing length (from
-  // `when`), so the caller can fold in the lane delay for the total duration.
-  function triggerLane(lane, when, transpose) {
+  // Fire a single lane at `when` for one note-event `{ transpose, duration }`.
+  // `transpose` shifts the pitch (semitones); `duration`, when given (a sequencer
+  // step), replaces the source's own Length. Returns the lane's playing length
+  // (from `when`), so the caller can fold in the lane delay for the total.
+  function triggerLane(lane, when, note) {
     const { src, nodes } = lane
+    const transpose = note.transpose ?? 0
     const carrierHold = (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type)) ? vocoderHold(lane) : 0
     let dur = 0
 
@@ -249,27 +289,32 @@ export async function buildChain(sound, destination) {
 
     if (isSynthSource(src.type)) {
       const p = freshParams(src)
-      if (nodes.envSignal && lane.envBlocks.length > 0) {
+      // Grab the voice that will play this note, so its pitch envelope and length
+      // are scheduled on that voice alone — overlapping notes stay independent.
+      const voice = nodes.synth.allocate()
+      if (lane.envBlocks.length > 0) {
         const env = freshParams(lane.envBlocks[0])
-        nodes.envSignal.cancelScheduledValues(when)
-        nodes.envSignal.setValueAtTime(env.start, when)
-        nodes.envSignal.linearRampToValueAtTime(env.end, when + env.time)
+        const sig = lane.voiceEnv.get(voice)
+        sig.cancelScheduledValues(when)
+        sig.setValueAtTime(env.start, when)
+        sig.linearRampToValueAtTime(env.end, when + env.time)
       }
       // In natural-length mode the amp envelope (or a vocoder modulator) can
       // outlast the synth's Length, so the note is held for whatever spans
       // longest. Both *replace* Length rather than floor it.
-      const hold = synthHold(p, src.type)
+      const hold = note.duration ?? synthHold(p, src.type)
       const ampDur = scheduleAmpEnv(lane, when, hold)
       const base = ampDur ?? (carrierHold > 0 ? carrierHold : hold)
       const noteDur = Math.max(base, carrierHold)
-      nodes.synth.triggerAttackRelease(p.freq * semisToRate(transpose), noteDur, when)
+      voice.triggerAttackRelease(p.freq * semisToRate(transpose), noteDur, when)
       dur = noteDur + p.release
     }
 
     if (isNoiseSource(src.type)) {
       const p = freshParams(src)
-      const ampDur = scheduleAmpEnv(lane, when, p.duration)
-      const base = ampDur ?? (carrierHold > 0 ? carrierHold : p.duration)
+      const len = note.duration ?? p.duration
+      const ampDur = scheduleAmpEnv(lane, when, len)
+      const base = ampDur ?? (carrierHold > 0 ? carrierHold : len)
       const noteDur = Math.max(base, carrierHold)
       nodes.synth.triggerAttackRelease(noteDur, when)
       dur = noteDur + p.release
@@ -278,10 +323,14 @@ export async function buildChain(sound, destination) {
     if (src.type === 'sample') {
       const sample = getSample(src.id)
       if (sample?.audioBuffer) {
-        lane.activeSampleSources.forEach((s) => {
-          try { s.stop() } catch { /* already stopped */ }
-        })
-        lane.activeSampleSources.clear()
+        // Voice cap: when the lane is already at the max ringing voices, steal
+        // the oldest (a Set keeps insertion order) so retriggers overlap up to
+        // the cap. The stolen voice's own onended/onstop prunes + disposes it.
+        while (lane.activeSampleSources.size >= MAX_SAMPLE_VOICES) {
+          const oldest = lane.activeSampleSources.values().next().value
+          lane.activeSampleSources.delete(oldest)
+          try { oldest.stop() } catch { /* already stopped */ }
+        }
 
         const p = freshParams(src)
         const baseRate = semisToRate(p.pitch + transpose)
@@ -355,16 +404,25 @@ export async function buildChain(sound, destination) {
     return dur
   }
 
-  // `transpose` (semitones) shifts the played note — keyboard play feeds it in.
-  function trigger(when = Tone.now(), transpose = 0) {
+  // Fire the sound. `notes` is a list of note-events
+  //   { transpose (semitones), offset (seconds from `when`), duration? }
+  // — a chord is several events at offset 0, a sequence is several at rising
+  // offsets. Back-compat: a bare number is the legacy single-note transpose
+  // (keyboard play), and undefined is one note at the source's own pitch.
+  function trigger(when = Tone.now(), notes = 0) {
+    const events = normalizeNotes(notes)
     let total = 0
-    for (const lane of lanes) {
-      const laneNow = freshLane(lane.src.id)
-      const delay = Math.max(0, laneNow?.delay ?? 0)
-      const dur = triggerLane(lane, when + delay, transpose)
-      total = Math.max(total, delay + dur)
+    for (const note of events) {
+      const offset = Math.max(0, note.offset ?? 0)
+      for (const lane of lanes) {
+        const laneNow = freshLane(lane.src.id)
+        const delay = Math.max(0, laneNow?.delay ?? 0)
+        const dur = triggerLane(lane, when + offset + delay, note)
+        total = Math.max(total, offset + delay + dur)
+      }
     }
-    // Master hooks (rare — a vocoder dropped on the mix) fire undelayed.
+    // Master hooks (rare — a vocoder dropped on the mix) fire once, undelayed:
+    // they shape the mix, not individual notes.
     for (const { block, onTrigger } of masterHooks) {
       onTrigger(when, { params: freshParams(block), sample: getSample(block.id), nodes: triggerNodes })
     }
@@ -433,7 +491,7 @@ export async function buildChain(sound, destination) {
   }
 
   await Promise.all(readyPromises)
-  return { trigger, apply, dispose, getAnalyser, getOutputAnalyser: () => outputAnalyser }
+  return { trigger, apply, dispose, getAnalyser, getOutputAnalyser: () => outputAnalyser, getClipMeter: () => clipMeter }
 }
 
 // structureParams are params that change the node graph itself (e.g. the detune
@@ -572,12 +630,14 @@ export class LiveEngine {
     this.soundId = sound.id
   }
 
-  async play(sound, transpose = 0) {
+  // `notes` is forwarded straight to trigger(): a bare semitone number for
+  // keyboard play today, or a note-event list once chord/sequencer drivers exist.
+  async play(sound, notes = 0) {
     await Tone.start()
     await this.sync(sound)
     if (!this.handle) return { duration: 0 }
     this.handle.apply(sound)
-    const duration = this.handle.trigger(undefined, transpose)
+    const duration = this.handle.trigger(undefined, notes)
     return { duration }
   }
 
@@ -587,6 +647,10 @@ export class LiveEngine {
 
   getOutputAnalyser() {
     return this.handle?.getOutputAnalyser() ?? null
+  }
+
+  getClipMeter() {
+    return this.handle?.getClipMeter() ?? null
   }
 
   dispose() {

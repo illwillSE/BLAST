@@ -1,4 +1,5 @@
 import * as Tone from 'tone'
+import { VoicePool } from '../audio/voicePool'
 
 // Param types:
 //   { key, label, type:'range', min, max, step, default, unit, scale?:'log', format? }
@@ -67,25 +68,33 @@ const sec = (v) => (v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`)
 const cents = (v) => `${v > 0 ? '+' : ''}${Math.round(v)}ct`
 const semis = (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}st`
 
-// Maps the synth's oscillator params onto a Tone OmniOscillator. Three "rich"
-// modes beyond the plain waves: band-limited partial counts (e.g. sawtooth8),
-// a pulse with adjustable width, and a custom harmonic spectrum ("draw your
-// own wave"). Tone only recreates the underlying oscillator when the source
-// kind actually changes, so calling this on every apply() is cheap.
-function applyOscillator(osc, p) {
+// Max simultaneous voices per pitched source (Synth/Metal VoicePool). Enough for
+// chords + overlapping sequence tails; a future user param can expose it. Voices
+// are pre-allocated but idle-silent, and the pool steals the oldest past this.
+const MAX_POLYPHONY = 16
+
+// Pool output headroom (~-6 dB). Stacked voices sum into this, so a typical chord
+// lands near unity and clean instead of clipping; a single note is quieter for it.
+const VOICE_HEADROOM = 0.5
+
+// Maps the synth's oscillator params to a Tone OmniOscillator *options object*,
+// applied via `polySynth.set({ oscillator })` (a PolySynth has no single
+// oscillator node to mutate). Three "rich" modes beyond the plain waves:
+// band-limited partial counts (e.g. sawtooth8), a pulse with adjustable width,
+// and a custom harmonic spectrum ("draw your own wave"). OmniOscillator.set
+// applies `type` first, so `{ type: 'sine', partials }` lands a custom wave;
+// `partials: []` clears any stale custom array when switching back to a plain
+// wave (Tone's deepMerge replaces arrays wholesale).
+function oscillatorOptions(p) {
   if (p.wave === 'custom') {
-    // partials can't be set on a pulse/pwm source — switch to a plain
-    // oscillator first, then the array becomes a custom periodic wave.
-    if (osc.sourceType === 'pulse' || osc.sourceType === 'pwm') osc.type = 'sine'
-    osc.partials = p.harmonics?.length ? p.harmonics : [1]
-  } else if (p.wave === 'pulse') {
-    osc.type = 'pulse'
-    if (osc.width) osc.width.value = p.width ?? 0
-  } else {
-    // 0 partials = the full band-limited wave; >0 keeps only the first N.
-    const count = p.partials ?? 0
-    osc.type = count > 0 ? `${p.wave}${count}` : p.wave
+    return { type: 'sine', partials: p.harmonics?.length ? p.harmonics : [1] }
   }
+  if (p.wave === 'pulse') {
+    return { type: 'pulse', width: p.width ?? 0 }
+  }
+  // 0 partials = the full band-limited wave; >0 keeps only the first N.
+  const count = p.partials ?? 0
+  return { type: count > 0 ? `${p.wave}${count}` : p.wave, partials: [] }
 }
 
 export const BLOCK_DEFS = {
@@ -115,19 +124,23 @@ export const BLOCK_DEFS = {
       { key: 'sustain', label: 'Sustain', type: 'range', min: 0, max: 1, step: 0.01, default: 0.7, percent: true, format: (v) => `${Math.round(v * 100)}%` },
       { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.3, scale: 'log', format: sec },
     ],
+    // Polyphonic: a VoicePool of Tone.Synth voices, so chords and overlapping
+    // sequence steps ring out instead of cutting each other off. The pool exposes
+    // each voice's `.detune` so the engine can wire the pitch LFO + pitch envelope
+    // per voice. Node key stays `synth`; the engine's source path is unchanged.
     create(params) {
-      const synth = new Tone.Synth({
+      const synth = new VoicePool(Tone.Synth, MAX_POLYPHONY, VOICE_HEADROOM)
+      synth.set({
+        oscillator: oscillatorOptions(params),
         envelope: { attack: params.attack, decay: params.decay, sustain: params.sustain, release: params.release },
       })
-      applyOscillator(synth.oscillator, params)
       return { nodes: { synth }, input: null, output: synth }
     },
     apply({ synth }, params) {
-      applyOscillator(synth.oscillator, params)
-      synth.envelope.attack = params.attack
-      synth.envelope.decay = params.decay
-      synth.envelope.sustain = params.sustain
-      synth.envelope.release = params.release
+      synth.set({
+        oscillator: oscillatorOptions(params),
+        envelope: { attack: params.attack, decay: params.decay, sustain: params.sustain, release: params.release },
+      })
     },
   },
 
@@ -157,6 +170,9 @@ export const BLOCK_DEFS = {
       { label: 'Hi-hat', hint: 'tight open hi-hat',
         params: { color: 'white', duration: 0.05, attack: 0.001, decay: 0.05, sustain: 0, release: 0.08 } },
     ],
+    // Stays monophonic: Tone.NoiseSynth extends Instrument (not Monophonic), so
+    // it can't back a PolySynth voice pool. Noise is unpitched — a noise "chord"
+    // is meaningless — so overlapping voices aren't worth a hand-rolled pool here.
     create(p) {
       const synth = new Tone.NoiseSynth({
         noise: { type: p.color },
@@ -198,24 +214,23 @@ export const BLOCK_DEFS = {
       { label: 'Clang', hint: 'dissonant metallic hit',
         params: { freq: 150, harmonicity: 1.4, modIndex: 60, resonance: 3000, octaves: 2, attack: 0.001, decay: 0.4, release: 0.3 } },
     ],
-    // Node keyed `synth` so the engine's source path treats Metal exactly like
-    // the Synth: MetalSynth shares `.detune`, `.envelope`, and the
-    // triggerAttackRelease(freq, dur, when) call (see `isSynthSource` in engine.js).
+    // Polyphonic, like the Synth: a VoicePool of Tone.MetalSynth voices. Node
+    // keyed `synth` so the engine's source path treats Metal exactly like the
+    // Synth — triggerAttackRelease(freq, dur, when) (see `isSynthSource` in
+    // engine.js), with each voice's `.detune` available for pitch modulation.
     create(p) {
-      const synth = new Tone.MetalSynth({
+      const synth = new VoicePool(Tone.MetalSynth, MAX_POLYPHONY, VOICE_HEADROOM)
+      synth.set({
         harmonicity: p.harmonicity, modulationIndex: p.modIndex, octaves: p.octaves, resonance: p.resonance,
         envelope: { attack: p.attack, decay: p.decay, release: p.release },
       })
       return { nodes: { synth }, input: null, output: synth }
     },
     apply({ synth }, p) {
-      synth.harmonicity = p.harmonicity
-      synth.modulationIndex = p.modIndex
-      synth.octaves = p.octaves
-      synth.resonance = p.resonance
-      synth.envelope.attack = p.attack
-      synth.envelope.decay = p.decay
-      synth.envelope.release = p.release
+      synth.set({
+        harmonicity: p.harmonicity, modulationIndex: p.modIndex, octaves: p.octaves, resonance: p.resonance,
+        envelope: { attack: p.attack, decay: p.decay, release: p.release },
+      })
     },
   },
 

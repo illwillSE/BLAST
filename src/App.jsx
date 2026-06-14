@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  newProject, newSound, newBlock, newLane, uid,
+  newSound, newBlock, newLane, uid,
   mapBlock, removeBlock, addBlock, moveBlock, swapSource, isSource,
 } from './state/model'
+import { presetProject } from './state/presets'
 import { liveEngine } from './audio/engine'
 import { renderSoundToWav, downloadBlob, safeFileName } from './audio/render'
 import { getSample, setSample, decodeBlob } from './audio/sampleCache'
@@ -23,7 +24,7 @@ function cloneWithSample(block, sample) {
 }
 
 export default function App() {
-  const [project, setProject] = useState(newProject)
+  const [project, setProject] = useState(presetProject)
   const [selectedId, setSelectedId] = useState(() => project.sounds[0].id)
   const [exporting, setExporting] = useState(false)
   const [editingName, setEditingName] = useState(false)
