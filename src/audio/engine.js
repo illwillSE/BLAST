@@ -102,12 +102,8 @@ export async function buildChain(sound, destination) {
       if (c.ready) readyPromises.push(c.ready)
       built.set(block.id, { def: bdef, nodes: c.nodes })
       if (c.onTrigger) hooks.push({ block, onTrigger: c.onTrigger })
-      if (bdef.kind === 'analyzer') {
-        prev.connect(c.input) // tap: signal continues past
-      } else {
-        prev.connect(c.input)
-        prev = c.output
-      }
+      prev.connect(c.input)
+      prev = c.output
     }
 
     // Lane mix strip: level then pan, into the shared bus. channelCount: 2 keeps
@@ -180,12 +176,8 @@ export async function buildChain(sound, destination) {
     if (c.ready) readyPromises.push(c.ready)
     built.set(block.id, { def: bdef, nodes: c.nodes })
     if (c.onTrigger) masterHooks.push({ block, onTrigger: c.onTrigger })
-    if (bdef.kind === 'analyzer') {
-      prev.connect(c.input)
-    } else {
-      prev.connect(c.input)
-      prev = c.output
-    }
+    prev.connect(c.input)
+    prev = c.output
   }
 
   const masterOut = new Tone.Volume(sound.outputVolume ?? 0)
@@ -487,12 +479,8 @@ export async function buildChain(sound, destination) {
     built.clear()
   }
 
-  function getAnalyser(blockId) {
-    return built.get(blockId)?.nodes?.node ?? null
-  }
-
   await Promise.all(readyPromises)
-  return { trigger, apply, dispose, getAnalyser, getOutputAnalyser: () => outputAnalyser, getClipMeter: () => clipMeter }
+  return { trigger, apply, dispose, getOutputAnalyser: () => outputAnalyser, getClipMeter: () => clipMeter }
 }
 
 // structureParams are params that change the node graph itself (e.g. the detune
@@ -645,10 +633,6 @@ export class LiveEngine {
     this.handle.apply(sound)
     const duration = this.handle.trigger(undefined, notes)
     return { duration }
-  }
-
-  getAnalyser(blockId) {
-    return this.handle?.getAnalyser(blockId) ?? null
   }
 
   getOutputAnalyser() {

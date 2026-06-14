@@ -209,12 +209,6 @@ export const HELP = {
           pan: 'Position from full left to full right.',
         },
       },
-      analyzer: {
-        summary: 'Shows the frequency spectrum of the signal at this point in the chain while the sound plays.',
-        notes: [
-          'Purely visual — audio passes through unchanged. Place several along the chain to compare before/after an effect.',
-        ],
-      },
     },
   },
 
@@ -421,12 +415,6 @@ export const HELP = {
         params: {
           pan: 'Position från helt vänster till helt höger.',
         },
-      },
-      analyzer: {
-        summary: 'Visar signalens frekvensspektrum på den här punkten i kedjan medan ljudet spelas.',
-        notes: [
-          'Helt visuellt — ljudet passerar opåverkat. Placera flera längs kedjan för att jämföra före/efter en effekt.',
-        ],
       },
     },
   },

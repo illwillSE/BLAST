@@ -722,19 +722,6 @@ export const BLOCK_DEFS = {
     },
   },
 
-  analyzer: {
-    type: 'analyzer',
-    name: 'Spectrum',
-    category: 'utility',
-    kind: 'analyzer',
-    description: 'Visualizes the frequency spectrum at this point',
-    params: [],
-    create() {
-      const node = new Tone.Analyser('fft', 128)
-      return { nodes: { node }, input: node, output: node }
-    },
-    apply() {},
-  },
 }
 
 // Which of a lane's source params are currently overridden by another enabled

@@ -1,43 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
-import { liveEngine } from '../audio/engine'
 import { useClipboard, copyBlock } from '../state/clipboard'
 import { CAT_STYLES, ParamControl } from './ui'
 import SampleEditor from './SampleEditor'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
 import BlockHelpModal from './BlockHelpModal'
-import { getColor } from '../theme/colors'
-
-// Live FFT bars for the Spectrum analyzer block, shown in the dock.
-function SpectrumCanvas({ blockId }) {
-  const canvasRef = useRef(null)
-  useEffect(() => {
-    let raf
-    const spectrum = getColor('spectrum')
-    const draw = () => {
-      const canvas = canvasRef.current
-      const analyser = liveEngine.getAnalyser(blockId)
-      if (canvas) {
-        const ctx = canvas.getContext('2d')
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        if (analyser) {
-          const values = analyser.getValue()
-          const barW = canvas.width / values.length
-          ctx.fillStyle = spectrum
-          for (let i = 0; i < values.length; i++) {
-            const norm = Math.max(0, (values[i] + 100) / 100)
-            const h = norm * canvas.height
-            ctx.fillRect(i * barW, canvas.height - h, Math.max(1, barW - 1), h)
-          }
-        }
-      }
-      raf = requestAnimationFrame(draw)
-    }
-    draw()
-    return () => cancelAnimationFrame(raf)
-  }, [blockId])
-  return <canvas ref={canvasRef} width={256} height={72} className="w-full rounded bg-well" />
-}
 
 function SourceTypeSwitch({ block, onSwapSource }) {
   return (
@@ -184,7 +151,6 @@ export default function BlockControls({
       <div className="mt-3 space-y-3">
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />}
-        {block.type === 'analyzer' && <SpectrumCanvas blockId={block.id} />}
         {block.type === 'noise' && <NoiseColorPicker value={block.params.color} onChange={(v) => onParam('color', v)} />}
         {def.presets && (
           <div className="flex flex-wrap items-center gap-1.5">
