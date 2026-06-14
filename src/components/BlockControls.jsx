@@ -41,8 +41,8 @@ function SpectrumCanvas({ blockId }) {
 
 function SourceTypeSwitch({ block, onSwapSource }) {
   return (
-    <div className="inline-grid grid-cols-3 gap-1 rounded bg-well p-0.5">
-      {['synth', 'metal', 'sample'].map((t) => (
+    <div className="inline-grid grid-cols-4 gap-1 rounded bg-well p-0.5">
+      {['synth', 'metal', 'noise', 'sample'].map((t) => (
         <button
           key={t}
           onClick={() => t !== block.type && onSwapSource(t)}
@@ -57,17 +57,50 @@ function SourceTypeSwitch({ block, onSwapSource }) {
   )
 }
 
+const NOISE_COLORS = [
+  { value: 'white', bg: '#c8c8c8', label: 'white' },
+  { value: 'pink',  bg: '#d4708a', label: 'pink'  },
+  { value: 'brown', bg: '#7a4728', label: 'brown' },
+]
+
+function NoiseColorPicker({ value, onChange }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[10px] uppercase tracking-wider text-faint">Color</span>
+      <div className="flex gap-2">
+        {NOISE_COLORS.map(({ value: v, bg, label }) => (
+          <button
+            key={v}
+            title={label}
+            onClick={() => onChange(v)}
+            style={{ backgroundColor: bg, outlineColor: bg }}
+            className={`h-6 w-6 rounded transition-all ${
+              value === v
+                ? 'scale-110 outline outline-2 outline-offset-2'
+                : 'opacity-50 hover:opacity-80'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
   return (
     <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
       {visibleParams.map((p) => {
         const lockedBy = disabledParams?.get(p.key)
+        // A param can mark itself inert for the current settings (e.g. noise
+        // Length while Sustain is 0). Unlike an override it stays interactive —
+        // just dimmed, with the reason on hover.
+        const inertReason = !lockedBy && p.inactive ? p.inactive(blockParams) : null
         return (
           <div
             key={p.key}
             style={p.type === 'harmonics' ? { gridColumn: 'span 2' } : undefined}
-            className={lockedBy ? 'pointer-events-none opacity-40' : undefined}
-            title={lockedBy ? `Overridden by the ${lockedBy} block` : undefined}
+            className={lockedBy ? 'pointer-events-none opacity-40' : inertReason ? 'opacity-50' : undefined}
+            title={lockedBy ? `Overridden by the ${lockedBy} block` : inertReason || undefined}
           >
             <ParamControl def={p} value={blockParams[p.key]} onChange={(v) => onParam(p.key, v)} />
           </div>
@@ -89,7 +122,9 @@ export default function BlockControls({
   const clip = useClipboard()
   const canPasteValues = clip?.kind === 'block' && clip.block.type === block.type
 
-  const visibleParams = def.params.filter((p) => !p.show || p.show(block.params))
+  const visibleParams = def.params.filter((p) =>
+    (!p.show || p.show(block.params)) && !(block.type === 'noise' && p.key === 'color')
+  )
 
   return (
     <div className="min-w-[280px] w-full">
@@ -150,6 +185,7 @@ export default function BlockControls({
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'analyzer' && <SpectrumCanvas blockId={block.id} />}
+        {block.type === 'noise' && <NoiseColorPicker value={block.params.color} onChange={(v) => onParam('color', v)} />}
         {def.presets && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-faint">Presets</span>

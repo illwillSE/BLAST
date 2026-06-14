@@ -20,12 +20,15 @@ Order matters — a filter before distortion sounds different than after. Drag b
 
 ## Features
 
-- **Synth source** — sine / square / sawtooth / triangle oscillator with full ADSR envelope, pitch, and note length
-- **Sample source** — one block, two ways to fill it: drag & drop / browse an audio file (WAV, MP3, OGG…) **or** record straight from the microphone. Waveform display with playback cursor
-- **Effect blocks** — reverb, delay, EQ, filter, compressor, gate, pitch shift, detune, overdrive, bitcrusher, volume, pan, spectrum analyzer
+- **Synth source** — sine / square / sawtooth / triangle oscillator with full ADSR envelope, pitch, and note length. Extras: band-limited partial-count types (`square4`, `sawtooth8`), pulse wave with adjustable width, and a draggable harmonics editor to draw a fully custom waveform
+- **Sample source** — drag & drop / browse an audio file (WAV, MP3, OGG…) **or** record straight from the microphone. Waveform display with trim region and playback cursor. **Grain Player mode**: decouple pitch from playback speed, set grain size and overlap — great for textural drones and glitchy effects
+- **Metal Synth source** — percussive metallic source block (`Tone.MetalSynth`) for cymbals, bells, and clangs
+- **Effect blocks** — reverb (with one-click room-size presets), delay (with ping-pong L/R mode), EQ, filter, compressor, gate, pitch shift, detune, overdrive, bitcrusher, volume, pan, spectrum analyzer
+- **Vocoder** — insert block: chain signal is the carrier, a dropped/recorded speech sample is the modulator. N band-pass pairs + sibilance high-pass passthrough for clear S/T sounds
 - **Pitch modulation** — first-class blocks for classic game-sfx movement:
   - *Pitch LFO* — vibrato, sirens, wobbles
   - *Pitch Envelope* — rising power-ups, falling lasers, sweeps
+- **Sample Envelope** — control block that extracts the amplitude contour from a dropped or recorded sample and uses it to shape the synth's volume. Drop a "pew-pew" voice recording; the synth follows your timing and dynamics
 - **Multiple sounds per project** — each independently named and configured
 - **Project save/load** — everything (settings + original samples) packed into a single ZIP
 - **WAV export** — render any sound to stereo 44.1 kHz WAV, offline and fast

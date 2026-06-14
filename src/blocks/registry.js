@@ -108,7 +108,8 @@ export const BLOCK_DEFS = {
       { key: 'harmonics', label: 'Harmonics', type: 'harmonics',
         default: [1, 0.6, 0.4, 0.25, 0.15, 0.1, 0.07, 0.05], show: (p) => p.wave === 'custom' },
       { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 220, scale: 'log', format: hz },
-      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec },
+      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec,
+        inactive: (p) => p.sustain <= 0 ? 'No effect while Sustain is 0% — the note decays to silence on its own. Raise Sustain to hold the note for this length.' : false },
       { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.01, scale: 'log', format: sec },
       { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.1, scale: 'log', format: sec },
       { key: 'sustain', label: 'Sustain', type: 'range', min: 0, max: 1, step: 0.01, default: 0.7, percent: true, format: (v) => `${Math.round(v * 100)}%` },
@@ -127,6 +128,48 @@ export const BLOCK_DEFS = {
       synth.envelope.decay = params.decay
       synth.envelope.sustain = params.sustain
       synth.envelope.release = params.release
+    },
+  },
+
+  noise: {
+    type: 'noise',
+    name: 'Noise',
+    category: 'source',
+    kind: 'source',
+    description: 'White, pink or brown noise — wind, snares, explosions',
+    params: [
+      { key: 'color', label: 'Color', type: 'select', default: 'white',
+        options: ['white', 'pink', 'brown'].map((v) => ({ value: v, label: v })) },
+      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec,
+        inactive: (p) => p.sustain <= 0 ? 'No effect while Sustain is 0% — the burst decays to silence on its own. Raise Sustain to hold the noise for this length.' : false },
+      { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.005, scale: 'log', format: sec },
+      { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.1, scale: 'log', format: sec },
+      { key: 'sustain', label: 'Sustain', type: 'range', min: 0, max: 1, step: 0.01, default: 0, percent: true, format: (v) => `${Math.round(v * 100)}%` },
+      { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.3, scale: 'log', format: sec },
+    ],
+    examples: [
+      { label: 'Snare', hint: 'punchy snare hit',
+        params: { color: 'white', duration: 0.08, attack: 0.001, decay: 0.15, sustain: 0, release: 0.1 } },
+      { label: 'Wind', hint: 'soft sustained wind',
+        params: { color: 'pink', duration: 2, attack: 0.4, decay: 0.1, sustain: 0.6, release: 1.2 } },
+      { label: 'Thunder', hint: 'low rolling rumble',
+        params: { color: 'brown', duration: 1.5, attack: 0.05, decay: 0.8, sustain: 0.2, release: 1.5 } },
+      { label: 'Hi-hat', hint: 'tight open hi-hat',
+        params: { color: 'white', duration: 0.05, attack: 0.001, decay: 0.05, sustain: 0, release: 0.08 } },
+    ],
+    create(p) {
+      const synth = new Tone.NoiseSynth({
+        noise: { type: p.color },
+        envelope: { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release },
+      })
+      return { nodes: { synth }, input: null, output: synth }
+    },
+    apply({ synth }, p) {
+      synth.noise.type = p.color
+      synth.envelope.attack = p.attack
+      synth.envelope.decay = p.decay
+      synth.envelope.sustain = p.sustain
+      synth.envelope.release = p.release
     },
   },
 
