@@ -9,7 +9,6 @@ design brief and from development discussions.
 - [ ] **Copy/paste samples** — reuse the same sample across multiple blocks (Sample, Sample Envelope, Vocoder).
 - [ ] **Review translations** — audit Swedish/English strings in help.js for accuracy and completeness.
 - [ ] **Minimize inspector** — add a collapse/minimize toggle for the inspector panel.
-- [x] **Pitch LFO reset** — reset the Pitch LFO phase on each Play trigger; currently appears to share global LFO state.
 - [ ] **Background visualization** — a subtle deterministic visual effect in the background, driven by selected nodes/lanes and their control values (envelopes, levels, etc.).
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce zipper noise on slider edits.
 - [ ] **Tone.js feature audit** — investigate other Tone.js features not yet used that could be useful.
@@ -43,9 +42,6 @@ design brief and from development discussions.
         nodes. Stays `kind: 'control'`, chain position irrelevant.
       - Works offline (pure audio-graph connection, like the Pitch LFO).
         This is the generic version of the Sample Envelope's "future door."
-- [ ] **Noise oscillator** — add white/pink/brown noise as a synth wave
-      option (`Tone.Noise`). Unlocks gunshots, explosions, wind, snares;
-      currently only tonal waveforms exist.
 - [ ] **Live recording waveform** — show a scrolling waveform *while*
       recording (WaveSurfer Record plugin). Today the waveform only appears
       after pressing Stop.

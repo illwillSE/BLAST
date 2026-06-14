@@ -15,6 +15,10 @@ const isSynthSource = (type) => type === 'synth' || type === 'metal'
 // `.detune` and its triggerAttackRelease takes (duration, when) — no frequency.
 const isNoiseSource = (type) => type === 'noise'
 
+// Metal has no Length param — its percussive note runs attack+decay (down to its
+// 0 floor), then the release tail. Synth/Noise are held for their explicit Length.
+const synthHold = (p, type) => (type === 'metal' ? p.attack + p.decay : p.duration)
+
 // When a Sample Envelope shapes the amplitude, the synth's own ADSR must get
 // out of the way — flatten it to an always-on gate so the envelope curve (on
 // the source's envGain) is the only thing shaping volume.
@@ -254,8 +258,9 @@ export async function buildChain(sound, destination) {
       // In natural-length mode the amp envelope (or a vocoder modulator) can
       // outlast the synth's Length, so the note is held for whatever spans
       // longest. Both *replace* Length rather than floor it.
-      const ampDur = scheduleAmpEnv(lane, when, p.duration)
-      const base = ampDur ?? (carrierHold > 0 ? carrierHold : p.duration)
+      const hold = synthHold(p, src.type)
+      const ampDur = scheduleAmpEnv(lane, when, hold)
+      const base = ampDur ?? (carrierHold > 0 ? carrierHold : hold)
       const noteDur = Math.max(base, carrierHold)
       nodes.synth.triggerAttackRelease(p.freq * semisToRate(transpose), noteDur, when)
       dur = noteDur + p.release
@@ -453,7 +458,7 @@ export function structureKey(sound) {
 // tails), excluding the lane delay. Shared by the renderer and the timeline UI
 // so bar lengths match what's actually rendered.
 export function laneDuration(src) {
-  let laneDur = (isSynthSource(src.type) || isNoiseSource(src.type)) ? src.params.duration + src.params.release : 0
+  let laneDur = (isSynthSource(src.type) || isNoiseSource(src.type)) ? synthHold(src.params, src.type) + src.params.release : 0
 
   if (src.type === 'sample') {
     const sample = getSample(src.id)

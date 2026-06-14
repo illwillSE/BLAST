@@ -185,7 +185,6 @@ export const BLOCK_DEFS = {
       { key: 'modIndex', label: 'Mod Index', type: 'range', min: 1, max: 100, step: 1, default: 32, format: (v) => `${v}` },
       { key: 'resonance', label: 'Resonance', type: 'range', min: 200, max: 8000, step: 1, default: 4000, scale: 'log', format: hz },
       { key: 'octaves', label: 'Octaves', type: 'range', min: 0, max: 6, step: 0.1, default: 1.5, format: (v) => v.toFixed(1) },
-      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec },
       { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.001, scale: 'log', format: sec },
       { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.4, scale: 'log', format: sec },
       { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.2, scale: 'log', format: sec },
@@ -193,11 +192,11 @@ export const BLOCK_DEFS = {
     // Click-to-apply starting points, shown in the help modal.
     examples: [
       { label: 'Cymbal / hi-hat', hint: 'bright and noisy',
-        params: { freq: 300, harmonicity: 5.1, modIndex: 40, resonance: 6000, octaves: 1.5, duration: 0.1, attack: 0.001, decay: 0.5, release: 0.3 } },
+        params: { freq: 300, harmonicity: 5.1, modIndex: 40, resonance: 6000, octaves: 1.5, attack: 0.001, decay: 0.5, release: 0.3 } },
       { label: 'Bell', hint: 'clear ringing tone',
-        params: { freq: 440, harmonicity: 3, modIndex: 8, resonance: 1500, octaves: 1, duration: 0.4, attack: 0.001, decay: 1.2, release: 0.6 } },
+        params: { freq: 440, harmonicity: 3, modIndex: 8, resonance: 1500, octaves: 1, attack: 0.001, decay: 1.2, release: 0.6 } },
       { label: 'Clang', hint: 'dissonant metallic hit',
-        params: { freq: 150, harmonicity: 1.4, modIndex: 60, resonance: 3000, octaves: 2, duration: 0.2, attack: 0.001, decay: 0.4, release: 0.3 } },
+        params: { freq: 150, harmonicity: 1.4, modIndex: 60, resonance: 3000, octaves: 2, attack: 0.001, decay: 0.4, release: 0.3 } },
     ],
     // Node keyed `synth` so the engine's source path treats Metal exactly like
     // the Synth: MetalSynth shares `.detune`, `.envelope`, and the

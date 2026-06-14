@@ -23,6 +23,7 @@ Order matters — a filter before distortion sounds different than after. Drag b
 - **Synth source** — sine / square / sawtooth / triangle oscillator with full ADSR envelope, pitch, and note length. Extras: band-limited partial-count types (`square4`, `sawtooth8`), pulse wave with adjustable width, and a draggable harmonics editor to draw a fully custom waveform
 - **Sample source** — drag & drop / browse an audio file (WAV, MP3, OGG…) **or** record straight from the microphone. Waveform display with trim region and playback cursor. **Grain Player mode**: decouple pitch from playback speed, set grain size and overlap — great for textural drones and glitchy effects
 - **Metal Synth source** — percussive metallic source block (`Tone.MetalSynth`) for cymbals, bells, and clangs
+- **Noise source** — white / pink / brown noise with its own ADSR envelope (`Tone.NoiseSynth`) for wind, snares, explosions, and gunshots
 - **Effect blocks** — reverb (with one-click room-size presets), delay (with ping-pong L/R mode), EQ, filter, compressor, gate, pitch shift, detune, overdrive, bitcrusher, volume, pan, spectrum analyzer
 - **Vocoder** — insert block: chain signal is the carrier, a dropped/recorded speech sample is the modulator. N band-pass pairs + sibilance high-pass passthrough for clear S/T sounds
 - **Pitch modulation** — first-class blocks for classic game-sfx movement:
