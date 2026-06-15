@@ -209,6 +209,13 @@ export const HELP = {
           pan: 'Position from full left to full right.',
         },
       },
+      debug: {
+        summary: 'A diagnostic meter you can drop anywhere in the chain — it shows the signal level at that exact point and passes the audio through unchanged.',
+        notes: [
+          'Peak and RMS are the live level; Held max latches the loudest peak it has seen and keeps it until you press Reset, so a brief transient that flashes by is still caught.',
+          'Range shows the lowest/highest raw sample values; if they don\'t straddle zero you have DC offset (the DC readout flags it).',
+        ],
+      },
     },
   },
 
@@ -415,6 +422,13 @@ export const HELP = {
         params: {
           pan: 'Position från helt vänster till helt höger.',
         },
+      },
+      debug: {
+        summary: 'En mätare för felsökning som du kan lägga var som helst i kedjan — den visar signalnivån på exakt den punkten och släpper igenom ljudet oförändrat.',
+        notes: [
+          'Peak och RMS är den aktuella nivån; Held max låser fast den högsta topp den sett och behåller den tills du trycker Reset, så en kort transient som blinkar förbi fångas ändå.',
+          'Range visar lägsta/högsta råa sampelvärden; om de inte ligger på var sin sida om noll har du en DC-förskjutning (DC-värdet flaggar det).',
+        ],
       },
     },
   },

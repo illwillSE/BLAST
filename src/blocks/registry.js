@@ -722,6 +722,26 @@ export const BLOCK_DEFS = {
     },
   },
 
+  debug: {
+    type: 'debug',
+    name: 'Debug',
+    category: 'utility',
+    kind: 'analyzer',
+    description: 'Inline level meter — audio passes through unchanged',
+    // No params: the meter's held max/min + reset are runtime UI state, not
+    // anything to save with the sound.
+    params: [],
+    // Passthrough tap: the same Gain is both input and output, with an analyser
+    // tapped off it, so audio flows through untouched (like the Out card's tap).
+    create() {
+      const gain = new Tone.Gain(1)
+      const analyser = new Tone.Analyser('waveform', 1024)
+      gain.connect(analyser)
+      return { nodes: { gain, analyser }, input: gain, output: gain }
+    },
+    apply() {},
+  },
+
 }
 
 // Which of a lane's source params are currently overridden by another enabled

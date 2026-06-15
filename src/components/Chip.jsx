@@ -16,7 +16,7 @@ export function chipSummary(block) {
 export default function Chip({ block, selected, onClick, drag }) {
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
-  const bypassed = !block.enabled && def.kind !== 'source'
+  const bypassed = !block.enabled && def.kind !== 'source' && def.kind !== 'analyzer'
   const summary = chipSummary(block)
   return (
     <button

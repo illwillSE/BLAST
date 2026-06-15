@@ -93,6 +93,12 @@ export default function OutputVisualizer({ mode }) {
       }
 
       const values = analyser.getValue()
+      // A blown-up source (e.g. an overdriven Metal hit) can push NaN/Inf
+      // through the analyser; clamp non-finite samples to 0 so a bad signal
+      // can never blank the display.
+      for (let i = 0; i < values.length; i++) {
+        if (!Number.isFinite(values[i])) values[i] = 0
+      }
 
       if (mode === 'waterfall') {
         if (!lut) lut = buildLut()

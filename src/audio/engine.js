@@ -96,7 +96,9 @@ export async function buildChain(sound, destination) {
         built.set(block.id, { def: bdef, nodes: {} })
         continue
       }
-      if (!block.enabled) continue
+      // Analyzers are passive taps with no on/off — always build them so the tap
+      // stays live (a stale enabled:false can't strand it). Inserts honor bypass.
+      if (!block.enabled && bdef.kind !== 'analyzer') continue
       const c = bdef.create(block.params)
       Object.values(c.nodes).flat().forEach((n) => disposables.push(n))
       if (c.ready) readyPromises.push(c.ready)
@@ -170,7 +172,7 @@ export async function buildChain(sound, destination) {
   let prev = sourceBus
   for (const block of sound.master ?? []) {
     const bdef = BLOCK_DEFS[block.type]
-    if (!bdef || bdef.kind === 'control' || !block.enabled) continue
+    if (!bdef || bdef.kind === 'control' || (!block.enabled && bdef.kind !== 'analyzer')) continue
     const c = bdef.create(block.params)
     Object.values(c.nodes).flat().forEach((n) => disposables.push(n))
     if (c.ready) readyPromises.push(c.ready)
@@ -480,7 +482,12 @@ export async function buildChain(sound, destination) {
   }
 
   await Promise.all(readyPromises)
-  return { trigger, apply, dispose, getOutputAnalyser: () => outputAnalyser, getClipMeter: () => clipMeter }
+  return {
+    trigger, apply, dispose,
+    getOutputAnalyser: () => outputAnalyser,
+    getClipMeter: () => clipMeter,
+    getAnalyser: (id) => built.get(id)?.nodes?.analyser ?? null,
+  }
 }
 
 // structureParams are params that change the node graph itself (e.g. the detune
@@ -641,6 +648,10 @@ export class LiveEngine {
 
   getClipMeter() {
     return this.handle?.getClipMeter() ?? null
+  }
+
+  getAnalyser(id) {
+    return this.handle?.getAnalyser(id) ?? null
   }
 
   dispose() {

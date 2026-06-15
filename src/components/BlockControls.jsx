@@ -5,6 +5,7 @@ import { CAT_STYLES, ParamControl } from './ui'
 import SampleEditor from './SampleEditor'
 import ConfirmButton from './ConfirmButton'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
+import DebugMeter from './DebugMeter'
 import BlockHelpModal from './BlockHelpModal'
 
 function SourceTypeSwitch({ block, onSwapSource }) {
@@ -124,26 +125,27 @@ export default function BlockControls({
               ⇲ values
             </button>
           )}
+          {/* Analyzers are passive taps — nothing to bypass, so no on/off toggle. */}
+          {!isSource && def.kind !== 'analyzer' && (
+            <button
+              onClick={onToggle}
+              title={block.enabled ? 'Bypass' : 'Enable'}
+              className={`rounded border px-2 py-0.5 transition-colors ${
+                block.enabled
+                  ? 'border-on/50 bg-on/15 text-on-bright'
+                  : 'border-edge-2 text-muted'
+              }`}
+            >
+              ⏻ {block.enabled ? 'on' : 'bypassed'}
+            </button>
+          )}
           {!isSource && (
-            <>
-              <button
-                onClick={onToggle}
-                title={block.enabled ? 'Bypass' : 'Enable'}
-                className={`rounded border px-2 py-0.5 transition-colors ${
-                  block.enabled
-                    ? 'border-on/50 bg-on/15 text-on-bright'
-                    : 'border-edge-2 text-muted'
-                }`}
-              >
-                ⏻ {block.enabled ? 'on' : 'bypassed'}
-              </button>
-              <ConfirmButton
-                onConfirm={onRemove}
-                className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
-              >
-                ✕ remove
-              </ConfirmButton>
-            </>
+            <ConfirmButton
+              onConfirm={onRemove}
+              className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
+            >
+              ✕ remove
+            </ConfirmButton>
           )}
         </div>
       </div>
@@ -152,6 +154,7 @@ export default function BlockControls({
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'noise' && <NoiseColorPicker value={block.params.color} onChange={(v) => onParam('color', v)} />}
+        {block.type === 'debug' && <DebugMeter block={block} />}
         {def.presets && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-faint">Presets</span>
