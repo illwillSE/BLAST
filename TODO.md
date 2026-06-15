@@ -74,6 +74,10 @@ design brief and from development discussions.
 - [ ] **Sample editor polish** — arrow-key nudging of in/out points,
       optional snap-to-zero-crossing.
 
+## Bugs
+- [ ] Sample envelope no edit
+- [ ] No visualization on metal synth
+
 ## Polish / housekeeping
 
 - [ ] Decide the default Output display mode (currently `waveform`;
