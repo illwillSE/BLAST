@@ -58,7 +58,13 @@
   --color-scrollbar: #3a4558;
   --color-scrollbar-hover: #4a566e;
 
-  /* visualization-only hues (consumed by canvas/SVG via getColor) */
+}
+
+/* Visualization-only hues: consumed solely by canvas/SVG via getColor(), never
+   as utility classes. A plain `@theme` prunes tokens no utility references, so
+   getColor() returned '' for these and gradient fills threw/blacked out.
+   `@theme static` forces Tailwind v4 to always emit them as :root variables. */
+@theme static {
   --color-cursor: #fde047;        /* waveform playhead */
   --color-overtone: #d97706;      /* harmonic overtone bars */
   --color-fire-lo: #7c2d12;       /* output "fire" gradient — base */

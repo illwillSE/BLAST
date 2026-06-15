@@ -49,6 +49,11 @@ export function normalizeProject(project) {
       if (src.pan == null) src.pan = 0
       if (!src.chain) src.chain = []
     }
+    // Drop chain/master blocks whose type no longer exists in the registry
+    // (e.g. a removed block kind in an older autosave) so they can't crash the
+    // UI or engine on load.
+    for (const src of sound.sources) src.chain = src.chain.filter((b) => BLOCK_DEFS[b.type])
+    sound.master = sound.master.filter((b) => BLOCK_DEFS[b.type])
     for (const block of allBlocks(sound)) {
       if (!BLOCK_DEFS[block.type]) continue
       block.params = { ...defaultParams(block.type), ...block.params }

@@ -3,9 +3,10 @@ import { liveEngine } from '../audio/engine'
 import { getColor } from '../theme/colors'
 
 // Live view of the sound's final output. mode: 'wave' (oscilloscope),
-// 'spectrum' (FFT bars) or 'fire' (mirrored gradient bars with falling
-// peak caps). The analyser is retuned per mode in the draw loop since
-// the engine may rebuild it at any time.
+// 'spectrum' (FFT bars), 'fire' (mirrored gradient bars with falling
+// peak caps) or 'waterfall' (scrolling spectrogram — frequency across,
+// time falling downward, magnitude as color). The analyser is retuned
+// per mode in the draw loop since the engine may rebuild it at any time.
 
 // Clip indicator: when the pre-limiter signal peaks at/above 0 dBFS the output is
 // hitting the ceiling (being limited / would clip). We light the graph red and
@@ -13,6 +14,13 @@ import { getColor } from '../theme/colors'
 const CLIP_THRESHOLD = 1.0
 const CLIP_HOLD_MS = 700
 const CLIP_COLOR = '#ff3b30'
+
+// Waterfall dB window: FFT bin levels span roughly this range during normal
+// playback, so map [WF_MIN_DB, WF_MAX_DB] → [0, 1] (then gamma-brighten the
+// quiet end) instead of the full -100..0, which left everything near-black.
+const WF_MIN_DB = -85
+const WF_MAX_DB = -25
+const WF_GAMMA = 0.6
 export default function OutputVisualizer({ mode }) {
   const canvasRef = useRef(null)
   const peaksRef = useRef([])
@@ -28,13 +36,36 @@ export default function OutputVisualizer({ mode }) {
     const spectrum = getColor('spectrum')
     const accent = getColor('accent')
 
+    // Waterfall color LUT: magnitude 0..1 → fire gradient, the quiet floor
+    // fading into the canvas background. Built lazily on first waterfall frame
+    // (not at mount — the palette tokens aren't resolvable until CSS applies,
+    // and addColorStop throws on an empty color string).
+    let lut = null
+    const buildLut = () => {
+      const off = document.createElement('canvas')
+      off.width = 256
+      off.height = 1
+      const octx = off.getContext('2d')
+      const g = octx.createLinearGradient(0, 0, 256, 0)
+      g.addColorStop(0, getColor('well'))
+      g.addColorStop(0.15, fireLo)
+      g.addColorStop(0.5, accentDeep)
+      g.addColorStop(0.8, fireHi)
+      g.addColorStop(1, firePeak)
+      octx.fillStyle = g
+      octx.fillRect(0, 0, 256, 1)
+      return octx.getImageData(0, 0, 256, 1).data
+    }
+
     const draw = () => {
       raf = requestAnimationFrame(draw)
       const canvas = canvasRef.current
       if (!canvas) return
       const ctx = canvas.getContext('2d')
       const { width, height } = canvas
-      ctx.clearRect(0, 0, width, height)
+      // The waterfall keeps prior frames and scrolls them; every other mode
+      // repaints from scratch.
+      if (mode !== 'waterfall') ctx.clearRect(0, 0, width, height)
 
       const analyser = liveEngine.getOutputAnalyser()
       if (!analyser) return
@@ -63,7 +94,21 @@ export default function OutputVisualizer({ mode }) {
 
       const values = analyser.getValue()
 
-      if (mode === 'fire') {
+      if (mode === 'waterfall') {
+        if (!lut) lut = buildLut()
+        // Scroll the existing image down one row, then paint the new spectrum
+        // as the top row: frequency across X, magnitude as color.
+        ctx.drawImage(canvas, 0, 0, width, height - 1, 0, 1, width, height - 1)
+        const n = values.length
+        const barW = width / n
+        for (let i = 0; i < n; i++) {
+          const t = (values[i] - WF_MIN_DB) / (WF_MAX_DB - WF_MIN_DB)
+          const norm = Math.max(0, Math.min(1, t)) ** WF_GAMMA // dB window → 0..1, brightened
+          const idx = ((norm * 255) | 0) * 4
+          ctx.fillStyle = `rgb(${lut[idx]},${lut[idx + 1]},${lut[idx + 2]})`
+          ctx.fillRect(i * barW, 0, Math.max(1, barW), 1)
+        }
+      } else if (mode === 'fire') {
         const peaks = peaksRef.current
         const n = values.length
         const barW = width / n
@@ -111,9 +156,11 @@ export default function OutputVisualizer({ mode }) {
         ctx.stroke()
       }
 
-      // Clip indicator, drawn over any mode: a red dot + outline so it's obvious
-      // the moment the output hits the ceiling, whichever view is selected.
-      if (clipping) {
+      // Clip indicator: a red dot + outline so it's obvious the moment the
+      // output hits the ceiling. Skipped for the waterfall — that view scrolls
+      // its bitmap, so a held/redrawn overlay would smear into a falling red
+      // block; clipping there reads as the hottest (near-white) spectrogram rows.
+      if (clipping && mode !== 'waterfall') {
         ctx.strokeStyle = CLIP_COLOR
         ctx.lineWidth = 1.5
         ctx.strokeRect(0.75, 0.75, width - 1.5, height - 1.5)

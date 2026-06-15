@@ -64,11 +64,10 @@ export function presetSounds() {
         freq: 220, attack: 0.02, decay: 0.2, sustain: 0.85, release: 0.4, duration: 1.0 },
       [blk('reverb', { decay: 1.6, preDelay: 0.01, wet: 0.25 })]),
 
-    // — Pulse-width oscillator + ping-pong Delay (structural) + Pan + Analyzer tap.
+    // — Pulse-width oscillator + ping-pong Delay (structural) + Pan.
     sound('Ping-Pong Keys — Delay + Pan', 'synth',
       { wave: 'pulse', width: 0.3, freq: 330, attack: 0.001, decay: 0.18, sustain: 0.2, release: 0.3, duration: 0.3 },
-      [blk('analyzer'),
-       blk('pan', { pan: -0.3 }),
+      [blk('pan', { pan: -0.3 }),
        blk('delay', { time: 0.22, feedback: 0.38, pingpong: true, wet: 0.45 })]),
 
     // — Bitcrusher + an upward pitch blip: the classic coin/power-up.

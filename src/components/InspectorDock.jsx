@@ -1,7 +1,7 @@
 import { BLOCK_DEFS, disabledSourceParams } from '../blocks/registry'
 import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
-import { Slider, Select } from './ui'
+import { Slider } from './ui'
 import BlockControls from './BlockControls'
 import ConfirmButton from './ConfirmButton'
 import SequencerEditor from './SequencerEditor'
@@ -10,10 +10,6 @@ const LEVEL_DEF = { key: 'level', label: 'Level', type: 'range', min: -40, max: 
 const PAN_DEF = { key: 'pan', label: 'Pan', type: 'range', min: -1, max: 1, step: 0.01, default: 0, format: (v) => (Math.abs(v) < 0.01 ? 'center' : v < 0 ? `${Math.round(-v * 100)}L` : `${Math.round(v * 100)}R`) }
 const DELAY_DEF = { key: 'delay', label: 'Delay', type: 'range', min: 0, max: 2, step: 0.005, default: 0, format: (v) => (v < 0.001 ? 'none' : v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`) }
 const OUT_VOLUME_DEF = { key: 'outputVolume', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
-const OUT_VIEW_DEF = {
-  key: 'outputView', label: 'Display', type: 'select', default: 'wave',
-  options: [{ value: 'wave', label: 'waveform' }, { value: 'spectrum', label: 'spectrum' }, { value: 'fire', label: 'fire' }, { value: 'off', label: 'off' }],
-}
 
 // Lane mix (level / pan / delay) + mute & remove — a lane property, not a block.
 function MixControls({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemoveLane }) {
@@ -46,13 +42,12 @@ function MixControls({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, on
   )
 }
 
-function OutputControls({ sound, onOutputVolume, onOutputView }) {
+function OutputControls({ sound, onOutputVolume }) {
   return (
     <div className="min-w-[260px]">
       <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">Output</span>
       <div className="mt-3 grid w-56 gap-3">
         <Slider def={OUT_VOLUME_DEF} value={sound.outputVolume ?? 0} onChange={onOutputVolume} />
-        <Select def={OUT_VIEW_DEF} value={sound.outputView ?? 'wave'} onChange={onOutputView} />
       </div>
     </div>
   )

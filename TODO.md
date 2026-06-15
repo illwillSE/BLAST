@@ -5,14 +5,40 @@ design brief and from development discussions.
 
 ## Features
 
-- [ ] **Auto-save sample persistence** — extend auto-save to include sample
-      blobs via IndexedDB so Sample/Vocoder/SampleEnv blocks survive a page
-      reload without manual re-upload.
+- [ ] **New / empty project** — a "New project" action that clears the
+      current project and starts the app empty (if nothing is persisted in state store).
+- [ ] **Browser project library** — save/load named projects in the
+      browser (IndexedDB), alongside the existing ZIP download/upload.
+      Each saved project is stored as a full `.blast.zip` blob; a modal
+      mirrors the Sample Library (save current under a name, list, load,
+      delete). Plan: ~/.claude/plans/make-it-possible-to-lazy-owl.md
 - [ ] **Review translations** — audit Swedish/English strings in help.js for accuracy and completeness.
 - [ ] **Minimize inspector** — add a collapse/minimize toggle for the inspector panel.
 - [ ] **Background visualization** — a subtle deterministic visual effect in the background, driven by selected nodes/lanes and their control values (envelopes, levels, etc.). Make it toggle on or off. I'm thinking a dot cloud with soft round shapes for soft sounds and more spikes for harsh sounds. when no sound is played just a faint circle rotating
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce zipper noise on slider edits.
-- [ ] **Tone.js feature audit** — investigate other Tone.js features not yet used that could be useful.
+- [ ] **Tone.js feature audit** — Tone.js classes not yet used that could be
+      useful, roughly by payoff. Each is one registry entry (`create`/`apply` +
+      param defs) + a help entry; all are pure Tone nodes so they work in both
+      live playback and `Tone.Offline` export.
+      - **New sources/synths (biggest sound expansion):** `FMSynth` / `AMSynth`
+        (modulator-carrier — metallic/bell/growl/bass beyond subtractive),
+        `DuoSynth` (two detuned voices + vibrato → instantly fat leads/bass),
+        `MembraneSynth` (pitch-swept body — kicks/toms/booms), `PluckSynth`
+        (Karplus-Strong string), `Sampler` (multisampled pitched instrument vs.
+        today's single-buffer one-shot).
+      - **New effects (width/movement/character):** `Chorus` + `StereoWidener`
+        (cheapest "make it big/wide" wins), `Chebyshev` (waveshaper saturation,
+        distinct from Distortion/BitCrusher), `Phaser`, `FrequencyShifter`
+        (non-harmonic shift → metallic/alien/ring-mod), `Tremolo` / `Vibrato` /
+        `AutoPanner` (stereo amp/pitch/pan mod as insert blocks), `AutoFilter` /
+        `AutoWah` (self-contained filter sweeps), `Freeverb` / `JCReverb`
+        (cheap zero-latency algorithmic reverbs — different color from the
+        convolution Reverb).
+      - **Modulation primitives:** `Add`/`Multiply`/`Scale`/standalone
+        `Envelope`/`FrequencyEnvelope` — back a generalized mod-matrix; overlaps
+        with the Modulation LFO item below.
+      - Suggested first cut: FMSynth + AMSynth, then Chorus + StereoWidener,
+        then Chebyshev, then MembraneSynth.
 - [ ] **Modulation LFO** — a control block that wobbles *another block's*
       parameter (auto-wah on a Filter, tremolo on a Gain, etc.), generalizing
       today's hardcoded Pitch LFO. **Scope A — Signal targets only** (the
