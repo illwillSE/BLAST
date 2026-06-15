@@ -23,7 +23,7 @@ const VIEW_OPTS = [
 
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
-  onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onOutputView,
+  onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onOutputView, onVoicing,
   onSequencer, onPasteBlock, onPasteSourceLane, onPasteValues,
 }) {
   const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
@@ -153,7 +153,7 @@ export default function ChainEditor({
 
   const isSel = (k) => selectedKeys.includes(k)
   const multiLane = sound.sources.length > 1
-  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView, onSequencer, onPasteValues }
+  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView, onVoicing, onSequencer, onPasteValues }
   const seqOn = sound.sequencer?.enabled
 
   return (
@@ -253,6 +253,12 @@ export default function ChainEditor({
                     {o.label}
                   </button>
                 ))}
+              </div>
+              {/* Voicing status — display only; clicking the card selects Out,
+                  where the mono/poly toggle lives. */}
+              <div className="flex items-center gap-1 border-t border-edge/40 bg-surface px-2 pb-1 pt-0.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${(sound.voicing ?? 'poly') === 'mono' ? 'bg-faint' : 'bg-on-bright'}`} />
+                <span className="text-[9px] uppercase tracking-wide text-faint">{sound.voicing ?? 'poly'}</span>
               </div>
             </div>
             <Conn />

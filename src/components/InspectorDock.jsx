@@ -42,12 +42,32 @@ function MixControls({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, on
   )
 }
 
-function OutputControls({ sound, onOutputVolume }) {
+function OutputControls({ sound, onOutputVolume, onVoicing }) {
+  const voicing = sound.voicing ?? 'poly'
   return (
     <div className="min-w-[260px]">
       <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">Output</span>
-      <div className="mt-3 grid w-56 gap-3">
-        <Slider def={OUT_VOLUME_DEF} value={sound.outputVolume ?? 0} onChange={onOutputVolume} />
+      <div className="mt-3 flex items-end gap-4">
+        <div className="w-56">
+          <Slider def={OUT_VOLUME_DEF} value={sound.outputVolume ?? 0} onChange={onOutputVolume} />
+        </div>
+        <div>
+          <span className="text-[11px] uppercase tracking-wide text-faint">Voicing</span>
+          <div className="mt-1 flex items-center gap-px rounded-md border border-edge bg-surface p-0.5">
+            {['mono', 'poly'].map((v) => (
+              <button
+                key={v}
+                onClick={() => onVoicing(v)}
+                title={v === 'mono' ? 'One voice — each note steals the last' : 'Stack overlapping notes and chords'}
+                className={`flex-1 rounded px-2 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors ${
+                  voicing === v ? 'bg-accent-deep/20 text-accent-bright' : 'text-faint hover:text-text'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -19,6 +19,9 @@ export class VoicePool {
   // chords at the cost of a slightly quieter single note).
   constructor(VoiceCtor, size, gain = 1) {
     this.output = new Tone.Gain(gain)
+    // Remember the poly headroom so mono can drop it: in mono only one voice
+    // ever sounds, so the chord-summing headroom is pure level loss.
+    this.polyGain = gain
     this.voices = []
     for (let i = 0; i < size; i++) {
       const voice = new VoiceCtor()
@@ -31,6 +34,13 @@ export class VoicePool {
   // Apply param options to every voice (oscillator, envelope, metal params…).
   set(options) {
     this.voices.forEach((v) => v.set(options))
+    return this
+  }
+
+  // Mono runs at full gain (single voice, no chord stacking); poly restores the
+  // construction headroom. Called from the engine's build + apply, no rebuild.
+  setVoicing(mono) {
+    this.output.gain.value = mono ? 1 : this.polyGain
     return this
   }
 

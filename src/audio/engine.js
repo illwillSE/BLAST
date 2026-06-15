@@ -151,6 +151,7 @@ export async function buildChain(sound, destination) {
     // note's frequency (`p.freq * semisToRate(transpose)`), independent of this.
     if (isSynthSource(lane.src.type)) {
       const pool = lane.nodes.synth
+      pool.setVoicing(sound.voicing === 'mono') // initial gain (offline render reads it here)
       lane.voiceEnv = new Map()
       for (const { block: lb, lfo } of lane.lfos) {
         lfo.min = -lb.params.depth
@@ -274,6 +275,9 @@ export async function buildChain(sound, destination) {
     const { src, nodes } = lane
     const transpose = note.transpose ?? 0
     const carrierHold = (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type)) ? vocoderHold(lane) : 0
+    // Sound-wide voicing, read fresh: mono reuses a single voice so each note
+    // steals the last; poly fans out across the pool / stacks sample voices.
+    const mono = current.voicing === 'mono'
     let dur = 0
 
     // Reset LFO phase so each play starts from the beginning of the waveform.
@@ -286,7 +290,8 @@ export async function buildChain(sound, destination) {
       const p = freshParams(src)
       // Grab the voice that will play this note, so its pitch envelope and length
       // are scheduled on that voice alone — overlapping notes stay independent.
-      const voice = nodes.synth.allocate()
+      // Mono pins voice 0, so each note retriggers (steals) the same voice.
+      const voice = mono ? nodes.synth.voices[0] : nodes.synth.allocate()
       if (lane.envBlocks.length > 0) {
         const env = freshParams(lane.envBlocks[0])
         const sig = lane.voiceEnv.get(voice)
@@ -321,7 +326,9 @@ export async function buildChain(sound, destination) {
         // Voice cap: when the lane is already at the max ringing voices, steal
         // the oldest (a Set keeps insertion order) so retriggers overlap up to
         // the cap. The stolen voice's own onended/onstop prunes + disposes it.
-        while (lane.activeSampleSources.size >= MAX_SAMPLE_VOICES) {
+        // Mono caps at 1, so a retrigger cuts the previous sample.
+        const sampleCap = mono ? 1 : MAX_SAMPLE_VOICES
+        while (lane.activeSampleSources.size >= sampleCap) {
           const oldest = lane.activeSampleSources.values().next().value
           lane.activeSampleSources.delete(oldest)
           try { oldest.stop() } catch { /* already stopped */ }
@@ -439,6 +446,8 @@ export async function buildChain(sound, destination) {
         lane.def.apply(lane.nodes, src.params)
         if (lane.hasAmpEnv && (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type))) flattenEnv(lane.nodes.synth)
       }
+      // Live voicing toggle (not structural — no rebuild): retune the pool gain.
+      if (isSynthSource(lane.src.type)) lane.nodes.synth.setVoicing(soundNow.voicing === 'mono')
 
       // Lane chain blocks.
       for (const block of src.chain ?? []) {

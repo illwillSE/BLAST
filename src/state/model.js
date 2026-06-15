@@ -37,6 +37,9 @@ export function newSound(name) {
     name,
     outputVolume: 0,
     outputView: 'wave',
+    // Sound-wide voicing: 'poly' stacks overlapping notes/chords across the
+    // voice pool; 'mono' reuses a single voice so each note steals the last.
+    voicing: 'poly',
     // Hybrid per-lane model: one or more source lanes mix at a shared bus,
     // then the master chain processes the mix → output.
     sources: [newLane('synth')],

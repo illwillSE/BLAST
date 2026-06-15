@@ -34,6 +34,7 @@ export function normalizeProject(project) {
   project.sounds = project.sounds.map((raw) => {
     const sound = migrateSound(raw)
     if (!sound.master) sound.master = []
+    if (!sound.voicing) sound.voicing = 'poly'
     // Backfill the sequencer onto projects saved before it existed; merge so a
     // saved sequencer keeps its steps while gaining any newer default fields.
     sound.sequencer = { ...newSequencer(), ...sound.sequencer }

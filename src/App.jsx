@@ -260,6 +260,8 @@ export default function App() {
 
   const onOutputView = (v) => updateSound(sound.id, (s) => ({ ...s, outputView: v }))
 
+  const onVoicing = (v) => updateSound(sound.id, (s) => ({ ...s, voicing: v }))
+
   // Patch the sound-level sequencer (merge so callers send only changed fields).
   const onSequencer = (patch) =>
     updateSound(sound.id, (s) => ({ ...s, sequencer: { ...(s.sequencer ?? newSequencer()), ...patch } }))
@@ -432,6 +434,7 @@ export default function App() {
                   onRemoveLane={onRemoveLane}
                   onOutputVolume={onOutputVolume}
                   onOutputView={onOutputView}
+                  onVoicing={onVoicing}
                   onSequencer={onSequencer}
                   onPasteBlock={pasteBlock}
                   onPasteSourceLane={pasteSourceLane}
