@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react'
 import { Button } from './ui'
 import { saveProjectZip, loadProjectZip } from '../utils/projectZip'
+import SettingsModal from './SettingsModal'
 
-export default function Header({ project, onRenameProject, onLoadProject }) {
+export default function Header({ project, onRenameProject, onLoadProject, onSetExport, onNewProject }) {
   const fileRef = useRef(null)
   const [busy, setBusy] = useState(null) // 'save' | 'load' | null
   const [error, setError] = useState(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   async function save() {
     setBusy('save')
@@ -60,6 +62,7 @@ export default function Header({ project, onRenameProject, onLoadProject }) {
         <Button onClick={() => fileRef.current?.click()} disabled={busy !== null}>
           {busy === 'load' ? 'Loading…' : 'Load ZIP'}
         </Button>
+        <Button onClick={() => setSettingsOpen(true)} title="Settings">⚙</Button>
       </div>
       <input
         ref={fileRef}
@@ -72,6 +75,15 @@ export default function Header({ project, onRenameProject, onLoadProject }) {
           e.target.value = ''
         }}
       />
+      {settingsOpen && (
+        <SettingsModal
+          project={project}
+          onRenameProject={onRenameProject}
+          onSetExport={onSetExport}
+          onNewProject={onNewProject}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </header>
   )
 }

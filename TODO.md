@@ -5,8 +5,9 @@ design brief and from development discussions.
 
 ## Features
 
-- [ ] **New / empty project** — a "New project" action that clears the
-      current project and starts the app empty (if nothing is persisted in state store).
+- [x] **New / empty project** — "New project" action in the Settings modal
+      (General tab) with a confirm warning; resets to a fresh single-sound
+      project and clears undo history.
 - [ ] **Browser project library** — save/load named projects in the
       browser (IndexedDB), alongside the existing ZIP download/upload.
       Each saved project is stored as a full `.blast.zip` blob; a modal

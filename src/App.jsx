@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  newSound, newBlock, newLane, uid,
+  newProject, newSound, newBlock, newLane, uid,
   mapBlock, removeBlock, addBlock, moveBlock, swapSource, isSource, allBlocks,
 } from './state/model'
 import { presetProject } from './state/presets'
@@ -16,7 +16,6 @@ import { emitPlay } from './utils/bus'
 import Header from './components/Header'
 import SoundList from './components/SoundList'
 import ChainEditor from './components/ChainEditor'
-import ExportSettings from './components/ExportSettings'
 import { Button } from './components/ui'
 
 // Clone a block (or lane), giving it a fresh id and copying an embedded sample
@@ -349,12 +348,20 @@ export default function App() {
     setSelectedId(loaded.sounds[0]?.id)
   }
 
+  // Start fresh. Uses reset (like loadProject) so it clears undo history —
+  // this is the "cannot be undone" action the Settings modal warns about.
+  function newBlankProject() {
+    loadProject(newProject())
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <Header
         project={project}
         onRenameProject={(name) => dispatch((p) => ({ ...p, name }))}
         onLoadProject={loadProject}
+        onSetExport={setExport}
+        onNewProject={newBlankProject}
       />
       <div className="flex min-h-0 flex-1">
         <SoundList
@@ -407,7 +414,6 @@ export default function App() {
                 <Button onClick={outputToSampleSound} disabled={exporting} title="Render this sound and drop it into a new Sample sound">
                   → Sample sound
                 </Button>
-                <ExportSettings settings={project.export} onChange={setExport} />
                 <Button onClick={exportWav} variant="primary" disabled={exporting}>
                   {exporting ? 'Rendering…' : 'Export WAV'}
                 </Button>
