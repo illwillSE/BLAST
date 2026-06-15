@@ -8,11 +8,11 @@ design brief and from development discussions.
 - [x] **Visualizer as a card** — addable analyzer block in a lane chain,
       rendered as a card (live canvas + wave/spec/wfall/fire/off selector);
       lane-only, taps its own chain position. No longer on the Out card.
-- [ ] **Mixer → bus inspector** — remove the mixer from the lane and move it
-      to the bus inspector. Lay the level control out vertically, with a
-      smaller pan control centered at the bottom under the level meter. Add a
-      new column per lane; ignore the eventual problem of all lanes not
-      fitting.
+- [x] **Mixer → bus inspector** — removed the per-lane Mix pill; selecting the
+      ∑ Bus node now opens a mixer with one channel-strip column per lane
+      (vertical level fader, pan beneath, mute + remove). Columns overflow
+      horizontally — the "too many lanes to fit" problem is ignored for now.
+      Delay stays in the Timeline strip.
 - [ ] **Optional sequencer** — remove the sequencer from the master output;
       make it addable only when needed (on by default once added).
 - [ ] **Pill selection resets** — selecting a pill works, but it resets to
@@ -108,3 +108,7 @@ design brief and from development discussions.
       Vite build warning).
 - [ ] **Browser smoke test** (Playwright script: load, play, add blocks,
       export WAV, check console errors).
+- [ ] **Visualizer paste guard** — the visualizer is lane-only via the
+      master add-menu, but Cmd/Ctrl+V (`handlePaste(MASTER)`) bypasses that
+      and can still drop a copied visualizer onto master. Add a model- or
+      paste-level guard if it matters.

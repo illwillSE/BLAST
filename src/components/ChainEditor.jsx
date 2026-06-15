@@ -25,7 +25,7 @@ export default function ChainEditor({
   }, [sound.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep selection valid if blocks/lanes disappear (remove, mute rebuild, etc.).
-  const valid = (k) => k === 'output' || k === 'seq' || (k?.startsWith('mix:') && sound.sources.some((s) => s.id === k.slice(4)))
+  const valid = (k) => k === 'output' || k === 'seq' || k === 'bus'
     || (k && findLane(sound, k)) || (k && sound.master.some((b) => b.id === k))
   useEffect(() => {
     const kept = selectedKeys.filter(valid)
@@ -38,7 +38,7 @@ export default function ChainEditor({
       if (additive) return cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]
       return [key]
     })
-    const laneId = key.startsWith('mix:') ? key.slice(4) : findLane(sound, key)?.id
+    const laneId = findLane(sound, key)?.id
     if (laneId && !additive) setFocusedLane(laneId)
   }
 
@@ -88,7 +88,7 @@ export default function ChainEditor({
       if (isTextEntry) return
       const key = e.key.toLowerCase()
       if (key === 'c') {
-        const sel = selectedKeys.filter((k) => k !== 'output' && !k.startsWith('mix:'))
+        const sel = selectedKeys.filter((k) => k !== 'output' && k !== 'bus')
         const block = sel.length === 1 ? findBlock(sound, sel[0]) : null
         if (!block) return
         e.preventDefault()
@@ -201,7 +201,13 @@ export default function ChainEditor({
 
           {/* mix bus → master → output, centered against the lane stack */}
           <div className="relative z-10 flex items-center gap-2 self-center">
-            <div ref={busRef} className="rounded-lg border border-edge bg-surface px-3 py-2 text-center shadow-sm">
+            <div
+              ref={busRef}
+              onClick={(e) => select('bus', e.shiftKey || e.metaKey)}
+              className={`cursor-pointer rounded-lg border bg-surface px-3 py-2 text-center shadow-sm transition-colors ${
+                isSel('bus') ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
+              }`}
+            >
               <div className="text-[11px] font-semibold uppercase tracking-wider text-text">∑ Bus</div>
               <div className="text-[9px] text-faint">all lanes</div>
             </div>

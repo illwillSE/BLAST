@@ -122,6 +122,51 @@ export function Slider({ def, value, onChange }) {
   )
 }
 
+// Vertical level fader — same value mapping and double-click behaviors as
+// Slider, laid out as a tall draggable track. Used by the bus mixer's channel
+// strips. Drag the track to set the value; double-click the track to reset;
+// double-click the value to type it exactly.
+export function VFader({ def, value, onChange }) {
+  const pos = toPos(value, def)
+  const trackRef = useRef(null)
+  const dragging = useRef(false)
+  const [editing, setEditing] = useState(false)
+
+  function setFromEvent(e) {
+    const rect = trackRef.current.getBoundingClientRect()
+    const p = Math.min(1, Math.max(0, 1 - (e.clientY - rect.top) / rect.height))
+    onChange(toValue(p, def))
+  }
+
+  return (
+    <div className="flex select-none flex-col items-center" title="Drag to set · double-click track to reset · double-click value to type it">
+      <div
+        ref={trackRef}
+        onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); setFromEvent(e) }}
+        onPointerMove={(e) => { if (dragging.current) setFromEvent(e) }}
+        onPointerUp={() => { dragging.current = false }}
+        onPointerCancel={() => { dragging.current = false }}
+        onDoubleClick={() => onChange(def.default)}
+        className="relative h-32 w-2 cursor-ns-resize touch-none overflow-hidden rounded bg-well ring-1 ring-divider/60"
+      >
+        <div className="absolute inset-x-0 bottom-0 bg-accent-deep" style={{ height: `${(pos * 100).toFixed(1)}%` }} />
+      </div>
+      <span className="relative mt-1">
+        {editing && (
+          <ValueEntry def={def} value={value} onChange={onChange} onClose={() => setEditing(false)} />
+        )}
+        <span
+          className="cursor-text font-mono text-[11px] text-ink hover:text-accent-bright"
+          onDoubleClick={(e) => { e.preventDefault(); setEditing(true) }}
+          title="Double-click to enter an exact value"
+        >
+          {formatValue(def, value)}
+        </span>
+      </span>
+    </div>
+  )
+}
+
 export function Select({ def, value, onChange }) {
   return (
     <label className="block select-none">

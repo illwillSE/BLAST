@@ -3,44 +3,10 @@ import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
 import { Slider } from './ui'
 import BlockControls from './BlockControls'
-import ConfirmButton from './ConfirmButton'
+import BusMixer from './BusMixer'
 import SequencerEditor from './SequencerEditor'
 
-const LEVEL_DEF = { key: 'level', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
-const PAN_DEF = { key: 'pan', label: 'Pan', type: 'range', min: -1, max: 1, step: 0.01, default: 0, format: (v) => (Math.abs(v) < 0.01 ? 'center' : v < 0 ? `${Math.round(-v * 100)}L` : `${Math.round(v * 100)}R`) }
-const DELAY_DEF = { key: 'delay', label: 'Delay', type: 'range', min: 0, max: 2, step: 0.005, default: 0, format: (v) => (v < 0.001 ? 'none' : v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`) }
 const OUT_VOLUME_DEF = { key: 'outputVolume', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
-
-// Lane mix (level / pan / delay) + mute & remove — a lane property, not a block.
-function MixControls({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemoveLane }) {
-  return (
-    <div className="min-w-[260px]">
-      <div className="flex items-center gap-2">
-        <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">Lane {laneNumber} · Mix</span>
-        <div className="ml-auto flex items-center gap-1.5 text-[10px]">
-          <button
-            onClick={onToggleMute}
-            className={`rounded border px-2 py-0.5 transition-colors ${
-              lane.enabled ? 'border-on/50 bg-on/15 text-on-bright' : 'border-danger/50 bg-danger/15 text-danger-bright'
-            }`}
-          >
-            {lane.enabled ? '⏻ on' : '⏻ muted'}
-          </button>
-          {canRemove && (
-            <ConfirmButton onConfirm={onRemoveLane} className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright">
-              ✕ lane
-            </ConfirmButton>
-          )}
-        </div>
-      </div>
-      <div className="mt-3 grid gap-3" style={{ gridTemplateColumns: 'repeat(3, minmax(130px, 1fr))' }}>
-        <Slider def={LEVEL_DEF} value={lane.level ?? 0} onChange={(v) => onLaneProp(lane.id, 'level', v)} />
-        <Slider def={PAN_DEF} value={lane.pan ?? 0} onChange={(v) => onLaneProp(lane.id, 'pan', v)} />
-        <Slider def={DELAY_DEF} value={lane.delay ?? 0} onChange={(v) => onLaneProp(lane.id, 'delay', v)} />
-      </div>
-    </div>
-  )
-}
 
 function OutputControls({ sound, onOutputVolume, onVoicing }) {
   const voicing = sound.voicing ?? 'poly'
@@ -91,22 +57,7 @@ function Summary({ sound }) {
 function Panel({ keyId, sound, handlers }) {
   if (keyId === 'output') return <OutputControls sound={sound} {...handlers} />
   if (keyId === 'seq') return <SequencerEditor sound={sound} onChange={handlers.onSequencer} />
-  if (keyId.startsWith('mix:')) {
-    const laneId = keyId.slice(4)
-    const idx = sound.sources.findIndex((s) => s.id === laneId)
-    const lane = sound.sources[idx]
-    if (!lane) return null
-    return (
-      <MixControls
-        lane={lane}
-        laneNumber={idx + 1}
-        canRemove={sound.sources.length > 1}
-        onLaneProp={handlers.onLaneProp}
-        onToggleMute={() => handlers.onToggle(lane.id)}
-        onRemoveLane={() => handlers.onRemoveLane(lane.id)}
-      />
-    )
-  }
+  if (keyId === 'bus') return <BusMixer sound={sound} handlers={handlers} />
   const block = findBlock(sound, keyId)
   if (!block || !BLOCK_DEFS[block.type]) return null
   const source = isSource(block)
@@ -127,7 +78,7 @@ function Panel({ keyId, sound, handlers }) {
 }
 
 export default function InspectorDock({ sound, selectedKeys, handlers }) {
-  const keys = selectedKeys.filter((k) => k === 'output' || k === 'seq' || k.startsWith('mix:') || findBlock(sound, k))
+  const keys = selectedKeys.filter((k) => k === 'output' || k === 'seq' || k === 'bus' || findBlock(sound, k))
   return (
     <div className="shrink-0 border-t border-divider bg-panel">
       <div className="flex items-center gap-2 border-b border-divider px-4 py-1.5">
