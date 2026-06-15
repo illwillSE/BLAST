@@ -93,6 +93,7 @@ export default function BlockControls({
 
   const visibleParams = def.params.filter((p) =>
     (!p.show || p.show(block.params)) && !(block.type === 'noise' && p.key === 'color')
+    && !(block.type === 'visualizer' && p.key === 'mode')
   )
 
   return (

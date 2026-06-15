@@ -6,24 +6,13 @@ import LaneRow from './LaneRow'
 import LaneTimeline from './LaneTimeline'
 import InspectorDock from './InspectorDock'
 import Chip from './Chip'
-import OutputVisualizer from './OutputVisualizer'
 import { getColor } from '../theme/colors'
 
 const Conn = () => <span className="text-[13px] text-faint">›</span>
 
-// Output visualizer view modes, shown as a horizontal segmented control on the
-// Out card (moved off the inspector). Labels kept short to fit under the canvas.
-const VIEW_OPTS = [
-  { value: 'wave', label: 'wave' },
-  { value: 'spectrum', label: 'spec' },
-  { value: 'waterfall', label: 'wfall' },
-  { value: 'fire', label: 'fire' },
-  { value: 'off', label: 'off' },
-]
-
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
-  onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onOutputView, onVoicing,
+  onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onVoicing,
   onSequencer, onPasteBlock, onPasteSourceLane, onPasteValues,
 }) {
   const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
@@ -153,7 +142,7 @@ export default function ChainEditor({
 
   const isSel = (k) => selectedKeys.includes(k)
   const multiLane = sound.sources.length > 1
-  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onOutputView, onVoicing, onSequencer, onPasteValues }
+  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onVoicing, onSequencer, onPasteValues }
   const seqOn = sound.sequencer?.enabled
 
   return (
@@ -188,6 +177,7 @@ export default function ChainEditor({
                 onMove={onMove}
                 onAdd={handleAdd}
                 onPaste={handlePaste}
+                onParam={onParam}
                 outputRef={setPortRef(lane.id)}
               />
             ))}
@@ -222,7 +212,7 @@ export default function ChainEditor({
               </span>
             ))}
             <Conn />
-            <AddBlockMenu variant="chip" excludeKinds={['control']} label="Add Master" onAdd={(type) => handleAdd(MASTER, type)} onPaste={() => handlePaste(MASTER)} />
+            <AddBlockMenu variant="chip" excludeKinds={['control']} excludeTypes={['visualizer']} label="Add Master" onAdd={(type) => handleAdd(MASTER, type)} onPaste={() => handlePaste(MASTER)} />
             <Conn />
             <div
               onClick={(e) => select('output', e.shiftKey || e.metaKey)}
@@ -230,29 +220,9 @@ export default function ChainEditor({
                 isSel('output') ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
               } shadow-sm`}
             >
-              <div className="bg-well px-2 pt-1.5">
-                <OutputVisualizer mode={sound.outputView ?? 'wave'} />
-              </div>
               <div className="flex items-center gap-1.5 bg-surface px-2.5 py-1.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">Out</span>
                 <span className="text-[10px] tabular-nums text-muted">{(sound.outputVolume ?? 0).toFixed(1)}dB</span>
-              </div>
-              {/* Horizontal view selector (moved here from the inspector). */}
-              <div className="flex items-center gap-px border-t border-edge/40 bg-surface px-1 pb-1 pt-0.5">
-                {VIEW_OPTS.map((o) => (
-                  <button
-                    key={o.value}
-                    onClick={(e) => { e.stopPropagation(); onOutputView(o.value) }}
-                    title={o.value}
-                    className={`flex-1 rounded px-1 py-0.5 text-[9px] uppercase tracking-wide transition-colors ${
-                      (sound.outputView ?? 'wave') === o.value
-                        ? 'bg-accent-deep/20 text-accent-bright'
-                        : 'text-faint hover:text-text'
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
               </div>
               {/* Voicing status — display only; clicking the card selects Out,
                   where the mono/poly toggle lives. */}

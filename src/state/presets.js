@@ -23,7 +23,7 @@ const sound = (name, srcType, srcParams, chain = [], master = []) => {
   const lane = newLane(srcType)
   if (srcParams) Object.assign(lane.params, srcParams)
   lane.chain = chain
-  return { id: uid('snd'), name, outputVolume: 0, outputView: 'wave', sources: [lane], master }
+  return { id: uid('snd'), name, outputVolume: 0, sources: [lane], master }
 }
 
 export function presetSounds() {
@@ -32,7 +32,7 @@ export function presetSounds() {
     // into a chord instead of cutting off. The headline test for the voice pool.
     sound('Poly Pad — Hold a Chord', 'synth',
       { wave: 'sawtooth', freq: 196, attack: 0.35, decay: 0.3, sustain: 0.8, release: 1.6, duration: 1.2 },
-      [],
+      [blk('visualizer', { mode: 'wave' })],
       [blk('reverb', { decay: 2.5, preDelay: 0.03, wet: 0.38 })]),
 
     // — Clipping probe: a pure sine has no harmonics, so any clipping/limiter

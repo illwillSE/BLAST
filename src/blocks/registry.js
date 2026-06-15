@@ -742,6 +742,27 @@ export const BLOCK_DEFS = {
     apply() {},
   },
 
+  visualizer: {
+    type: 'visualizer',
+    name: 'Visualizer',
+    category: 'utility',
+    kind: 'analyzer',
+    description: 'Live view of the signal at this point — audio passes through unchanged',
+    params: [
+      { key: 'mode', label: 'View', type: 'select', default: 'wave',
+        options: ['wave', 'spectrum', 'waterfall', 'fire'].map((v) => ({ value: v, label: v })) },
+    ],
+    // Passthrough tap like Debug: same Gain in/out, analyser tapped off it. The
+    // component retunes analyser.type/.size per mode in its draw loop.
+    create() {
+      const gain = new Tone.Gain(1)
+      const analyser = new Tone.Analyser('waveform', 1024)
+      gain.connect(analyser)
+      return { nodes: { gain, analyser }, input: gain, output: gain }
+    },
+    apply() {},
+  },
+
 }
 
 // Which of a lane's source params are currently overridden by another enabled

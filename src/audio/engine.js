@@ -194,18 +194,6 @@ export async function buildChain(sound, destination) {
   masterOut.connect(masterLimiter)
   masterLimiter.connect(destination)
 
-  // Tap the post-limiter output for the Output block's visualizer (what's heard).
-  const outputAnalyser = new Tone.Analyser('waveform', 1024)
-  disposables.push(outputAnalyser)
-  masterLimiter.connect(outputAnalyser)
-
-  // Pre-limiter tap: the true peak feeding the limiter, which can exceed 0 dBFS.
-  // The post-limiter signal never clips, so the clip meter has to read here — the
-  // UI uses it to flag when the output is hitting the ceiling (being limited).
-  const clipMeter = new Tone.Analyser('waveform', 256)
-  disposables.push(clipMeter)
-  masterOut.connect(clipMeter)
-
   // Params like the synth's length/pitch and the pitch envelope are consumed
   // at trigger time, not held by a Tone node — so always read them from the
   // latest sound state (updated by apply()), never the build-time snapshot.
@@ -493,8 +481,6 @@ export async function buildChain(sound, destination) {
   await Promise.all(readyPromises)
   return {
     trigger, apply, dispose,
-    getOutputAnalyser: () => outputAnalyser,
-    getClipMeter: () => clipMeter,
     getAnalyser: (id) => built.get(id)?.nodes?.analyser ?? null,
   }
 }
@@ -649,14 +635,6 @@ export class LiveEngine {
     this.handle.apply(sound)
     const duration = this.handle.trigger(undefined, notes)
     return { duration }
-  }
-
-  getOutputAnalyser() {
-    return this.handle?.getOutputAnalyser() ?? null
-  }
-
-  getClipMeter() {
-    return this.handle?.getClipMeter() ?? null
   }
 
   getAnalyser(id) {

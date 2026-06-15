@@ -6,7 +6,7 @@ import { CAT_STYLES } from './ui'
 // `excludeKinds` hides whole block kinds. Sources are always excluded (a lane's
 // source is switched in place on its card). The master chain also excludes
 // `control` blocks — pitch/amp modulation is per-lane, not post-mix.
-export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], label = 'Add Block', variant = 'box' }) {
+export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], excludeTypes = [], label = 'Add Block', variant = 'box' }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -20,14 +20,15 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], label 
   }, [open])
 
   const hidden = new Set(['source', ...excludeKinds])
+  const hiddenTypes = new Set(excludeTypes)
   const categories = blocksByCategory()
-    .map((c) => ({ ...c, blocks: c.blocks.filter((def) => !hidden.has(def.kind)) }))
+    .map((c) => ({ ...c, blocks: c.blocks.filter((def) => !hidden.has(def.kind) && !hiddenTypes.has(def.type)) }))
     .filter((c) => c.blocks.length > 0)
 
-  // Offer "Paste" when a copied block fits this chain (its kind isn't hidden).
+  // Offer "Paste" when a copied block fits this chain (its kind/type isn't hidden).
   const clip = useClipboard()
   const pasteDef = clip?.kind === 'block' ? BLOCK_DEFS[clip.block.type] : null
-  const canPaste = onPaste && pasteDef && !hidden.has(pasteDef.kind)
+  const canPaste = onPaste && pasteDef && !hidden.has(pasteDef.kind) && !hiddenTypes.has(pasteDef.type)
 
   return (
     <div className="relative shrink-0 self-center" ref={ref}>

@@ -36,7 +36,6 @@ export function newSound(name) {
     id: uid('snd'),
     name,
     outputVolume: 0,
-    outputView: 'wave',
     // Sound-wide voicing: 'poly' stacks overlapping notes/chords across the
     // voice pool; 'mono' reuses a single voice so each note steals the last.
     voicing: 'poly',

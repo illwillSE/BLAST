@@ -26,7 +26,7 @@ const MixPill = ({ lane, selected, onClick }) => (
 )
 
 export default function LaneRow({
-  lane, laneNumber, focused, selectedKeys, onSelect, onFocusLane, onMove, onAdd, onPaste, outputRef,
+  lane, laneNumber, focused, selectedKeys, onSelect, onFocusLane, onMove, onAdd, onPaste, onParam, outputRef,
 }) {
   const dragIndex = useRef(null)
   const [dropTarget, setDropTarget] = useState(null)
@@ -44,7 +44,7 @@ export default function LaneRow({
         {lane.chain.filter((b) => BLOCK_DEFS[b.type]).map((b) => (
           <span key={b.id} className="flex items-center gap-2">
             <Conn />
-            <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} />
+            <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} onParam={onParam} />
           </span>
         ))}
         <Conn />
@@ -84,7 +84,7 @@ export default function LaneRow({
       {lane.chain.filter((b) => BLOCK_DEFS[b.type]).map((b, i) => (
         <span key={b.id} className="flex items-center gap-2">
           <Conn />
-          <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} drag={dragProps(i)} />
+          <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} onParam={onParam} drag={dragProps(i)} />
         </span>
       ))}
       <Conn />

@@ -216,6 +216,12 @@ export const HELP = {
           'Range shows the lowest/highest raw sample values; if they don\'t straddle zero you have DC offset (the DC readout flags it).',
         ],
       },
+      visualizer: {
+        summary: 'A live picture of the signal at this exact point in the chain — drop it on any lane or master. Audio passes through unchanged.',
+        params: {
+          mode: 'wave is an oscilloscope, spectrum and fire show the frequency content, waterfall is a scrolling spectrogram (frequency across, time falling).',
+        },
+      },
     },
   },
 
@@ -429,6 +435,12 @@ export const HELP = {
           'Peak och RMS är den aktuella nivån; Held max låser fast den högsta topp den sett och behåller den tills du trycker Reset, så en kort transient som blinkar förbi fångas ändå.',
           'Range visar lägsta/högsta råa sampelvärden; om de inte ligger på var sin sida om noll har du en DC-förskjutning (DC-värdet flaggar det).',
         ],
+      },
+      visualizer: {
+        summary: 'En live-bild av signalen på exakt den punkten i kedjan — lägg den på valfri lane eller master. Ljudet släpps igenom oförändrat.',
+        params: {
+          mode: 'wave är ett oscilloskop, spectrum och fire visar frekvensinnehållet, waterfall är ett rullande spektrogram (frekvens i sidled, tid som faller).',
+        },
       },
     },
   },

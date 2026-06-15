@@ -2,15 +2,15 @@ import { useEffect, useRef } from 'react'
 import { liveEngine } from '../audio/engine'
 import { getColor } from '../theme/colors'
 
-// Live view of the sound's final output. mode: 'wave' (oscilloscope),
+// Live view of the signal at one block's tap. mode: 'wave' (oscilloscope),
 // 'spectrum' (FFT bars), 'fire' (mirrored gradient bars with falling
 // peak caps) or 'waterfall' (scrolling spectrogram — frequency across,
 // time falling downward, magnitude as color). The analyser is retuned
 // per mode in the draw loop since the engine may rebuild it at any time.
 
-// Clip indicator: when the pre-limiter signal peaks at/above 0 dBFS the output is
-// hitting the ceiling (being limited / would clip). We light the graph red and
-// hold it briefly so a transient clip stays visible.
+// Clip indicator: in the oscilloscope view, a sample from this tap at/above
+// 0 dBFS means the signal is hitting the ceiling (being limited / would clip).
+// We light the graph red and hold it briefly so a transient clip stays visible.
 const CLIP_THRESHOLD = 1.0
 const CLIP_HOLD_MS = 700
 const CLIP_COLOR = '#ff3b30'
@@ -21,7 +21,7 @@ const CLIP_COLOR = '#ff3b30'
 const WF_MIN_DB = -85
 const WF_MAX_DB = -25
 const WF_GAMMA = 0.6
-export default function OutputVisualizer({ mode }) {
+export default function OutputVisualizer({ blockId, mode }) {
   const canvasRef = useRef(null)
   const peaksRef = useRef([])
   const clipUntilRef = useRef(0) // timestamp the clip indicator stays lit until
@@ -66,23 +66,10 @@ export default function OutputVisualizer({ mode }) {
       // The waterfall keeps prior frames and scrolls them; every other mode
       // repaints from scratch.
       if (mode !== 'waterfall') ctx.clearRect(0, 0, width, height)
+      if (mode === 'off') return // cleared above — show nothing
 
-      const analyser = liveEngine.getOutputAnalyser()
+      const analyser = liveEngine.getAnalyser(blockId)
       if (!analyser) return
-
-      // Clip detection from the pre-limiter tap: peak |sample| at/above 0 dBFS
-      // lights the indicator, held briefly so brief clips don't flash past.
-      const clipMeter = liveEngine.getClipMeter?.()
-      if (clipMeter) {
-        const cv = clipMeter.getValue()
-        let peak = 0
-        for (let i = 0; i < cv.length; i++) {
-          const a = Math.abs(cv[i])
-          if (a > peak) peak = a
-        }
-        if (peak >= CLIP_THRESHOLD) clipUntilRef.current = performance.now() + CLIP_HOLD_MS
-      }
-      const clipping = performance.now() < clipUntilRef.current
 
       const wantType = mode === 'wave' ? 'waveform' : 'fft'
       const wantSize = mode === 'wave' ? 1024 : mode === 'fire' ? 64 : 128
@@ -99,6 +86,19 @@ export default function OutputVisualizer({ mode }) {
       for (let i = 0; i < values.length; i++) {
         if (!Number.isFinite(values[i])) values[i] = 0
       }
+
+      // Clip detection from this tap's own waveform: peak |sample| at/above
+      // 0 dBFS lights the indicator, held briefly so brief clips don't flash
+      // past. Only meaningful in the time-domain (wave) view.
+      if (mode === 'wave') {
+        let peak = 0
+        for (let i = 0; i < values.length; i++) {
+          const a = Math.abs(values[i])
+          if (a > peak) peak = a
+        }
+        if (peak >= CLIP_THRESHOLD) clipUntilRef.current = performance.now() + CLIP_HOLD_MS
+      }
+      const clipping = performance.now() < clipUntilRef.current
 
       if (mode === 'waterfall') {
         if (!lut) lut = buildLut()
@@ -179,7 +179,7 @@ export default function OutputVisualizer({ mode }) {
 
     draw()
     return () => cancelAnimationFrame(raf)
-  }, [mode])
+  }, [mode, blockId])
 
   return <canvas ref={canvasRef} width={184} height={64} className="w-full rounded bg-well" />
 }
