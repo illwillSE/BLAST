@@ -216,7 +216,12 @@ export default function ChainEditor({
             {sound.master.map((b) => (
               <span key={b.id} className="flex items-center gap-2">
                 <Conn />
-                <Chip block={b} selected={isSel(b.id)} onClick={(e) => select(b.id, e.shiftKey || e.metaKey)} />
+                <Chip
+                  block={b}
+                  selected={isSel(b.id)}
+                  onClick={(e) => select(b.id, e.shiftKey || e.metaKey)}
+                  onParam={onParam}
+                />
               </span>
             ))}
             <Conn />
