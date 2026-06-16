@@ -13,9 +13,11 @@ import { loadAutosaveSamples, saveAutosaveSamples } from './utils/sampleLibrary'
 import { getClipboard, setClipboard } from './state/clipboard'
 import { normalizeProject } from './utils/projectZip'
 import { emitPlay } from './utils/bus'
+import { useT } from './state/uiPrefs'
 import Header from './components/Header'
 import SoundList from './components/SoundList'
 import ChainEditor from './components/ChainEditor'
+import IntroModal from './components/IntroModal'
 import { Button } from './components/ui'
 
 // Clone a block (or lane), giving it a fresh id and copying an embedded sample
@@ -37,6 +39,7 @@ export default function App() {
     } catch {}
     return presetProject()
   })
+  const t = useT()
   const [selectedId, setSelectedId] = useState(() => project.sounds[0].id)
   const [exporting, setExporting] = useState(false)
   const [editingName, setEditingName] = useState(false)
@@ -381,7 +384,7 @@ export default function App() {
               <div className="flex items-center gap-3 border-b border-divider px-4 py-2.5">
                 <button
                   onClick={() => playSound(sound.id)}
-                  title="Play (Space)"
+                  title={t('transport.play')}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-accent-deep/60 bg-accent-deep/15 text-sm text-accent-bright transition-all hover:scale-105 hover:bg-accent-deep/30 active:scale-95"
                 >
                   ▶
@@ -406,16 +409,16 @@ export default function App() {
                   <h2
                     className="flex-1 cursor-text truncate text-[14px] font-semibold text-ink"
                     onDoubleClick={() => { setEditingName(true); setNameDraft(sound.name) }}
-                    title="Double-click to rename"
+                    title={t('transport.renameHint')}
                   >
                     {sound.name}
                   </h2>
                 )}
-                <Button onClick={outputToSampleSound} disabled={exporting} title="Render this sound and drop it into a new Sample sound">
-                  → Sample sound
+                <Button onClick={outputToSampleSound} disabled={exporting} title={t('transport.toSampleSoundTitle')}>
+                  {t('transport.toSampleSound')}
                 </Button>
                 <Button onClick={exportWav} variant="primary" disabled={exporting}>
-                  {exporting ? 'Rendering…' : 'Export WAV'}
+                  {exporting ? t('transport.rendering') : t('transport.exportWav')}
                 </Button>
               </div>
               <div className="min-h-0 flex-1">
@@ -441,11 +444,12 @@ export default function App() {
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center text-muted">
-              Add a sound to get started
+              {t('transport.empty')}
             </div>
           )}
         </main>
       </div>
+      <IntroModal />
     </div>
   )
 }

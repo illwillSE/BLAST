@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Slider, Button } from './ui'
+import { useT } from '../state/uiPrefs'
 import { onPlay, emitPlay } from '../utils/bus'
 import { liveEngine } from '../audio/engine'
 import {
@@ -22,6 +23,7 @@ const rowLabel = (n) => (n === 0 ? '0' : `${n > 0 ? '+' : ''}${n}`)
 // edits) the flat `steps` model — each note a { pitch, len } bar that spans `len`
 // columns with a right-edge resize handle. Columns are grouped in fours (beats).
 function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
+  const t = useT()
   const rows = []
   for (let n = SEQ_RANGE.hi; n >= SEQ_RANGE.lo; n--) rows.push(n)
   const cols = seq.steps.length
@@ -75,10 +77,10 @@ function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
             cells.push(
               <div key={i} style={{ gridColumn: `${i + 1} / span ${len}` }}
                 className={`relative flex h-4 items-center overflow-hidden rounded-sm border border-accent-bright bg-accent-deep ${beat}`}>
-                <button onClick={() => onRemove(i, n)} className="h-full flex-1" title="Click to remove · drag right edge for length" />
+                <button onClick={() => onRemove(i, n)} className="h-full flex-1" title={t('sequencer.removeNote')} />
                 <div
                   onPointerDown={(e) => startDrag(e, n, i, len, maxLen)}
-                  title="Drag to set length"
+                  title={t('sequencer.dragLength')}
                   className="absolute right-0 top-0 h-full w-2 cursor-ew-resize bg-accent-bright/70 hover:bg-accent-bright"
                 />
               </div>,
@@ -86,7 +88,7 @@ function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
           } else if (!covered[i]) {
             cells.push(
               <button key={i} onClick={() => onAdd(i, n)} style={{ gridColumn: `${i + 1}` }}
-                title={`Step ${i + 1} · ${rowLabel(n)} st`}
+                title={`${t('sequencer.step')} ${i + 1} · ${rowLabel(n)} st`}
                 className={`h-4 rounded-sm border border-edge/60 hover:border-accent-deep/60 ${n === 0 ? 'bg-surface' : octave ? 'bg-surface/80' : 'bg-surface/40'} ${beat} ${playCol === i ? 'ring-1 ring-accent-bright/80' : ''}`} />,
             )
           }
@@ -118,6 +120,7 @@ function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
 }
 
 export default function SequencerModal({ sound, onChange, onClose }) {
+  const t = useT()
   const seq = sound.sequencer ?? newSequencer()
   const cols = seq.steps.length
 
@@ -177,25 +180,25 @@ export default function SequencerModal({ sound, onChange, onClose }) {
     >
       <div className="flex max-h-[88vh] w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl">
         <div className="flex items-center gap-3">
-          <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">Sequencer</span>
+          <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">{t('sequencer.title')}</span>
           <button
             onClick={() => onChange({ enabled: !seq.enabled })}
             className={`rounded border px-2 py-0.5 text-[10px] transition-colors ${
               seq.enabled ? 'border-on/50 bg-on/15 text-on-bright' : 'border-edge bg-surface text-muted'
             }`}
           >
-            {seq.enabled ? '⏻ on' : '⏻ off'}
+            {seq.enabled ? t('sequencer.on') : t('sequencer.off')}
           </button>
           <span className="flex-1 truncate font-mono text-[11px] text-muted">{sound.name}</span>
-          <button onClick={onClose} title="Close (Esc)" className="text-muted transition-colors hover:text-ink">✕</button>
+          <button onClick={onClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
         </div>
 
         <div className="flex flex-wrap items-end gap-4">
-          <Button onClick={preview} variant="primary">▶ Play</Button>
+          <Button onClick={preview} variant="primary">{t('sequencer.play')}</Button>
           <div className="w-32"><Slider def={BPM_DEF} value={seq.bpm} onChange={(v) => onChange({ bpm: v })} /></div>
           <div className="w-28"><Slider def={GATE_DEF} value={seq.gate} onChange={(v) => onChange({ gate: v })} /></div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] uppercase tracking-wide text-muted">Steps</span>
+            <span className="text-[11px] uppercase tracking-wide text-muted">{t('sequencer.steps')}</span>
             <div className="flex items-center gap-1">
               <button onClick={() => setStepCount(cols - 1)} disabled={cols <= SEQ_MIN_STEPS}
                 className="flex h-6 w-6 items-center justify-center rounded border border-edge bg-surface text-text transition-colors hover:border-accent-deep/60 disabled:opacity-30">−</button>
@@ -210,7 +213,7 @@ export default function SequencerModal({ sound, onChange, onClose }) {
           <SequencerGrid seq={seq} playCol={playCol} onAdd={addNote} onRemove={removeNote} onSetLen={setLen} />
         </div>
         <p className="text-[10px] text-faint">
-          Click to place a note · drag a note’s right edge to lengthen it · stack a column for a chord · rows are semitones from the source pitch (0 = root) · columns grouped in beats of 4 · Gate sets the on-fraction
+          {t('sequencer.gridHelp')}
         </p>
       </div>
     </div>

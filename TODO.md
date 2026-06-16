@@ -87,7 +87,7 @@ design brief and from development discussions.
 - [ ] **Live recording waveform** — show a scrolling waveform *while*
       recording (WaveSurfer Record plugin). Today the waveform only appears
       after pressing Stop.
-- [ ] **Synth visualization** — the synth source has no visual identity; a
+- [x] **Synth visualization** — the synth source has no visual identity; a
       rendered ADSR/waveform preview that updates while tweaking would help.
 - [ ] **Region looping** — loop the trimmed sample region for sustained
       sounds (engines, wind); regions plugin emits the needed events.
@@ -101,9 +101,10 @@ design brief and from development discussions.
 - [ ] No visualization on metal synth
 
 ## Polish / housekeeping
-- [ ] Sample envelope visual not crisp and too big
-- [ ] Decide the **default Output display mode** (currently `waveform`;
-      candidates: `spectrum`, `fire`).
+- [x] **Sample envelope visual** — render the contour canvas at devicePixelRatio
+      (crisp), give it a fixed CSS height so it no longer balloons with panel
+      width (mimics the source waveform), and show the ↔ cursor only near a
+      drag handle.
 - [ ] **Screenshot** in the README once the UI is settled.
 - [ ] **Code-split** the bundle (Tone.js pushes the main chunk past 500 kB —
       Vite build warning).

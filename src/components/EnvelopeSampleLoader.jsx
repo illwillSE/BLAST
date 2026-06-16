@@ -1,25 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { removeSample } from '../audio/sampleCache'
+import { useEffect, useMemo, useRef } from 'react'
 import { extractEnvelope } from '../audio/envelope'
 import { SampleLoadControls } from './ui'
+import { useT } from '../state/uiPrefs'
 import { useSampleLoader } from './useSampleLoader'
 import SampleEditorModal from './SampleEditorModal'
 import SampleLibraryModal from './SampleLibraryModal'
 import { getColor } from '../theme/colors'
 
-const GRAB_PX = 10 // how close to a handle a click counts as grabbing it
-
-// Draws the full amplitude curve with draggable start/end handles so you can
-// trim the contour the source follows — drag a handle to set in/out, the area
-// outside the selection is dimmed. Updates live as Amount/Smooth change.
-function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, onParam }) {
+// Draws the full amplitude curve with the trimmed region dimmed, so you can see
+// the contour the source follows. Clicking opens the full editor — where the
+// in/out points are dragged — the same interaction as the Sample source card.
+function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, onOpen }) {
+  const t = useT()
   const canvasRef = useRef(null)
   const full = audioBuffer.duration
-  // While dragging we hold the in/out locally so we don't thrash app state on
-  // every mouse move — committed to params on release.
-  const [drag, setDrag] = useState(null) // { side, start, end } | null
-  const start = drag ? drag.start : Math.max(0, trimStart ?? 0)
-  const end = drag ? drag.end : Math.min(full, trimEnd ?? full)
+  const start = Math.max(0, trimStart ?? 0)
+  const end = Math.min(full, trimEnd ?? full)
 
   // The contour depends only on the sample and Amount/Smooth — not the trim —
   // so dragging a handle just repaints the dimming, never re-extracts.
@@ -28,84 +24,62 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
     [audioBuffer, smoothing, amount],
   )
 
+  // Redraw crisply at the device pixel ratio. A ResizeObserver keeps the
+  // backing store matched to the displayed CSS size, so the curve never blurs
+  // (DPR) or balloons (the canvas has a fixed CSS height, like the source's
+  // WaveSurfer waveform) when the panel width changes.
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const { width, height } = canvas
-    ctx.clearRect(0, 0, width, height)
-    ctx.beginPath()
-    for (let i = 0; i < curve.length; i++) {
-      const x = (i / (curve.length - 1)) * width
-      const y = height - Math.min(1, curve[i]) * (height - 2) - 1
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-    }
-    ctx.strokeStyle = getColor('info')
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-    // Dim everything outside the trim selection.
-    const x0 = (start / full) * width
-    const x1 = (end / full) * width
-    ctx.fillStyle = getColor('well', '9e') // ≈ rgba(2,6,23,0.62)
-    ctx.fillRect(0, 0, x0, height)
-    ctx.fillRect(x1, 0, width - x1, height)
-    // Handle lines at in/out.
-    ctx.strokeStyle = getColor('info-bright')
-    ctx.lineWidth = 2
-    for (const x of [x0, x1]) {
+    const draw = () => {
+      const width = canvas.clientWidth
+      const height = canvas.clientHeight
+      if (!width || !height) return
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      const ctx = canvas.getContext('2d')
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.clearRect(0, 0, width, height)
       ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, height)
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i / (curve.length - 1)) * width
+        const y = height - Math.min(1, curve[i]) * (height - 2) - 1
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.strokeStyle = getColor('info')
+      ctx.lineWidth = 1.5
       ctx.stroke()
+      // Dim everything outside the trim selection.
+      const x0 = (start / full) * width
+      const x1 = (end / full) * width
+      ctx.fillStyle = getColor('well', '9e') // ≈ rgba(2,6,23,0.62)
+      ctx.fillRect(0, 0, x0, height)
+      ctx.fillRect(x1, 0, width - x1, height)
+      // Handle lines at in/out.
+      ctx.strokeStyle = getColor('info-bright')
+      ctx.lineWidth = 2
+      for (const x of [x0, x1]) {
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, height)
+        ctx.stroke()
+      }
     }
+    draw()
+    const ro = new ResizeObserver(draw)
+    ro.observe(canvas)
+    return () => ro.disconnect()
   }, [curve, start, end, full])
 
-  function secAt(clientX) {
-    const rect = canvasRef.current.getBoundingClientRect()
-    const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
-    return frac * full
-  }
-
-  function onPointerDown(e) {
-    const rect = canvasRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const xStart = (start / full) * rect.width
-    const xEnd = (end / full) * rect.width
-    const side = Math.abs(x - xStart) <= Math.abs(x - xEnd) ? 'start' : 'end'
-    // Ignore clicks far from either handle so a stray click can't yank a handle.
-    if (Math.abs(x - (side === 'start' ? xStart : xEnd)) > GRAB_PX) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    setDrag({ side, start, end })
-  }
-
-  function onPointerMove(e) {
-    if (!drag) return
-    const sec = secAt(e.clientX)
-    setDrag(drag.side === 'start'
-      ? { ...drag, start: Math.min(sec, end - 0.02) }
-      : { ...drag, end: Math.max(sec, start + 0.02) })
-  }
-
-  function onPointerUp() {
-    if (!drag) return
-    const atFull = drag.start < 0.005 && drag.end > full - 0.005
-    onParam('trimStart', atFull ? null : drag.start)
-    onParam('trimEnd', atFull ? null : drag.end)
-    setDrag(null)
-  }
-
   return (
-    <canvas
-      ref={canvasRef}
-      width={256}
-      height={48}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      title="Drag the start / end lines to trim the envelope"
-      className="w-full cursor-ew-resize rounded bg-well touch-none"
-    />
+    <div
+      className="cursor-pointer"
+      onClick={onOpen}
+      title={t('sample.openEditor')}
+    >
+      <canvas ref={canvasRef} className="block h-16 w-full rounded bg-well" />
+    </div>
   )
 }
 
@@ -113,10 +87,11 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
 // plus the shared full editor (zoom, trim, crop/reverse/normalize). Stores
 // into the same sample cache keyed by block id, so save/load is free.
 export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
+  const t = useT()
   const {
     sample, dragOver, recording, error, dragProps,
     browse, loadBlob, startRecording, stopRecording,
-    applyEdit, crop, undo, canUndo,
+    applyEdit, crop, undo, remove, canUndo,
     editorOpen, setEditorOpen,
     libraryOpen, setLibraryOpen,
   } = useSampleLoader(block, onParam)
@@ -136,34 +111,38 @@ export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
             amount={block.params.amount}
             trimStart={block.params.trimStart}
             trimEnd={block.params.trimEnd}
-            onParam={onParam}
+            onOpen={() => setEditorOpen(true)}
           />
           <div className="mt-1 flex items-center justify-between gap-2">
             <span className="truncate font-mono text-[10px] text-muted" title={sample.fileName}>
               {sample.fileName} · {sample.audioBuffer.duration.toFixed(2)}s
-              {trimmed && ' · trimmed'}
+              {trimmed && ` · ${t('sample.trimmed')}`}
             </span>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <button
-                onClick={() => setEditorOpen(true)}
-                title="Open the full-size editor — zoom, exact in/out points, edit tools"
-                className="rounded border border-edge px-1.5 py-0.5 text-[10px] font-medium text-ink-soft transition-colors hover:border-info-deep/50 hover:text-info-bright"
-              >
-                ✎ Edit
-              </button>
-              <button
-                onClick={() => removeSample(block.id)}
-                title="Remove the envelope sample"
-                className="text-muted transition-colors hover:text-danger"
-              >
-                ✕
-              </button>
-            </div>
+            <button
+              onClick={remove}
+              title={t('sample.removeEnv')}
+              className="shrink-0 text-muted transition-colors hover:text-danger"
+            >
+              ✕
+            </button>
           </div>
         </div>
       ) : (
-        <div className="flex h-12 items-center justify-center text-center text-[11px] text-muted">
-          {recording ? 'Recording…' : 'Drop an audio file here'}
+        <div className="flex h-16 items-center justify-center gap-3 text-center text-[11px] text-muted">
+          {recording ? t('sample.recording') : (
+            <>
+              <span>{t('sample.dropFile')}</span>
+              {canUndo && (
+                <button
+                  onClick={undo}
+                  title={t('sample.restoreEnv')}
+                  className="rounded border border-edge px-1.5 py-0.5 text-[10px] font-medium text-ink-soft transition-colors hover:border-info-deep/50 hover:text-info-bright"
+                >
+                  {t('sample.restoreUndo')}
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
       <SampleLoadControls

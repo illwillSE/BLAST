@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { useClipboard, copyBlock } from '../state/clipboard'
+import { useUIPrefs, useT } from '../state/uiPrefs'
 import { CAT_STYLES, ParamControl } from './ui'
 import SampleEditor from './SampleEditor'
 import ConfirmButton from './ConfirmButton'
@@ -9,10 +10,17 @@ import DebugMeter from './DebugMeter'
 import SynthPreview from './SynthPreview'
 import BlockHelpModal from './BlockHelpModal'
 
+// `metal` is an advanced source — hidden from the in-place source switch in
+// Beginner mode (still selectable in Advanced). Keeping the current type listed
+// means a sound that already uses Metal still shows it as the active choice.
 function SourceTypeSwitch({ block, onSwapSource }) {
+  const { mode } = useUIPrefs()
+  const types = ['synth', 'metal', 'noise', 'sample'].filter(
+    (t) => mode === 'advanced' || t !== 'metal' || block.type === 'metal',
+  )
   return (
-    <div className="inline-grid grid-cols-4 gap-1 rounded bg-well p-0.5">
-      {['synth', 'metal', 'noise', 'sample'].map((t) => (
+    <div className="inline-flex gap-1 rounded bg-well p-0.5">
+      {types.map((t) => (
         <button
           key={t}
           onClick={() => t !== block.type && onSwapSource(t)}
@@ -56,6 +64,29 @@ function NoiseColorPicker({ value, onChange }) {
   )
 }
 
+// Header for a grouped control panel. When an override block (Sample Envelope /
+// Vocoder) has taken over one of the panel's params, a badge names it so the
+// greyed controls read as deliberate, not broken — the same info the per-control
+// hover tooltip carries, surfaced at a glance.
+function PanelHeader({ label, params, disabledParams, onSelect }) {
+  const t = useT()
+  const lockedBy = params.map((p) => disabledParams?.get(p.key)).find(Boolean)
+  return (
+    <div className="mb-2 flex items-center gap-2">
+      <span className="text-[10px] uppercase tracking-wide text-faint">{label}</span>
+      {lockedBy && (
+        <button
+          onClick={() => onSelect?.(lockedBy.id)}
+          title={t('block.setByTitle')}
+          className="rounded bg-well px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-muted transition-colors hover:text-accent-bright"
+        >
+          {t('block.setBy')} {lockedBy.name} ↗
+        </button>
+      )}
+    </div>
+  )
+}
+
 function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
   return (
     <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
@@ -70,7 +101,7 @@ function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
             key={p.key}
             style={p.type === 'harmonics' ? { gridColumn: 'span 2' } : undefined}
             className={lockedBy ? 'pointer-events-none opacity-40' : inertReason ? 'opacity-50' : undefined}
-            title={lockedBy ? `Overridden by the ${lockedBy} block` : inertReason || undefined}
+            title={lockedBy ? `Overridden by the ${lockedBy.name} block` : inertReason || undefined}
           >
             <ParamControl def={p} value={blockParams[p.key]} onChange={(v) => onParam(p.key, v)} />
           </div>
@@ -84,18 +115,25 @@ function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
 // in a responsive 2-column grid; the rich editors (sample waveform, harmonics)
 // span the full width above the grid.
 export default function BlockControls({
-  block, soundId, isSource, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams,
+  block, soundId, isSource, canRemoveLane, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams, onSelect,
 }) {
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
+  const { mode } = useUIPrefs()
+  const t = useT()
   const [helpOpen, setHelpOpen] = useState(false)
   const clip = useClipboard()
   const canPasteValues = clip?.kind === 'block' && clip.block.type === block.type
 
-  const visibleParams = def.params.filter((p) =>
+  const shown = def.params.filter((p) =>
     (!p.show || p.show(block.params)) && !(block.type === 'noise' && p.key === 'color')
     && !(block.type === 'visualizer' && p.key === 'mode')
   )
+  // Beginner mode hides params tagged `advanced`. If that would empty the
+  // inspector for this block, fall back to showing all its params so the user
+  // never lands on a blank panel.
+  const curated = shown.filter((p) => mode === 'advanced' || !p.advanced)
+  const visibleParams = curated.length > 0 ? curated : shown
 
   return (
     <div className="min-w-[280px] w-full">
@@ -104,7 +142,7 @@ export default function BlockControls({
         <span className={`text-[12px] font-semibold uppercase tracking-wider ${cat.text}`}>{def.name}</span>
         <button
           onClick={() => setHelpOpen(true)}
-          title={`What does ${def.name} do?`}
+          title={t('help.whatDoes')}
           className="flex h-4 w-4 items-center justify-center rounded-full border border-edge-2 font-serif text-[9px] italic leading-none text-muted transition-colors hover:border-info/60 hover:text-info-bright"
         >
           i
@@ -113,40 +151,40 @@ export default function BlockControls({
         <div className="ml-auto flex items-center gap-1.5 text-[10px]">
           <button
             onClick={() => copyBlock(block)}
-            title="Copy this block (params + sample)"
+            title={t('block.copyTitle')}
             className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
           >
-            ⧉ copy
+            ⧉ {t('block.copy')}
           </button>
           {canPasteValues && (
             <button
               onClick={onPasteValues}
-              title={`Paste values from the copied ${def.name}`}
+              title={t('block.pasteValuesTitle')}
               className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
             >
-              ⇲ values
+              ⇲ {t('block.pasteValues')}
             </button>
           )}
           {/* Analyzers are passive taps — nothing to bypass, so no on/off toggle. */}
           {!isSource && def.kind !== 'analyzer' && (
             <button
               onClick={onToggle}
-              title={block.enabled ? 'Bypass' : 'Enable'}
+              title={block.enabled ? t('block.bypass') : t('block.enable')}
               className={`rounded border px-2 py-0.5 transition-colors ${
                 block.enabled
                   ? 'border-on/50 bg-on/15 text-on-bright'
                   : 'border-edge-2 text-muted'
               }`}
             >
-              ⏻ {block.enabled ? 'on' : 'bypassed'}
+              ⏻ {block.enabled ? t('block.on') : t('block.bypassed')}
             </button>
           )}
-          {!isSource && (
+          {(!isSource || canRemoveLane) && (
             <ConfirmButton
               onConfirm={onRemove}
               className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
             >
-              ✕ remove
+              ✕ {isSource ? t('block.removeLane') : t('block.remove')}
             </ConfirmButton>
           )}
         </div>
@@ -155,11 +193,10 @@ export default function BlockControls({
       <div className="mt-3 space-y-3">
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />}
-        {block.type === 'noise' && <NoiseColorPicker value={block.params.color} onChange={(v) => onParam('color', v)} />}
         {block.type === 'debug' && <DebugMeter block={block} />}
         {def.presets && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-faint">Presets</span>
+            <span className="text-[10px] uppercase tracking-wider text-faint">{t('block.presets')}</span>
             {def.presets.map((preset) => (
               <button
                 key={preset.label}
@@ -171,21 +208,51 @@ export default function BlockControls({
             ))}
           </div>
         )}
+        {/* Beginner-friendly one-click examples, surfaced from the registry so
+            kids can learn by clicking without opening the help modal. */}
+        {def.examples?.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-faint">{t('block.examples')}</span>
+            {def.examples.map((ex) => (
+              <button
+                key={ex.label}
+                onClick={() => Object.entries(ex.params).forEach(([k, v]) => onParam(k, v))}
+                title={ex.hint}
+                className="rounded border border-edge px-2 py-0.5 text-[10px] text-text transition-colors hover:border-accent-deep/60 hover:text-accent-bright"
+              >
+                {ex.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Synth: two grouped panels (Oscillator | Envelope), each headed by its
             preview canvas. Vocoder: sample loader left, params right. All others:
             params grid alone. */}
         {block.type === 'synth' ? (
           <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-            {[['osc', 'Oscillator', 'wave'], ['env', 'Envelope', 'env']].map(([group, label, which]) => (
+            {[['osc', t('block.oscillator'), 'wave'], ['env', t('block.envelope'), 'env']].map(([group, label, which]) => (
               <div key={group} className="rounded-lg border border-edge/60 p-3">
-                <div className="mb-2 text-[10px] uppercase tracking-wide text-faint">{label}</div>
+                <PanelHeader label={label} params={visibleParams.filter((p) => p.group === group)} disabledParams={disabledParams} onSelect={onSelect} />
                 <SynthPreview params={block.params} which={which} />
                 <div className="mt-3">
                   <ParamsGrid visibleParams={visibleParams.filter((p) => p.group === group)} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
                 </div>
               </div>
             ))}
+          </div>
+        ) : block.type === 'noise' ? (
+          <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
+            <div className="rounded-lg border border-edge/60 p-3">
+              <NoiseColorPicker value={block.params.color} onChange={(v) => onParam('color', v)} />
+            </div>
+            <div className="rounded-lg border border-edge/60 p-3">
+              <PanelHeader label={t('block.envelope')} params={visibleParams} disabledParams={disabledParams} onSelect={onSelect} />
+              <SynthPreview params={block.params} which="env" />
+              <div className="mt-3">
+                <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+              </div>
+            </div>
           </div>
         ) : block.type === 'vocoder' ? (
           <div className="flex w-full items-start gap-6">

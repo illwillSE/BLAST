@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { decodeBlob } from '../audio/sampleCache'
 import { listLibrary, addToLibrary, removeFromLibrary } from '../utils/sampleLibrary'
+import { useT } from '../state/uiPrefs'
 import { Button } from './ui'
 
 export default function SampleLibraryModal({ sample, onLoad, onClose }) {
+  const t = useT()
   const [entries, setEntries] = useState([])
   const [nameInput, setNameInput] = useState(sample?.fileName?.replace(/\.[^.]+$/, '') ?? '')
   const [previewingId, setPreviewingId] = useState(null)
@@ -105,10 +107,10 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
       <div className="flex w-full max-w-lg flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl">
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">
-            Sample Library
+            {t('library.title')}
           </span>
           <span className="flex-1" />
-          <button onClick={onClose} className="text-muted transition-colors hover:text-ink">✕</button>
+          <button onClick={onClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
         </div>
 
         {sample && (
@@ -121,14 +123,14 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
               className="flex-1 rounded border border-edge bg-surface px-2 py-1 text-[11px] text-ink outline-none focus:border-accent-deep/60"
             />
             <Button onClick={handleSave} disabled={saving} variant="primary">
-              {saving ? 'Saving…' : '↑ Save current'}
+              {saving ? t('library.saving') : t('library.saveCurrent')}
             </Button>
           </div>
         )}
 
         <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
           {entries.length === 0 ? (
-            <div className="py-8 text-center text-[11px] text-muted">No samples saved yet</div>
+            <div className="py-8 text-center text-[11px] text-muted">{t('library.empty')}</div>
           ) : (
             entries.map(entry => (
               <div
@@ -146,7 +148,7 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
                 </span>
                 <button
                   onClick={() => togglePreview(entry)}
-                  title={previewingId === entry.id ? 'Stop' : 'Preview'}
+                  title={previewingId === entry.id ? t('library.stop') : t('library.preview')}
                   className={`w-5 shrink-0 text-center text-[12px] transition-colors ${
                     previewingId === entry.id ? 'text-accent-bright' : 'text-muted hover:text-ink'
                   }`}
@@ -155,14 +157,14 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
                 </button>
                 <button
                   onClick={() => handleLoad(entry)}
-                  title="Load into current block"
+                  title={t('library.load')}
                   className="shrink-0 rounded border border-edge px-1.5 py-0.5 text-[10px] font-medium text-ink-soft transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
                 >
-                  Load
+                  {t('library.loadShort')}
                 </button>
                 <button
                   onClick={() => handleDelete(entry)}
-                  title="Remove from library"
+                  title={t('library.remove')}
                   className="shrink-0 text-[10px] text-muted transition-colors hover:text-danger"
                 >
                   ✕
@@ -172,7 +174,7 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
           )}
         </div>
 
-        <Button onClick={handleBrowse}>Browse files into library…</Button>
+        <Button onClick={handleBrowse}>{t('library.browseInto')}</Button>
       </div>
     </div>
   )

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { newSequencer } from '../audio/sequencer'
+import { useT } from '../state/uiPrefs'
 import SequencerModal from './SequencerModal'
 
 // Dock panel for the sound-level sequencer: a compact summary + a one-line
 // pattern strip, with the full piano-roll editor in a pop-out modal (the dock is
 // too short for a two-octave grid). On/off lives here for quick toggling.
 export default function SequencerEditor({ sound, onChange }) {
+  const t = useT()
   const seq = sound.sequencer ?? newSequencer()
   const [open, setOpen] = useState(false)
   const noteCount = seq.steps.reduce((n, s) => n + (s.notes?.length ?? 0), 0)
@@ -13,14 +15,14 @@ export default function SequencerEditor({ sound, onChange }) {
   return (
     <div className="min-w-[240px]">
       <div className="flex items-center gap-2">
-        <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">Sequencer</span>
+        <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">{t('sequencer.title')}</span>
         <button
           onClick={() => onChange({ enabled: !seq.enabled })}
           className={`ml-auto rounded border px-2 py-0.5 text-[10px] transition-colors ${
             seq.enabled ? 'border-on/50 bg-on/15 text-on-bright' : 'border-edge bg-surface text-muted'
           }`}
         >
-          {seq.enabled ? '⏻ on' : '⏻ off'}
+          {seq.enabled ? t('sequencer.on') : t('sequencer.off')}
         </button>
       </div>
 
@@ -44,7 +46,7 @@ export default function SequencerEditor({ sound, onChange }) {
         onClick={() => setOpen(true)}
         className="mt-3 flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-1.5 text-[11px] font-semibold text-ink-soft transition-colors hover:border-accent-deep/60 hover:text-ink"
       >
-        Edit pattern ↗
+        {t('sequencer.edit')}
       </button>
 
       {open && <SequencerModal sound={sound} onChange={onChange} onClose={() => setOpen(false)} />}

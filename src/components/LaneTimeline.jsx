@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { laneDuration } from '../audio/engine'
+import { useT } from '../state/uiPrefs'
 import { CAT_STYLES } from './ui'
 
 // A time-domain view of the lanes, stacked to align with the chain rows below.
@@ -13,6 +14,7 @@ const SNAP = 0.005
 const fmt = (v) => (v < 0.001 ? '0' : v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`)
 
 export default function LaneTimeline({ sound, onLaneProp }) {
+  const t = useT()
   const [open, setOpen] = useState(true)
   const drag = useRef(null)
 
@@ -51,7 +53,7 @@ export default function LaneTimeline({ sound, onLaneProp }) {
         className="flex w-full items-center gap-1.5 px-4 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text hover:text-ink"
       >
         <span className="text-faint">{open ? '▾' : '▸'}</span>
-        Timeline — start offsets
+        {t('laneTimeline.heading')}
       </button>
 
       {open && (
@@ -76,7 +78,7 @@ export default function LaneTimeline({ sound, onLaneProp }) {
                   <div key={lane.id} className="relative h-6">
                     <div
                       onMouseDown={(e) => onBarDown(e, lane)}
-                      title={`Lane ${i + 1} — start ${fmt(delay)}, length ${fmt(len)}. Drag to offset.`}
+                      title={`${t('laneTimeline.lane')} ${i + 1} — ${t('laneTimeline.start')} ${fmt(delay)}, ${t('laneTimeline.length')} ${fmt(len)}. ${t('laneTimeline.dragOffset')}`}
                       className={`absolute top-0 flex h-6 cursor-ew-resize items-center overflow-hidden rounded border ${cat.border} bg-accent-deep/15 px-1.5 ${
                         muted ? 'opacity-40' : ''
                       }`}

@@ -1,4 +1,5 @@
 import { Slider, VFader } from './ui'
+import { useT } from '../state/uiPrefs'
 import ConfirmButton from './ConfirmButton'
 
 // The bus mixer — opens when the ∑ Bus node is selected. One channel-strip
@@ -9,6 +10,7 @@ const LEVEL_DEF = { key: 'level', label: 'Level', type: 'range', min: -40, max: 
 const PAN_DEF = { key: 'pan', label: 'Pan', type: 'range', min: -1, max: 1, step: 0.01, default: 0, format: (v) => (Math.abs(v) < 0.01 ? 'C' : v < 0 ? `${Math.round(-v * 100)}L` : `${Math.round(v * 100)}R`) }
 
 function Strip({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemoveLane }) {
+  const t = useT()
   return (
     <div className={`flex w-28 shrink-0 flex-col items-center gap-2 rounded-lg border border-edge bg-surface p-2 ${lane.enabled ? '' : 'opacity-50'}`}>
       <div className="flex w-full items-center justify-between gap-1 text-[10px]">
@@ -25,7 +27,7 @@ function Strip({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemove
           lane.enabled ? 'border-on/50 bg-on/15 text-on-bright' : 'border-danger/50 bg-danger/15 text-danger-bright'
         }`}
       >
-        {lane.enabled ? '⏻ on' : '⏻ muted'}
+        {lane.enabled ? t('bus.on') : t('bus.muted')}
       </button>
       <VFader def={LEVEL_DEF} value={lane.level ?? 0} onChange={(v) => onLaneProp(lane.id, 'level', v)} />
       <div className="w-full">
@@ -36,10 +38,11 @@ function Strip({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemove
 }
 
 export default function BusMixer({ sound, handlers }) {
+  const t = useT()
   const lanes = sound.sources ?? []
   return (
     <div className="min-w-[260px]">
-      <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">Bus · Mixer</span>
+      <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">{t('bus.title')}</span>
       <div className="mt-3 flex gap-3 overflow-x-auto">
         {lanes.map((lane, i) => (
           <Strip

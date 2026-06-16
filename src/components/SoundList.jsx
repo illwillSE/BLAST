@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useClipboard } from '../state/clipboard'
+import { useT } from '../state/uiPrefs'
 import ConfirmButton from './ConfirmButton'
 
 function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, onDelete, canDelete }) {
+  const t = useT()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(sound.name)
 
@@ -22,7 +24,7 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
     >
       <button
         onClick={(e) => { e.stopPropagation(); onPlay() }}
-        title="Play"
+        title={t('soundList.play')}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[9px] transition-colors ${
           selected
             ? 'border-accent/60 text-accent-bright hover:bg-accent/20'
@@ -45,14 +47,14 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
         <span
           className="flex-1 truncate text-[12px]"
           onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); setDraft(sound.name) }}
-          title="Double-click to rename"
+          title={t('soundList.renameHint')}
         >
           {sound.name}
         </span>
       )}
       <button
         onClick={(e) => { e.stopPropagation(); onDuplicate() }}
-        title="Duplicate"
+        title={t('soundList.duplicate')}
         className="hidden text-[11px] text-muted hover:text-ink group-hover:block"
       >
         ⧉
@@ -72,6 +74,7 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
 
 export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd, onRename, onDuplicate, onDelete, onPasteAsNewSound }) {
   const clip = useClipboard()
+  const t = useT()
   const [collapsed, setCollapsed] = useState(false)
 
   if (collapsed) {
@@ -79,7 +82,7 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
       <aside className="flex w-8 shrink-0 flex-col items-center border-r border-divider bg-panel pt-2 gap-2">
         <button
           onClick={() => setCollapsed(false)}
-          title="Show sounds"
+          title={t('soundList.show')}
           className="text-[12px] text-muted hover:text-ink"
         >
           ›
@@ -88,7 +91,7 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
           className="text-[11px] font-bold uppercase tracking-widest text-muted"
           style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
         >
-          Sounds
+          {t('soundList.title')}
         </span>
       </aside>
     )
@@ -97,11 +100,11 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-divider bg-panel">
       <div className="flex items-center justify-between border-b border-divider px-3 py-2">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-muted">Sounds</span>
+        <span className="text-[11px] font-bold uppercase tracking-widest text-muted">{t('soundList.title')}</span>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setCollapsed(true)}
-            title="Collapse panel"
+            title={t('soundList.collapse')}
             className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
           >
             ‹
@@ -109,7 +112,7 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
           {clip?.kind === 'sample' && (
             <button
               onClick={onPasteAsNewSound}
-              title="Paste the copied sample as a new sound"
+              title={t('soundList.pasteAsSound')}
               className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
             >
               ⇲
@@ -117,7 +120,7 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
           )}
           <button
             onClick={onAdd}
-            title="Add sound"
+            title={t('soundList.add')}
             className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
           >
             +
@@ -140,7 +143,7 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
         ))}
       </div>
       <div className="border-t border-divider p-2 text-[10px] leading-relaxed text-faint">
-        <kbd className="rounded border border-edge px-1">Space</kbd> plays the selected sound
+        <kbd className="rounded border border-edge px-1">Space</kbd> {t('soundList.spacePlays')}
       </div>
     </aside>
   )

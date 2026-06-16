@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { blocksByCategory, BLOCK_DEFS } from '../blocks/registry'
 import { useClipboard } from '../state/clipboard'
+import { useUIPrefs, useT } from '../state/uiPrefs'
 import { CAT_STYLES } from './ui'
 
 // `excludeKinds` hides whole block kinds. Sources are always excluded (a lane's
 // source is switched in place on its card). The master chain also excludes
 // `control` blocks — pitch/amp modulation is per-lane, not post-mix.
-export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], excludeTypes = [], label = 'Add Block', variant = 'box' }) {
+export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], excludeTypes = [], label, variant = 'box' }) {
+  const { mode } = useUIPrefs()
+  const t = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -19,9 +22,10 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
     return () => window.removeEventListener('mousedown', close)
   }, [open])
 
+  const menuLabel = label ?? t('addMenu.add')
   const hidden = new Set(['source', ...excludeKinds])
   const hiddenTypes = new Set(excludeTypes)
-  const categories = blocksByCategory()
+  const categories = blocksByCategory({ includeAdvanced: mode === 'advanced' })
     .map((c) => ({ ...c, blocks: c.blocks.filter((def) => !hidden.has(def.kind) && !hiddenTypes.has(def.type)) }))
     .filter((c) => c.blocks.length > 0)
 
@@ -35,11 +39,11 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
       {variant === 'chip' ? (
         <button
           onClick={() => setOpen((o) => !o)}
-          title={label}
+          title={menuLabel}
           className="flex items-center gap-1 rounded-lg border border-dashed border-edge px-2.5 py-1.5 text-[12px] text-muted transition-colors hover:border-accent-deep/50 hover:text-accent"
         >
           <span className="text-base leading-none">+</span>
-          {label !== 'Add Block' && <span className="text-[10px] uppercase tracking-wider">{label.replace(/^Add /, '')}</span>}
+          {label != null && <span className="text-[10px] uppercase tracking-wider">{menuLabel.replace(/^(Add |Lägg till )/, '')}</span>}
         </button>
       ) : (
         <button
@@ -47,7 +51,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
           className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-edge text-muted transition-colors hover:border-accent-deep/50 hover:text-accent"
         >
           <span className="text-xl leading-none">+</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider">{menuLabel}</span>
         </button>
       )}
 
@@ -59,7 +63,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
               className="mb-1.5 flex w-full items-baseline gap-2 rounded border border-accent-deep/40 px-1.5 py-1 text-left transition-colors hover:bg-surface"
             >
               <span className="self-center text-[12px] leading-none text-accent">⇲</span>
-              <span className="text-[12px] font-medium text-ink">Paste {pasteDef.name}</span>
+              <span className="text-[12px] font-medium text-ink">{t('addMenu.paste')} {pasteDef.name}</span>
             </button>
           )}
           {categories.map((cat) => (

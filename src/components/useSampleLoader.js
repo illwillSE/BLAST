@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import toWav from 'audiobuffer-to-wav'
 import {
-  getSample, setSample, onSampleChange, decodeBlob,
+  getSample, setSample, removeSample, onSampleChange, decodeBlob,
   pushHistory, undoSample, hasHistory,
 } from '../audio/sampleCache'
 import { cropBuffer, bufferToWavBlob } from '../audio/bufferOps'
@@ -144,10 +144,19 @@ export function useSampleLoader(block, onParam) {
     setHistoryTick((t) => t + 1)
   }, [block.id])
 
+  // Push the sample onto its history before clearing it, so removal is undoable
+  // (the same per-block stack the edit tools use — sample blobs are not in the
+  // project's Cmd+Z history by design).
+  const remove = useCallback(() => {
+    pushHistory(block.id)
+    removeSample(block.id)
+    setHistoryTick((t) => t + 1)
+  }, [block.id])
+
   return {
     sample, dragOver, recording, error, dragProps,
     browse, loadBlob, startRecording, stopRecording,
-    applyEdit, crop, undo, canUndo: hasHistory(block.id),
+    applyEdit, crop, undo, remove, canUndo: hasHistory(block.id),
     editorOpen, setEditorOpen,
     libraryOpen, setLibraryOpen,
     historyTick, // exposed so consumers re-render on edit/undo

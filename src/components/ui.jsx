@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getColor } from '../theme/colors'
 import { getSample, setSample } from '../audio/sampleCache'
 import { useClipboard, getClipboard, copySample } from '../state/clipboard'
+import { useUIPrefs, useT } from '../state/uiPrefs'
 
 // Shared control primitives — every control always shows its current value.
 
@@ -79,11 +80,12 @@ function ValueEntry({ def, value, onChange, onClose }) {
 }
 
 export function Slider({ def, value, onChange }) {
+  const t = useT()
   const pos = toPos(value, def)
   const fillPct = `${(pos * 100).toFixed(1)}%`
   const [editing, setEditing] = useState(false)
   return (
-    <div className="block select-none" title="Double-click slider to reset · double-click value to type it">
+    <div className="block select-none" title={t('controls.slider')}>
       <div className="mb-0.5 flex items-baseline justify-between gap-2">
         <span className="text-[11px] uppercase tracking-wide text-muted">{def.label}</span>
         <span className="relative">
@@ -93,7 +95,7 @@ export function Slider({ def, value, onChange }) {
           <span
             className="cursor-text font-mono text-[11px] text-ink hover:text-accent-bright"
             onDoubleClick={(e) => { e.preventDefault(); setEditing(true) }}
-            title="Double-click to enter an exact value"
+            title={t('controls.exactValue')}
           >
             {formatValue(def, value)}
           </span>
@@ -127,6 +129,7 @@ export function Slider({ def, value, onChange }) {
 // strips. Drag the track to set the value; double-click the track to reset;
 // double-click the value to type it exactly.
 export function VFader({ def, value, onChange }) {
+  const t = useT()
   const pos = toPos(value, def)
   const trackRef = useRef(null)
   const dragging = useRef(false)
@@ -139,7 +142,7 @@ export function VFader({ def, value, onChange }) {
   }
 
   return (
-    <div className="flex select-none flex-col items-center" title="Drag to set · double-click track to reset · double-click value to type it">
+    <div className="flex select-none flex-col items-center" title={t('controls.fader')}>
       <div
         ref={trackRef}
         onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); setFromEvent(e) }}
@@ -158,7 +161,7 @@ export function VFader({ def, value, onChange }) {
         <span
           className="cursor-text font-mono text-[11px] text-ink hover:text-accent-bright"
           onDoubleClick={(e) => { e.preventDefault(); setEditing(true) }}
-          title="Double-click to enter an exact value"
+          title={t('controls.exactValue')}
         >
           {formatValue(def, value)}
         </span>
@@ -168,6 +171,10 @@ export function VFader({ def, value, onChange }) {
 }
 
 export function Select({ def, value, onChange }) {
+  const { mode } = useUIPrefs()
+  // In Beginner mode, hide options tagged `advanced` — but always keep the
+  // currently-selected option visible so a saved advanced value isn't lost.
+  const options = def.options.filter((o) => mode === 'advanced' || !o.advanced || o.value === value)
   return (
     <label className="block select-none">
       <div className="mb-0.5 text-[11px] uppercase tracking-wide text-muted">{def.label}</div>
@@ -176,7 +183,7 @@ export function Select({ def, value, onChange }) {
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded border border-edge bg-surface px-1.5 py-1 font-mono text-[12px] text-ink outline-none focus:border-accent-deep/60"
       >
-        {def.options.map((o) => (
+        {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
@@ -188,6 +195,7 @@ export function Select({ def, value, onChange }) {
 // the relative level (0..1) of that partial. The array feeds the synth's
 // custom OmniOscillator partials. Drag up/down on a bar to set its level.
 export function HarmonicsEditor({ def, value, onChange }) {
+  const t = useT()
   const partials = Array.isArray(value) && value.length ? value : [1]
   const canvasRef = useRef(null)
   const draggingRef = useRef(false)
@@ -230,7 +238,7 @@ export function HarmonicsEditor({ def, value, onChange }) {
         onPointerMove={(e) => { if (draggingRef.current) setAt(e) }}
         onPointerUp={() => { draggingRef.current = false }}
         onPointerCancel={() => { draggingRef.current = false }}
-        title="Drag the bars to set each harmonic’s level — draw your own waveform"
+        title={t('controls.harmonics')}
         className="h-16 w-full cursor-crosshair rounded bg-well ring-1 ring-divider/60 touch-none"
       />
     </div>
@@ -261,22 +269,23 @@ export function ParamControl({ def, value, onChange }) {
 // Browse / Record button row + error line, shared by the sample blocks.
 export function SampleLoadControls({ block, recording, onBrowse, onStartRecording, onStopRecording, onOpenLibrary, error }) {
   const clip = useClipboard()
+  const t = useT()
   const hasSample = !!getSample(block.id)
   const canPaste = clip?.kind === 'sample'
   return (
     <>
       <div className="mt-2 flex gap-1.5">
-        <Button onClick={onBrowse} className="flex-1">Browse…</Button>
+        <Button onClick={onBrowse} className="flex-1">{t('sample.browse')}</Button>
         {recording ? (
-          <Button onClick={onStopRecording} variant="danger" className="flex-1 animate-pulse">■ Stop</Button>
+          <Button onClick={onStopRecording} variant="danger" className="flex-1 animate-pulse">{t('sample.stop')}</Button>
         ) : (
-          <Button onClick={onStartRecording} variant="danger" className="flex-1">● Record</Button>
+          <Button onClick={onStartRecording} variant="danger" className="flex-1">{t('sample.record')}</Button>
         )}
-        <Button onClick={onOpenLibrary} title="Open sample library">⊞ Library</Button>
+        <Button onClick={onOpenLibrary} title={t('sample.libraryTitle')}>{t('sample.library')}</Button>
       </div>
       <div className="mt-1.5 flex gap-1.5">
-        <Button onClick={() => copySample(block)} disabled={!hasSample} className="flex-1 disabled:opacity-40">⧉ Copy sample</Button>
-        <Button onClick={() => setSample(block.id, getClipboard().sample)} disabled={!canPaste} className="flex-1 disabled:opacity-40">⇲ Paste sample</Button>
+        <Button onClick={() => copySample(block)} disabled={!hasSample} className="flex-1 disabled:opacity-40">{t('sample.copySample')}</Button>
+        <Button onClick={() => setSample(block.id, getClipboard().sample)} disabled={!canPaste} className="flex-1 disabled:opacity-40">{t('sample.pasteSample')}</Button>
       </div>
       {error && <div className="mt-1.5 text-[11px] text-danger">{error}</div>}
     </>

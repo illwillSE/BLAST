@@ -109,14 +109,21 @@ export const BLOCK_DEFS = {
     // each headed by its matching preview canvas.
     params: [
       { key: 'wave', label: 'Wave', type: 'select', default: 'sawtooth', group: 'osc',
-        options: ['sine', 'triangle', 'square', 'sawtooth', 'pulse', 'custom'].map((v) => ({ value: v, label: v })) },
+        options: [
+          { value: 'sine', label: 'sine' },
+          { value: 'triangle', label: 'triangle' },
+          { value: 'square', label: 'square' },
+          { value: 'sawtooth', label: 'sawtooth' },
+          { value: 'pulse', label: 'pulse', advanced: true },
+          { value: 'custom', label: 'custom', advanced: true },
+        ] },
       // Band-limited partial count — only the harmonic-rich basic waves use it.
-      { key: 'partials', label: 'Partials', type: 'range', min: 0, max: 32, step: 1, default: 0, group: 'osc',
+      { key: 'partials', label: 'Partials', type: 'range', min: 0, max: 32, step: 1, default: 0, group: 'osc', advanced: true,
         format: (v) => (v === 0 ? 'full' : `${v}`),
         show: (p) => p.wave === 'square' || p.wave === 'sawtooth' || p.wave === 'triangle' },
-      { key: 'width', label: 'Width', type: 'range', min: -0.95, max: 0.95, step: 0.01, default: 0, group: 'osc',
+      { key: 'width', label: 'Width', type: 'range', min: -0.95, max: 0.95, step: 0.01, default: 0, group: 'osc', advanced: true,
         percent: true, format: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`, show: (p) => p.wave === 'pulse' },
-      { key: 'harmonics', label: 'Harmonics', type: 'harmonics', group: 'osc',
+      { key: 'harmonics', label: 'Harmonics', type: 'harmonics', group: 'osc', advanced: true,
         default: [1, 0.6, 0.4, 0.25, 0.15, 0.1, 0.07, 0.05], show: (p) => p.wave === 'custom' },
       { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 220, scale: 'log', format: hz, group: 'osc' },
       // Envelope controls ordered to match the envelope's left-to-right shape:
@@ -157,11 +164,13 @@ export const BLOCK_DEFS = {
     params: [
       { key: 'color', label: 'Color', type: 'select', default: 'white',
         options: ['white', 'pink', 'brown'].map((v) => ({ value: v, label: v })) },
-      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec,
-        inactive: (p) => p.sustain <= 0 ? 'No effect while Sustain is 0% — the burst decays to silence on its own. Raise Sustain to hold the noise for this length.' : false },
+      // Envelope controls ordered to match the envelope preview's left-to-right
+      // shape: attack → decay → sustain → Length (the sustain hold) → release.
       { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.005, scale: 'log', format: sec },
       { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.1, scale: 'log', format: sec },
       { key: 'sustain', label: 'Sustain', type: 'range', min: 0, max: 1, step: 0.01, default: 0, percent: true, format: (v) => `${Math.round(v * 100)}%` },
+      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec,
+        inactive: (p) => p.sustain <= 0 ? 'No effect while Sustain is 0% — the burst decays to silence on its own. Raise Sustain to hold the noise for this length.' : false },
       { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.3, scale: 'log', format: sec },
     ],
     examples: [
@@ -198,6 +207,7 @@ export const BLOCK_DEFS = {
     name: 'Metal',
     category: 'source',
     kind: 'source',
+    advanced: true,
     description: 'Inharmonic metallic synth — cymbals, bells, clangs',
     params: [
       { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 200, scale: 'log', format: hz },
@@ -250,16 +260,16 @@ export const BLOCK_DEFS = {
       // Granular playback (Tone.GrainPlayer): the buffer is replayed as a cloud
       // of overlapping grains, decoupling pitch (detune) from speed (playback
       // rate). The grain params only show in granular mode.
-      { key: 'mode', label: 'Mode', type: 'select', default: 'normal',
+      { key: 'mode', label: 'Mode', type: 'select', default: 'normal', advanced: true,
         options: [{ value: 'normal', label: 'normal' }, { value: 'granular', label: 'granular' }] },
-      { key: 'grainSize', label: 'Grain', type: 'range', min: 0.01, max: 0.5, step: 0.005, default: 0.1, format: sec,
+      { key: 'grainSize', label: 'Grain', type: 'range', min: 0.01, max: 0.5, step: 0.005, default: 0.1, format: sec, advanced: true,
         show: (p) => p.mode === 'granular' },
-      { key: 'overlap', label: 'Overlap', type: 'range', min: 0, max: 0.95, step: 0.01, default: 0.5, percent: true,
+      { key: 'overlap', label: 'Overlap', type: 'range', min: 0, max: 0.95, step: 0.01, default: 0.5, percent: true, advanced: true,
         format: (v) => `${Math.round(v * 100)}%`, show: (p) => p.mode === 'granular' },
-      { key: 'speed', label: 'Speed', type: 'range', min: 0.1, max: 4, step: 0.01, default: 1, scale: 'log',
+      { key: 'speed', label: 'Speed', type: 'range', min: 0.1, max: 4, step: 0.01, default: 1, scale: 'log', advanced: true,
         format: (v) => `${v.toFixed(2)}×`, show: (p) => p.mode === 'granular' },
-      { key: 'loop', label: 'Loop', type: 'toggle', default: false, show: (p) => p.mode === 'granular' },
-      { key: 'length', label: 'Length', type: 'range', min: 0.1, max: 8, step: 0.1, default: 1.5, format: sec,
+      { key: 'loop', label: 'Loop', type: 'toggle', default: false, advanced: true, show: (p) => p.mode === 'granular' },
+      { key: 'length', label: 'Length', type: 'range', min: 0.1, max: 8, step: 0.1, default: 1.5, format: sec, advanced: true,
         show: (p) => p.mode === 'granular' && p.loop },
     ],
     create(params) {
@@ -277,6 +287,7 @@ export const BLOCK_DEFS = {
     name: 'Compressor',
     category: 'dynamics',
     kind: 'insert',
+    advanced: true,
     description: 'Evens out loud and quiet parts',
     params: [
       { key: 'threshold', label: 'Threshold', type: 'range', min: -60, max: 0, step: 0.5, default: -24, format: db },
@@ -301,6 +312,7 @@ export const BLOCK_DEFS = {
     name: 'Gate',
     category: 'dynamics',
     kind: 'insert',
+    advanced: true,
     description: 'Silences audio below a threshold',
     params: [
       { key: 'threshold', label: 'Threshold', type: 'range', min: -80, max: 0, step: 0.5, default: -40, format: db },
@@ -321,6 +333,7 @@ export const BLOCK_DEFS = {
     name: 'Sample Envelope',
     category: 'dynamics',
     kind: 'control',
+    advanced: true,
     description: 'Shapes the source volume with a sample’s amplitude contour',
     params: [
       { key: 'amount', label: 'Amount', type: 'range', min: 0, max: 1, step: 0.01, default: 1, percent: true, format: (v) => `${Math.round(v * 100)}%` },
@@ -344,6 +357,7 @@ export const BLOCK_DEFS = {
     name: 'Vocoder',
     category: 'filter',
     kind: 'insert',
+    advanced: true,
     description: 'Imposes a speech sample’s spectrum onto the chain signal',
     params: [
       { key: 'bands', label: 'Bands', type: 'select', default: '16',
@@ -439,7 +453,7 @@ export const BLOCK_DEFS = {
       { key: 'filterType', label: 'Type', type: 'select', default: 'lowpass',
         options: [{ value: 'lowpass', label: 'low-pass' }, { value: 'highpass', label: 'high-pass' }, { value: 'bandpass', label: 'band-pass' }] },
       { key: 'cutoff', label: 'Cutoff', type: 'range', min: 40, max: 18000, step: 1, default: 800, scale: 'log', format: hz },
-      { key: 'resonance', label: 'Reso', type: 'range', min: 0.1, max: 20, step: 0.1, default: 1, scale: 'log', format: (v) => v.toFixed(1) },
+      { key: 'resonance', label: 'Reso', type: 'range', min: 0.1, max: 20, step: 0.1, default: 1, scale: 'log', format: (v) => v.toFixed(1), advanced: true },
     ],
     create(p) {
       const node = new Tone.Filter(p.cutoff, p.filterType)
@@ -458,6 +472,7 @@ export const BLOCK_DEFS = {
     name: 'EQ',
     category: 'filter',
     kind: 'insert',
+    advanced: true,
     description: 'Three-band tone control',
     params: [
       { key: 'low', label: 'Low', type: 'range', min: -24, max: 24, step: 0.5, default: 0, format: db },
@@ -484,7 +499,7 @@ export const BLOCK_DEFS = {
     description: 'Adds space and ambience',
     params: [
       { key: 'decay', label: 'Decay', type: 'range', min: 0.1, max: 10, step: 0.1, default: 2, scale: 'log', format: sec },
-      { key: 'preDelay', label: 'Pre-delay', type: 'range', min: 0, max: 0.2, step: 0.001, default: 0.01, format: sec },
+      { key: 'preDelay', label: 'Pre-delay', type: 'range', min: 0, max: 0.2, step: 0.001, default: 0.01, format: sec, advanced: true },
       wet(0.4),
     ],
     presets: [
@@ -515,7 +530,7 @@ export const BLOCK_DEFS = {
     params: [
       { key: 'time', label: 'Time', type: 'range', min: 0.02, max: 1, step: 0.01, default: 0.25, format: sec },
       { key: 'feedback', label: 'Feedback', type: 'range', min: 0, max: 0.92, step: 0.01, default: 0.4, percent: true, format: (v) => `${Math.round(v * 100)}%` },
-      { key: 'pingpong', label: 'Ping-pong', type: 'toggle', default: false },
+      { key: 'pingpong', label: 'Ping-pong', type: 'toggle', default: false, advanced: true },
       wet(0.4),
     ],
     structureParams: ['pingpong'],
@@ -555,6 +570,7 @@ export const BLOCK_DEFS = {
     name: 'Pitch Shift',
     category: 'pitch',
     kind: 'insert',
+    advanced: true,
     description: 'Shifts pitch up or down without changing speed',
     params: [
       { key: 'pitch', label: 'Shift', type: 'range', min: -24, max: 24, step: 0.5, default: 0, format: semis },
@@ -575,6 +591,7 @@ export const BLOCK_DEFS = {
     name: 'Detune',
     category: 'pitch',
     kind: 'insert',
+    advanced: true,
     description: 'Thickens the sound with detuned copies',
     params: [
       { key: 'amount', label: 'Amount', type: 'range', min: -100, max: 100, step: 1, default: 15, format: cents },
@@ -615,6 +632,7 @@ export const BLOCK_DEFS = {
     name: 'Pitch LFO',
     category: 'pitch',
     kind: 'control',
+    advanced: true,
     description: 'Wobbles the source pitch — vibrato, sirens, alarms',
     params: [
       { key: 'rate', label: 'Rate', type: 'range', min: 0.1, max: 30, step: 0.1, default: 5, scale: 'log', format: (v) => `${v.toFixed(1)}Hz` },
@@ -628,6 +646,7 @@ export const BLOCK_DEFS = {
     name: 'Pitch Envelope',
     category: 'pitch',
     kind: 'control',
+    advanced: true,
     description: 'Slides the source pitch over time — lasers, power-ups, sweeps',
     params: [
       { key: 'start', label: 'Start', type: 'range', min: -2400, max: 2400, step: 10, default: 0, format: cents },
@@ -731,6 +750,7 @@ export const BLOCK_DEFS = {
     name: 'Debug',
     category: 'utility',
     kind: 'analyzer',
+    advanced: true,
     description: 'Inline level meter — audio passes through unchanged',
     // No params: the meter's held max/min + reset are runtime UI state, not
     // anything to save with the sound.
@@ -771,21 +791,29 @@ export const BLOCK_DEFS = {
 
 // Which of a lane's source params are currently overridden by another enabled
 // block in that lane's chain (e.g. the Sample Envelope flattens the synth
-// ADSR). Returns paramKey -> overriding block's name, so the UI can grey the
-// control out and explain why. Blocks opt in with an `overrides(params)` def.
+// ADSR). Returns paramKey -> { name, id } of the overriding block, so the UI can
+// grey the control out, name the culprit, and link to it. Blocks opt in with an
+// `overrides(params)` def.
 export function disabledSourceParams(lane) {
   const locks = new Map()
   for (const block of lane.chain ?? []) {
     if (!block.enabled) continue
     const def = BLOCK_DEFS[block.type]
     if (!def?.overrides) continue
-    for (const key of def.overrides(block.params)) if (!locks.has(key)) locks.set(key, def.name)
+    for (const key of def.overrides(block.params)) if (!locks.has(key)) locks.set(key, { name: def.name, id: block.id })
   }
   return locks
 }
 
-export function blocksByCategory() {
+// Group block defs by category for the add-menu. In Beginner mode
+// (`includeAdvanced: false`) blocks tagged `advanced` are dropped from the menu;
+// this only curates what's *addable* — an advanced block already in a chain
+// still renders and stays editable.
+export function blocksByCategory({ includeAdvanced = true } = {}) {
   const byCat = new Map(CATEGORIES.map((c) => [c.id, { ...c, blocks: [] }]))
-  for (const def of Object.values(BLOCK_DEFS)) byCat.get(def.category).blocks.push(def)
+  for (const def of Object.values(BLOCK_DEFS)) {
+    if (!includeAdvanced && def.advanced) continue
+    byCat.get(def.category).blocks.push(def)
+  }
   return [...byCat.values()]
 }

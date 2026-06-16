@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { HELP } from '../blocks/help'
+import { useUIPrefs } from '../state/uiPrefs'
 import { CAT_STYLES, formatValue } from './ui'
-
-const LANG_KEY = 'blast-help-lang'
 
 // Help window opened from the (i) icon in a block's title bar. Content is
 // looked up by block type, so every block type gets this for free. The flag
-// toggles English/Swedish; the choice is remembered across blocks/sessions.
+// toggles English/Swedish via the shared UI-language preference, so it stays in
+// sync with the rest of the app's language.
 export default function BlockHelpModal({ type, onParam, onClose }) {
   const def = BLOCK_DEFS[type]
   const cat = CAT_STYLES[def.category]
-  const [lang, setLang] = useState(() => (localStorage.getItem(LANG_KEY) === 'sv' ? 'sv' : 'en'))
+  const { lang, setLang, mode } = useUIPrefs()
 
   const t = HELP[lang]
   const en = HELP.en
@@ -20,10 +20,11 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
   const paramHelp = (key) =>
     block.params?.[key] ?? t.common[key] ?? blockEn.params?.[key] ?? en.common[key] ?? null
 
+  // Match the inspector: in Beginner mode, advanced params aren't listed here.
+  const helpParams = def.params.filter((p) => mode === 'advanced' || !p.advanced)
+
   function toggleLang() {
-    const next = lang === 'en' ? 'sv' : 'en'
-    setLang(next)
-    localStorage.setItem(LANG_KEY, next)
+    setLang(lang === 'en' ? 'sv' : 'en')
   }
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
           </button>
           <button
             onClick={onClose}
-            title="Close (Esc)"
+            title={lang === 'en' ? 'Close (Esc)' : 'Stäng (Esc)'}
             className="text-muted transition-colors hover:text-ink"
           >
             ✕
@@ -85,13 +86,13 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
             </div>
           )}
 
-          {def.params.length > 0 && (
+          {helpParams.length > 0 && (
             <div>
               <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">
                 {t.headings.controls}
               </div>
               <dl className="space-y-2.5">
-                {def.params.map((p) => (
+                {helpParams.map((p) => (
                   <div key={p.key}>
                     <dt className="flex items-baseline gap-2">
                       <span className="text-[12px] font-semibold text-ink">{p.label}</span>

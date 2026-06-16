@@ -5,6 +5,7 @@ import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
 import { reverseBuffer, normalizeBuffer, fadeBuffer } from '../audio/bufferOps'
 import { Button } from './ui'
+import { useUIPrefs, useT } from '../state/uiPrefs'
 import { getColor } from '../theme/colors'
 
 function ToolButton({ children, onClick, disabled, title }) {
@@ -49,8 +50,6 @@ function TimeField({ label, value, onCommit }) {
   )
 }
 
-const LANG_KEY = 'blast-help-lang'
-
 const HELP_ITEMS = {
   en: [
     { label: 'Zoom', text: 'Mouse wheel zooms the waveform. Scroll left/right when zoomed in.' },
@@ -83,14 +82,13 @@ export default function SampleEditorModal({
   const wsRef = useRef(null)
   const regionRef = useRef(null)
   const animRef = useRef(null)
+  const { lang, setLang } = useUIPrefs()
+  const t = useT()
   const [playing, setPlaying] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
-  const [lang, setLang] = useState(() => (localStorage.getItem(LANG_KEY) === 'sv' ? 'sv' : 'en'))
 
   function toggleLang() {
-    const next = lang === 'en' ? 'sv' : 'en'
-    setLang(next)
-    localStorage.setItem(LANG_KEY, next)
+    setLang(lang === 'en' ? 'sv' : 'en')
   }
   const paramsRef = useRef(block.params)
   paramsRef.current = block.params
@@ -216,21 +214,21 @@ export default function SampleEditorModal({
       <div className="flex w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl">
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">
-            Sample Editor
+            {t('sample.editorTitle')}
           </span>
           <span className="flex-1 truncate font-mono text-[11px] text-muted">
             {sample.fileName} · {full.toFixed(2)}s
           </span>
           <button
             onClick={() => setHelpOpen((v) => !v)}
-            title={helpOpen ? 'Hide help' : 'Show help'}
+            title={helpOpen ? t('sample.hideHelp') : t('sample.showHelp')}
             className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors ${helpOpen ? 'bg-accent-deep/20 text-accent-bright' : 'text-muted hover:text-ink'}`}
           >
             ?
           </button>
           <button
             onClick={onClose}
-            title="Close (Esc)"
+            title={t('common.close')}
             className="text-muted transition-colors hover:text-ink"
           >
             ✕
@@ -241,11 +239,11 @@ export default function SampleEditorModal({
           <div className="rounded border border-divider bg-well px-3 py-2.5">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-faint">
-                {lang === 'en' ? 'How to use' : 'Så här fungerar det'}
+                {t('sample.howToUse')}
               </span>
               <button
                 onClick={toggleLang}
-                title={lang === 'en' ? 'Visa på svenska' : 'Show in English'}
+                title={lang === 'en' ? t('help.toSwedish') : t('help.toEnglish')}
                 className="rounded px-1 text-[15px] leading-none transition-transform hover:scale-110"
               >
                 {lang === 'en' ? '🇸🇪' : '🇬🇧'}
@@ -264,23 +262,23 @@ export default function SampleEditorModal({
 
         <div ref={containerRef} className="rounded border border-divider bg-well" />
         <div className="text-[10px] text-faint">
-          Mouse wheel to zoom · drag the highlighted region's edges to set in/out points
+          {t('sample.zoomHint')}
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <Button onClick={audition} variant="primary">
-            {playing ? '■ Stop' : '▶ Play region'}
+            {playing ? t('sample.stop') : t('sample.playRegion')}
           </Button>
-          <TimeField label="In" value={trimStart} onCommit={(v) => setTrim(v, trimEnd)} />
-          <TimeField label="Out" value={trimEnd} onCommit={(v) => setTrim(trimStart, v)} />
+          <TimeField label={t('sample.in')} value={trimStart} onCommit={(v) => setTrim(v, trimEnd)} />
+          <TimeField label={t('sample.out')} value={trimEnd} onCommit={(v) => setTrim(trimStart, v)} />
           <div className="ml-auto flex flex-wrap gap-1.5">
-            <ToolButton onClick={onUndo} disabled={!canUndo} title="Undo last edit">↩ Undo</ToolButton>
-            <ToolButton onClick={() => onApplyEdit(reverseBuffer)} title="Reverse the sample">Reverse</ToolButton>
-            <ToolButton onClick={() => onApplyEdit(normalizeBuffer)} title="Boost to full volume">Normalize</ToolButton>
-            <ToolButton onClick={() => onApplyEdit((b) => fadeBuffer(b, 'in'))} title="Fade in the start">Fade in</ToolButton>
-            <ToolButton onClick={() => onApplyEdit((b) => fadeBuffer(b, 'out'))} title="Fade out the end">Fade out</ToolButton>
-            <ToolButton onClick={onCrop} disabled={!trimmed} title="Cut the sample down to the selected region">
-              ✂ Crop
+            <ToolButton onClick={onUndo} disabled={!canUndo} title={t('sample.undoTitle')}>{t('sample.undo')}</ToolButton>
+            <ToolButton onClick={() => onApplyEdit(reverseBuffer)} title={t('sample.reverseTitle')}>{t('sample.reverse')}</ToolButton>
+            <ToolButton onClick={() => onApplyEdit(normalizeBuffer)} title={t('sample.normalizeTitle')}>{t('sample.normalize')}</ToolButton>
+            <ToolButton onClick={() => onApplyEdit((b) => fadeBuffer(b, 'in'))} title={t('sample.fadeInTitle')}>{t('sample.fadeIn')}</ToolButton>
+            <ToolButton onClick={() => onApplyEdit((b) => fadeBuffer(b, 'out'))} title={t('sample.fadeOutTitle')}>{t('sample.fadeOut')}</ToolButton>
+            <ToolButton onClick={onCrop} disabled={!trimmed} title={t('sample.cropTitle')}>
+              {t('sample.crop')}
             </ToolButton>
           </div>
         </div>

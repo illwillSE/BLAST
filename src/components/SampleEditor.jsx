@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import WaveSurfer from 'wavesurfer.js'
 import { onPlay } from '../utils/bus'
 import { SampleLoadControls } from './ui'
+import { useT } from '../state/uiPrefs'
 import { useSampleLoader } from './useSampleLoader'
 import SampleEditorModal from './SampleEditorModal'
 import SampleLibraryModal from './SampleLibraryModal'
@@ -10,6 +11,7 @@ import { getColor } from '../theme/colors'
 // Waveform display with playback cursor, trim region, edit tools, and the
 // two ways to fill the sample buffer: file load (drop/browse) and mic.
 export default function SampleEditor({ block, soundId, onParam }) {
+  const t = useT()
   const containerRef = useRef(null)
   const cursorRef = useRef(null)
   const animRef = useRef(null)
@@ -83,7 +85,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
           <div
             className="relative cursor-pointer"
             onClick={() => setEditorOpen(true)}
-            title="Click to open the sample editor"
+            title={t('sample.openEditor')}
           >
             <div ref={containerRef} />
             <div
@@ -95,13 +97,13 @@ export default function SampleEditor({ block, soundId, onParam }) {
           <div className="mt-1">
             <span className="truncate font-mono text-[10px] text-muted" title={sample.fileName}>
               {sample.fileName} · {sample.audioBuffer.duration.toFixed(2)}s
-              {trimmed && ' · trimmed'}
+              {trimmed && ` · ${t('sample.trimmed')}`}
             </span>
           </div>
         </div>
       ) : (
         <div className="flex h-16 items-center justify-center text-center text-[11px] text-muted">
-          {recording ? 'Recording…' : 'Drop an audio file here'}
+          {recording ? t('sample.recording') : t('sample.dropFile')}
         </div>
       )}
       <SampleLoadControls
