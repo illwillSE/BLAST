@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { STRINGS } from '../i18n/strings'
 
 // User preferences — mode (Beginner/Advanced) and UI language. These are NOT
@@ -30,6 +30,12 @@ export function UIPrefsProvider({ children }) {
     setLangState(l)
     try { localStorage.setItem(LANG_KEY, l) } catch {}
   }
+
+  // Keep the document language in sync so screen readers, spell-check and search
+  // engines see the actual UI language (the static index.html only declares 'en').
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
 
   const value = useMemo(() => ({ mode, setMode, lang, setLang }), [mode, lang])
   return <UIPrefsContext.Provider value={value}>{children}</UIPrefsContext.Provider>
