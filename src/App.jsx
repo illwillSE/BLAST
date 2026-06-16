@@ -37,6 +37,9 @@ export default function App() {
         return normalizeProject(parsed.project ?? parsed) // compat: old format was a bare project
       }
     } catch {}
+    // First start (no autosave yet): boot with the demo presets. After this the
+    // autosave above takes over, so presets only load automatically once — reload
+    // them anytime from Settings → Load presets.
     return presetProject()
   })
   const t = useT()
@@ -357,6 +360,12 @@ export default function App() {
     loadProject(newProject())
   }
 
+  // Replace the current project with the demo presets — the same set that boots
+  // on first run, reloadable from Settings.
+  function loadPresets() {
+    loadProject(presetProject())
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <Header
@@ -365,6 +374,7 @@ export default function App() {
         onLoadProject={loadProject}
         onSetExport={setExport}
         onNewProject={newBlankProject}
+        onLoadPresets={loadPresets}
       />
       <div className="flex min-h-0 flex-1">
         <SoundList

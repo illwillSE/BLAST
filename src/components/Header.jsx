@@ -4,7 +4,7 @@ import { saveProjectZip, loadProjectZip } from '../utils/projectZip'
 import { useUIPrefs, useT } from '../state/uiPrefs'
 import SettingsModal from './SettingsModal'
 
-export default function Header({ project, onRenameProject, onLoadProject, onSetExport, onNewProject }) {
+export default function Header({ project, onRenameProject, onLoadProject, onSetExport, onNewProject, onLoadPresets }) {
   const { mode, setMode, lang, setLang } = useUIPrefs()
   const t = useT()
   const fileRef = useRef(null)
@@ -107,6 +107,7 @@ export default function Header({ project, onRenameProject, onLoadProject, onSetE
           onRenameProject={onRenameProject}
           onSetExport={onSetExport}
           onNewProject={onNewProject}
+          onLoadPresets={onLoadPresets}
           onClose={() => setSettingsOpen(false)}
         />
       )}

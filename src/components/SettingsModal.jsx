@@ -23,11 +23,12 @@ function SelectField({ label, value, onChange, children }) {
 // project-level settings can slot in later. The Export tab holds the sample
 // export options (sample rate / channels / format) that also drive
 // "→ Sample sound" and copy-to-sample, so rendered audio matches.
-export default function SettingsModal({ project, onRenameProject, onSetExport, onNewProject, onClose }) {
+export default function SettingsModal({ project, onRenameProject, onSetExport, onNewProject, onLoadPresets, onClose }) {
   const { mode, setMode, lang, setLang } = useUIPrefs()
   const t = useT()
   const [tab, setTab] = useState('general')
   const [confirmingNew, setConfirmingNew] = useState(false)
+  const [confirmingPresets, setConfirmingPresets] = useState(false)
 
   const TABS = [
     { id: 'general', label: t('settings.general') },
@@ -117,11 +118,11 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
                 </div>
               </div>
 
-              <div className="border-t border-divider pt-3">
+              <div className="flex gap-1.5 border-t border-divider pt-3">
                 {!confirmingNew ? (
                   <Button onClick={() => setConfirmingNew(true)}>{t('settings.newProject')}</Button>
                 ) : (
-                  <div className="space-y-2 rounded border border-danger/60 bg-danger/10 p-2.5">
+                  <div className="flex-1 space-y-2 rounded border border-danger/60 bg-danger/10 p-2.5">
                     <p className="text-[12px] leading-relaxed text-ink">
                       {t('settings.newProjectConfirm')}
                     </p>
@@ -133,6 +134,24 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
                         {t('settings.startNewProject')}
                       </button>
                       <Button onClick={() => setConfirmingNew(false)}>{t('common.cancel')}</Button>
+                    </div>
+                  </div>
+                )}
+                {!confirmingPresets ? (
+                  <Button onClick={() => setConfirmingPresets(true)}>{t('settings.loadPresets')}</Button>
+                ) : (
+                  <div className="flex-1 space-y-2 rounded border border-danger/60 bg-danger/10 p-2.5">
+                    <p className="text-[12px] leading-relaxed text-ink">
+                      {t('settings.loadPresetsConfirm')}
+                    </p>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => { setConfirmingPresets(false); onLoadPresets(); onClose() }}
+                        className="rounded border border-danger bg-danger px-2 py-0.5 text-[12px] text-white transition-colors"
+                      >
+                        {t('settings.loadPresetsConfirmBtn')}
+                      </button>
+                      <Button onClick={() => setConfirmingPresets(false)}>{t('common.cancel')}</Button>
                     </div>
                   </div>
                 )}
