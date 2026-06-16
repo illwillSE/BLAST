@@ -105,24 +105,28 @@ export const BLOCK_DEFS = {
     category: 'source',
     kind: 'source',
     description: 'Oscillator with envelope',
+    // `group` ('osc' | 'env') splits the controls into the two panels in the UI,
+    // each headed by its matching preview canvas.
     params: [
-      { key: 'wave', label: 'Wave', type: 'select', default: 'sawtooth',
+      { key: 'wave', label: 'Wave', type: 'select', default: 'sawtooth', group: 'osc',
         options: ['sine', 'triangle', 'square', 'sawtooth', 'pulse', 'custom'].map((v) => ({ value: v, label: v })) },
       // Band-limited partial count — only the harmonic-rich basic waves use it.
-      { key: 'partials', label: 'Partials', type: 'range', min: 0, max: 32, step: 1, default: 0,
+      { key: 'partials', label: 'Partials', type: 'range', min: 0, max: 32, step: 1, default: 0, group: 'osc',
         format: (v) => (v === 0 ? 'full' : `${v}`),
         show: (p) => p.wave === 'square' || p.wave === 'sawtooth' || p.wave === 'triangle' },
-      { key: 'width', label: 'Width', type: 'range', min: -0.95, max: 0.95, step: 0.01, default: 0,
+      { key: 'width', label: 'Width', type: 'range', min: -0.95, max: 0.95, step: 0.01, default: 0, group: 'osc',
         percent: true, format: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`, show: (p) => p.wave === 'pulse' },
-      { key: 'harmonics', label: 'Harmonics', type: 'harmonics',
+      { key: 'harmonics', label: 'Harmonics', type: 'harmonics', group: 'osc',
         default: [1, 0.6, 0.4, 0.25, 0.15, 0.1, 0.07, 0.05], show: (p) => p.wave === 'custom' },
-      { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 220, scale: 'log', format: hz },
-      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec,
+      { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 220, scale: 'log', format: hz, group: 'osc' },
+      // Envelope controls ordered to match the envelope's left-to-right shape:
+      // attack → decay → sustain → Length (the sustain hold) → release.
+      { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.01, scale: 'log', format: sec, group: 'env' },
+      { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.1, scale: 'log', format: sec, group: 'env' },
+      { key: 'sustain', label: 'Sustain', type: 'range', min: 0, max: 1, step: 0.01, default: 0.7, percent: true, format: (v) => `${Math.round(v * 100)}%`, group: 'env' },
+      { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec, group: 'env',
         inactive: (p) => p.sustain <= 0 ? 'No effect while Sustain is 0% — the note decays to silence on its own. Raise Sustain to hold the note for this length.' : false },
-      { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.01, scale: 'log', format: sec },
-      { key: 'decay', label: 'Decay', type: 'range', min: 0.01, max: 2, step: 0.01, default: 0.1, scale: 'log', format: sec },
-      { key: 'sustain', label: 'Sustain', type: 'range', min: 0, max: 1, step: 0.01, default: 0.7, percent: true, format: (v) => `${Math.round(v * 100)}%` },
-      { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.3, scale: 'log', format: sec },
+      { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.3, scale: 'log', format: sec, group: 'env' },
     ],
     // Polyphonic: a VoicePool of Tone.Synth voices, so chords and overlapping
     // sequence steps ring out instead of cutting each other off. The pool exposes

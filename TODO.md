@@ -17,7 +17,7 @@ design brief and from development discussions.
       make it addable only when needed (on by default once added).
 - [ ] **Pill selection resets** — selecting a pill works, but it resets to
       the source after a couple of seconds. Is this connected to the undo
-      functionality somehow?
+      functionality somehow? - not reproducable
 - [x] **New / empty project** — "New project" action in the Settings modal
       (General tab) with a confirm warning; resets to a fresh single-sound
       project and clears undo history.
@@ -87,20 +87,21 @@ design brief and from development discussions.
 - [ ] **Live recording waveform** — show a scrolling waveform *while*
       recording (WaveSurfer Record plugin). Today the waveform only appears
       after pressing Stop.
-- [ ] **Synth visualization** — the synth source has no visual identity; an
-      oscilloscope or rendered ADSR/waveform preview that updates while
-      tweaking would help.
+- [ ] **Synth visualization** — the synth source has no visual identity; a
+      rendered ADSR/waveform preview that updates while tweaking would help.
 - [ ] **Region looping** — loop the trimmed sample region for sustained
       sounds (engines, wind); regions plugin emits the needed events.
 - [ ] **Sample editor polish** — arrow-key nudging of in/out points, optional
       snap-to-zero-crossing.
+- [ ] **Sequencer in source lanes** - add sequencer as a normal block and make
+      it possible to add it per lane.
 
 ## Bugs
 - [ ] Sample envelope no edit
 - [ ] No visualization on metal synth
 
 ## Polish / housekeeping
-
+- [ ] Sample envelope visual not crisp and too big
 - [ ] Decide the **default Output display mode** (currently `waveform`;
       candidates: `spectrum`, `fire`).
 - [ ] **Screenshot** in the README once the UI is settled.

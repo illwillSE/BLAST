@@ -6,6 +6,7 @@ import SampleEditor from './SampleEditor'
 import ConfirmButton from './ConfirmButton'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
 import DebugMeter from './DebugMeter'
+import SynthPreview from './SynthPreview'
 import BlockHelpModal from './BlockHelpModal'
 
 function SourceTypeSwitch({ block, onSwapSource }) {
@@ -171,8 +172,22 @@ export default function BlockControls({
           </div>
         )}
 
-        {/* Vocoder: sample loader left, params right. All others: params grid alone. */}
-        {block.type === 'vocoder' ? (
+        {/* Synth: two grouped panels (Oscillator | Envelope), each headed by its
+            preview canvas. Vocoder: sample loader left, params right. All others:
+            params grid alone. */}
+        {block.type === 'synth' ? (
+          <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
+            {[['osc', 'Oscillator', 'wave'], ['env', 'Envelope', 'env']].map(([group, label, which]) => (
+              <div key={group} className="rounded-lg border border-edge/60 p-3">
+                <div className="mb-2 text-[10px] uppercase tracking-wide text-faint">{label}</div>
+                <SynthPreview params={block.params} which={which} />
+                <div className="mt-3">
+                  <ParamsGrid visibleParams={visibleParams.filter((p) => p.group === group)} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : block.type === 'vocoder' ? (
           <div className="flex w-full items-start gap-6">
             <div className="w-64 shrink-0">
               <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />
