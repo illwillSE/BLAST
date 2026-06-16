@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { liveEngine } from '../audio/engine'
 
-// Inline meter body for the Debug block. Reads the block's own analyser tap
-// (signal at this point in the chain) every animation frame — same read pattern
-// as OutputVisualizer — and shows live peak/RMS dB plus a held max that latches
-// the loudest peak seen across plays until manually reset.
+// Numeric level readout for the Monitor block's `meter` view. Reads the block's
+// own analyser tap (signal at this point in the chain) every animation frame —
+// same read pattern as OutputVisualizer — and shows live peak/RMS dB plus a held
+// max that latches the loudest peak seen across plays until manually reset. The
+// `compact` prop tightens the layout for the narrow chain card.
 
 const FLOOR_DB = -100
 const toDb = (a) => (a > 0 ? Math.max(FLOOR_DB, 20 * Math.log10(a)) : FLOOR_DB)
@@ -26,11 +27,11 @@ const getHeld = (id) => {
   return h
 }
 
-function Meter({ label, valRef, barRef, tickRef }) {
+function Meter({ label, valRef, barRef, tickRef, compact }) {
   return (
     <div className="flex items-center gap-2 text-[10px]">
-      <span className="w-8 uppercase tracking-wider text-faint">{label}</span>
-      <span ref={valRef} className="w-16 font-mono text-ink-soft">−∞ dB</span>
+      <span className={`${compact ? 'w-7' : 'w-8'} uppercase tracking-wider text-faint`}>{label}</span>
+      <span ref={valRef} className={`${compact ? 'w-14' : 'w-16'} whitespace-nowrap font-mono tabular-nums text-ink-soft`}>−∞ dB</span>
       <div className="relative h-2 flex-1 overflow-hidden rounded bg-well">
         <div ref={barRef} className="h-full bg-accent-deep" style={{ width: '0%' }} />
         {tickRef && (
@@ -41,7 +42,7 @@ function Meter({ label, valRef, barRef, tickRef }) {
   )
 }
 
-export default function DebugMeter({ block }) {
+export default function DebugMeter({ block, compact = false }) {
   const peakValRef = useRef(null)
   const peakBarRef = useRef(null)
   const maxValRef = useRef(null)
@@ -57,6 +58,14 @@ export default function DebugMeter({ block }) {
       raf = requestAnimationFrame(draw)
       const analyser = liveEngine.getAnalyser(block.id)
       if (!analyser) return
+      // The Monitor's analyser is shared with the canvas views, which switch it to
+      // FFT / smaller sizes. Restore waveform/1024 before reading sample stats; the
+      // first frame after retuning is garbage, so skip it (same as OutputVisualizer).
+      if (analyser.type !== 'waveform' || analyser.size !== 1024) {
+        analyser.type = 'waveform'
+        analyser.size = 1024
+        return
+      }
       const v = analyser.getValue()
       let peak = 0
       let min = 0
@@ -115,14 +124,14 @@ export default function DebugMeter({ block }) {
   }
 
   return (
-    <div className="flex w-full max-w-[420px] flex-col gap-2">
-      <Meter label="peak" valRef={peakValRef} barRef={peakBarRef} tickRef={maxTickRef} />
-      <Meter label="rms" valRef={rmsValRef} barRef={rmsBarRef} />
+    <div className={`flex flex-col ${compact ? 'w-[184px] gap-1.5' : 'w-full max-w-[420px] gap-2'}`}>
+      <Meter label="peak" valRef={peakValRef} barRef={peakBarRef} tickRef={maxTickRef} compact={compact} />
+      <Meter label="rms" valRef={rmsValRef} barRef={rmsBarRef} compact={compact} />
 
       <div className="flex items-center justify-between text-[10px]">
         <div className="flex items-center gap-2">
           <span className="uppercase tracking-wider text-faint">held max</span>
-          <span ref={maxValRef} className="font-mono text-ink-soft">−∞ dB</span>
+          <span ref={maxValRef} className="whitespace-nowrap font-mono tabular-nums text-ink-soft">−∞ dB</span>
         </div>
         <button
           onClick={reset}
@@ -133,10 +142,12 @@ export default function DebugMeter({ block }) {
         </button>
       </div>
 
-      <div className="flex items-center gap-3 text-[10px]">
-        <span className="uppercase tracking-wider text-faint">range</span>
-        <span ref={rangeRef} className="font-mono text-ink-soft">0.000 / +0.000</span>
-        <span ref={dcRef} className="ml-auto font-mono text-muted">DC ✓</span>
+      <div className={`text-[10px] ${compact ? 'flex flex-col gap-1' : 'flex items-center gap-3'}`}>
+        <div className="flex items-center gap-3">
+          <span className="uppercase tracking-wider text-faint">range</span>
+          <span ref={rangeRef} className="whitespace-nowrap font-mono tabular-nums text-ink-soft">0.000 / +0.000</span>
+        </div>
+        <span ref={dcRef} className={`whitespace-nowrap font-mono tabular-nums text-muted ${compact ? '' : 'ml-auto'}`}>DC ✓</span>
       </div>
     </div>
   )

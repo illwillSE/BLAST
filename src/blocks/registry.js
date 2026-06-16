@@ -745,39 +745,19 @@ export const BLOCK_DEFS = {
     },
   },
 
-  debug: {
-    type: 'debug',
-    name: 'Debug',
-    category: 'utility',
-    kind: 'analyzer',
-    advanced: true,
-    description: 'Inline level meter — audio passes through unchanged',
-    // No params: the meter's held max/min + reset are runtime UI state, not
-    // anything to save with the sound.
-    params: [],
-    // Passthrough tap: the same Gain is both input and output, with an analyser
-    // tapped off it, so audio flows through untouched (like the Out card's tap).
-    create() {
-      const gain = new Tone.Gain(1)
-      const analyser = new Tone.Analyser('waveform', 1024)
-      gain.connect(analyser)
-      return { nodes: { gain, analyser }, input: gain, output: gain }
-    },
-    apply() {},
-  },
-
-  visualizer: {
-    type: 'visualizer',
-    name: 'Visualizer',
+  monitor: {
+    type: 'monitor',
+    name: 'Monitor',
     category: 'utility',
     kind: 'analyzer',
     description: 'Live view of the signal at this point — audio passes through unchanged',
     params: [
       { key: 'mode', label: 'View', type: 'select', default: 'wave',
-        options: ['wave', 'spectrum', 'waterfall', 'fire'].map((v) => ({ value: v, label: v })) },
+        options: ['wave', 'spectrum', 'waterfall', 'fire', 'meter'].map((v) => ({ value: v, label: v })) },
     ],
-    // Passthrough tap like Debug: same Gain in/out, analyser tapped off it. The
-    // component retunes analyser.type/.size per mode in its draw loop.
+    // Passthrough tap: same Gain in/out, analyser tapped off it, so audio flows
+    // through untouched. The card retunes analyser.type/.size per view mode in its
+    // draw loop (and the meter view restores waveform/1024).
     create() {
       const gain = new Tone.Gain(1)
       const analyser = new Tone.Analyser('waveform', 1024)

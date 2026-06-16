@@ -50,6 +50,13 @@ export function normalizeProject(project) {
       if (src.pan == null) src.pan = 0
       if (!src.chain) src.chain = []
     }
+    // The old Debug + Visualizer blocks were merged into one Monitor block (Debug
+    // became Monitor's `meter` view mode). Remap saved instances before the
+    // unknown-type drop below, so they reopen as Monitor instead of vanishing.
+    for (const block of [...sound.sources.flatMap((s) => s.chain), ...sound.master]) {
+      if (block.type === 'debug') { block.type = 'monitor'; block.params = { ...block.params, mode: 'meter' } }
+      else if (block.type === 'visualizer') block.type = 'monitor'
+    }
     // Drop chain/master blocks whose type no longer exists in the registry
     // (e.g. a removed block kind in an older autosave) so they can't crash the
     // UI or engine on load.

@@ -209,18 +209,16 @@ export const HELP = {
           pan: 'Position from full left to full right.',
         },
       },
-      debug: {
-        summary: 'A diagnostic meter you can drop anywhere in the chain — it shows the signal level at that exact point and passes the audio through unchanged.',
-        notes: [
-          'Peak and RMS are the live level; Held max latches the loudest peak it has seen and keeps it until you press Reset, so a brief transient that flashes by is still caught.',
-          'Range shows the lowest/highest raw sample values; if they don\'t straddle zero you have DC offset (the DC readout flags it).',
-        ],
-      },
-      visualizer: {
+      monitor: {
         summary: 'A live picture of the signal at this exact point in the chain — drop it on any lane or master. Audio passes through unchanged.',
         params: {
-          mode: 'wave is an oscilloscope, spectrum and fire show the frequency content, waterfall is a scrolling spectrogram (frequency across, time falling).',
+          mode: 'wave is an oscilloscope, spectrum and fire show the frequency content, waterfall is a scrolling spectrogram (frequency across, time falling), and meter is a numeric level readout.',
         },
+        notes: [
+          'The meter view reads the level at this tap. Peak is the loudest single sample right now (in dB, where 0 dB is full scale — at or above it the signal is clipping); RMS is the averaged level, which tracks perceived loudness more closely and so normally sits below peak.',
+          'Held max latches the highest peak seen since the last reset, so a brief transient that flashes past is still caught — press ↺ reset to clear it.',
+          'Range is the lowest/highest raw sample values; healthy audio straddles zero. DC is the average offset: DC ✓ means the waveform is centred, while a non-zero value means it is pushed off-centre (wasted headroom and possible clicks).',
+        ],
       },
     },
   },
@@ -429,18 +427,16 @@ export const HELP = {
           pan: 'Position från helt vänster till helt höger.',
         },
       },
-      debug: {
-        summary: 'En mätare för felsökning som du kan lägga var som helst i kedjan — den visar signalnivån på exakt den punkten och släpper igenom ljudet oförändrat.',
-        notes: [
-          'Peak och RMS är den aktuella nivån; Held max låser fast den högsta topp den sett och behåller den tills du trycker Reset, så en kort transient som blinkar förbi fångas ändå.',
-          'Range visar lägsta/högsta råa sampelvärden; om de inte ligger på var sin sida om noll har du en DC-förskjutning (DC-värdet flaggar det).',
-        ],
-      },
-      visualizer: {
+      monitor: {
         summary: 'En live-bild av signalen på exakt den punkten i kedjan — lägg den på valfri lane eller master. Ljudet släpps igenom oförändrat.',
         params: {
-          mode: 'wave är ett oscilloskop, spectrum och fire visar frekvensinnehållet, waterfall är ett rullande spektrogram (frekvens i sidled, tid som faller).',
+          mode: 'wave är ett oscilloskop, spectrum och fire visar frekvensinnehållet, waterfall är ett rullande spektrogram (frekvens i sidled, tid som faller), och meter är en numerisk nivåavläsning.',
         },
+        notes: [
+          'Meter-vyn läser nivån vid den här punkten. Peak är det högsta enskilda samplet just nu (i dB, där 0 dB är full skala — vid eller över den klipper signalen); RMS är den utjämnade nivån, som ligger närmare upplevd ljudstyrka och därför normalt hamnar under peak.',
+          'Held max låser fast den högsta toppen sedan senaste nollställningen, så en kort transient som blinkar förbi fångas ändå — tryck ↺ reset för att nollställa.',
+          'Range är lägsta/högsta råa sampelvärden; sunt ljud ligger på var sin sida om noll. DC är medelförskjutningen: DC ✓ betyder att vågformen är centrerad, medan ett värde skilt från noll betyder att den är förskjuten (bortkastat headroom och möjliga klick).',
+        ],
       },
     },
   },

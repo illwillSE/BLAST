@@ -1,6 +1,7 @@
 import { BLOCK_DEFS } from '../blocks/registry'
 import { CAT_STYLES, formatValue } from './ui'
 import OutputVisualizer from './OutputVisualizer'
+import DebugMeter from './DebugMeter'
 
 // One or two key values for a chip, e.g. "low-pass · 800Hz".
 export function chipSummary(block) {
@@ -12,19 +13,22 @@ export function chipSummary(block) {
     .join(' · ')
 }
 
-// Visualizer view modes, shown as a horizontal segmented control under the
-// canvas. Labels kept short to fit under the card.
+// Monitor view modes, shown as a horizontal segmented control under the canvas.
+// Labels kept short to fit under the card. `meter` swaps the canvas for the
+// numeric level readout; `off` clears it.
 const VIEW_OPTS = [
   { value: 'wave', label: 'wave' },
   { value: 'spectrum', label: 'spec' },
   { value: 'waterfall', label: 'wfall' },
   { value: 'fire', label: 'fire' },
+  { value: 'meter', label: 'meter' },
   { value: 'off', label: 'off' },
 ]
 
-// The Visualizer is rendered as a card (live canvas + view selector) rather than
-// a plain chip, so it shows the signal at its point in the chain among the pills.
-function VisualizerCard({ block, selected, onClick, onParam, drag }) {
+// The Monitor is rendered as a card (live canvas / meter + view selector) rather
+// than a plain chip, so it shows the signal at its point in the chain among the
+// pills.
+function MonitorCard({ block, selected, onClick, onParam, drag }) {
   const mode = block.params.mode ?? 'wave'
   return (
     <div
@@ -34,8 +38,10 @@ function VisualizerCard({ block, selected, onClick, onParam, drag }) {
         selected ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
       }`}
     >
-      <div className="bg-well px-2 pt-1.5">
-        <OutputVisualizer blockId={block.id} mode={mode} />
+      <div className={`bg-well px-2 ${mode === 'meter' ? 'py-1.5' : 'pt-1.5'}`}>
+        {mode === 'meter'
+          ? <DebugMeter block={block} compact />
+          : <OutputVisualizer blockId={block.id} mode={mode} />}
       </div>
       <div className="flex items-center gap-px border-t border-edge/40 bg-surface px-1 pb-1 pt-0.5">
         {VIEW_OPTS.map((o) => (
@@ -59,7 +65,7 @@ function VisualizerCard({ block, selected, onClick, onParam, drag }) {
 // struck-through name (sources are never "bypassed" — they mute via the lane).
 export default function Chip({ block, selected, onClick, onParam, drag }) {
   const def = BLOCK_DEFS[block.type]
-  if (def.type === 'visualizer') return <VisualizerCard block={block} selected={selected} onClick={onClick} onParam={onParam} drag={drag} />
+  if (def.type === 'monitor') return <MonitorCard block={block} selected={selected} onClick={onClick} onParam={onParam} drag={drag} />
   const cat = CAT_STYLES[def.category]
   const bypassed = !block.enabled && def.kind !== 'source' && def.kind !== 'analyzer'
   const summary = chipSummary(block)

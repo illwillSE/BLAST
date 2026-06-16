@@ -6,7 +6,6 @@ import { CAT_STYLES, ParamControl, InfoDot } from './ui'
 import SampleEditor from './SampleEditor'
 import ConfirmButton from './ConfirmButton'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
-import DebugMeter from './DebugMeter'
 import SynthPreview from './SynthPreview'
 import BlockHelpModal from './BlockHelpModal'
 
@@ -128,7 +127,7 @@ export default function BlockControls({
 
   const shown = def.params.filter((p) =>
     (!p.show || p.show(block.params)) && !(block.type === 'noise' && p.key === 'color')
-    && !(block.type === 'visualizer' && p.key === 'mode')
+    && !(block.type === 'monitor' && p.key === 'mode')
   )
   // Beginner mode hides params tagged `advanced`. If that would empty the
   // inspector for this block, fall back to showing all its params so the user
@@ -194,7 +193,6 @@ export default function BlockControls({
       <div className="mt-3 space-y-3">
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />}
-        {block.type === 'debug' && <DebugMeter block={block} />}
         {def.presets && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-faint">{t('block.presets')}</span>

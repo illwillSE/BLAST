@@ -32,7 +32,7 @@ export function presetSounds() {
     // into a chord instead of cutting off. The headline test for the voice pool.
     sound('Poly Pad — Hold a Chord', 'synth',
       { wave: 'sawtooth', freq: 196, attack: 0.35, decay: 0.3, sustain: 0.8, release: 1.6, duration: 1.2 },
-      [blk('visualizer', { mode: 'wave' })],
+      [blk('monitor', { mode: 'wave' })],
       [blk('reverb', { decay: 2.5, preDelay: 0.03, wet: 0.38 })]),
 
     // — Clipping probe: a pure sine has no harmonics, so any clipping/limiter
