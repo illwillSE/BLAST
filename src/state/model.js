@@ -134,5 +134,5 @@ export function moveBlock(sound, target, from, to) {
 
 // Swap a lane's source type in place, keeping its chain and mix properties.
 export function swapSource(lane, type) {
-  return { ...newLane(type), chain: lane.chain, delay: lane.delay, level: lane.level, pan: lane.pan, enabled: lane.enabled }
+  return { ...newLane(type), id: lane.id, chain: lane.chain, delay: lane.delay, level: lane.level, pan: lane.pan, enabled: lane.enabled }
 }
