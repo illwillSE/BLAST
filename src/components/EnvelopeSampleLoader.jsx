@@ -82,7 +82,7 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
         <canvas ref={canvasRef} className="block h-16 w-full rounded bg-well" />
       </div>
       <div className="absolute right-1 top-1">
-        <InfoDot text={t('block.sampleEnvInfo')} align="right" />
+        <InfoDot titleKey="block.envelope" textKey="block.sampleEnvInfo" />
       </div>
     </div>
   )

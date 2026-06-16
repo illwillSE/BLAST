@@ -3,6 +3,7 @@ import { getColor } from '../theme/colors'
 import { getSample, setSample } from '../audio/sampleCache'
 import { useClipboard, getClipboard, copySample } from '../state/clipboard'
 import { useUIPrefs, useT } from '../state/uiPrefs'
+import HelpModal from './HelpModal'
 
 // Shared control primitives — every control always shows its current value.
 
@@ -17,44 +18,31 @@ export const Arrow = ({ active }) => (
   </div>
 )
 
-// Small (i) button that toggles a text popover explaining a nearby visual (the
-// oscillator/envelope previews). `align` flips the popover to the left edge when
-// the dot sits at the right side of its container. Closes on Escape or an
-// outside click.
-export function InfoDot({ text, align = 'left' }) {
+// Small (i) button that opens the shared help modal (same chrome + language flag
+// toggle as the block (i)) to explain a nearby visual — the oscillator/envelope
+// previews. Takes i18n keys and resolves them here so the flag toggle, which
+// flips the shared language, re-renders the title and text.
+export function InfoDot({ titleKey, textKey }) {
   const t = useT()
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
-    window.addEventListener('mousedown', onDown)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('mousedown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open])
   return (
-    <span ref={ref} className="relative inline-flex">
+    <>
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+        onClick={(e) => { e.stopPropagation(); setOpen(true) }}
         title={t('help.whatShows')}
         className="flex h-4 w-4 items-center justify-center rounded-full border border-edge-2 font-serif text-[9px] italic leading-none text-muted transition-colors hover:border-info/60 hover:text-info-bright"
       >
         i
       </button>
       {open && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={`absolute top-full z-40 mt-1 w-60 rounded-lg border border-edge bg-panel p-2.5 text-left text-[11px] normal-case leading-relaxed tracking-normal text-muted shadow-xl ${align === 'right' ? 'right-0' : 'left-0'}`}
-        >
-          {text}
-        </div>
+        <HelpModal title={t(titleKey)} titleClass="text-info-bright" onClose={() => setOpen(false)}>
+          <p className="px-4 py-3 text-[13px] normal-case leading-relaxed tracking-normal text-text">
+            {t(textKey)}
+          </p>
+        </HelpModal>
       )}
-    </span>
+    </>
   )
 }
 

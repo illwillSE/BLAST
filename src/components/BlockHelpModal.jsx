@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { HELP } from '../blocks/help'
 import { useUIPrefs } from '../state/uiPrefs'
 import { CAT_STYLES, formatValue } from './ui'
+import HelpModal from './HelpModal'
 
 // Help window opened from the (i) icon in a block's title bar. Content is
 // looked up by block type, so every block type gets this for free. The flag
@@ -11,7 +11,7 @@ import { CAT_STYLES, formatValue } from './ui'
 export default function BlockHelpModal({ type, onParam, onClose }) {
   const def = BLOCK_DEFS[type]
   const cat = CAT_STYLES[def.category]
-  const { lang, setLang, mode } = useUIPrefs()
+  const { lang, mode } = useUIPrefs()
 
   const t = HELP[lang]
   const en = HELP.en
@@ -23,43 +23,8 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
   // Match the inspector: in Beginner mode, advanced params aren't listed here.
   const helpParams = def.params.filter((p) => mode === 'advanced' || !p.advanced)
 
-  function toggleLang() {
-    setLang(lang === 'en' ? 'sv' : 'en')
-  }
-
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-edge bg-panel shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-divider px-4 py-3">
-          <span className={`h-2 w-2 rounded-full ${cat.dot}`} />
-          <span className={`flex-1 text-[13px] font-semibold uppercase tracking-wider ${cat.text}`}>
-            {def.name}
-          </span>
-          <button
-            onClick={toggleLang}
-            title={lang === 'en' ? 'Visa på svenska' : 'Show in English'}
-            className="rounded px-1 text-[15px] leading-none transition-transform hover:scale-110"
-          >
-            {lang === 'en' ? '🇸🇪' : '🇬🇧'}
-          </button>
-          <button
-            onClick={onClose}
-            title={lang === 'en' ? 'Close (Esc)' : 'Stäng (Esc)'}
-            className="text-muted transition-colors hover:text-ink"
-          >
-            ✕
-          </button>
-        </div>
-
+    <HelpModal dot={cat.dot} title={def.name} titleClass={cat.text} onClose={onClose}>
         <div className="space-y-4 overflow-y-auto px-4 py-3">
           <p className="text-[13px] leading-relaxed text-text">
             {block.summary ?? blockEn.summary ?? def.description}
@@ -127,7 +92,6 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </HelpModal>
   )
 }
