@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { useClipboard, copyBlock } from '../state/clipboard'
 import { useUIPrefs, useT } from '../state/uiPrefs'
-import { CAT_STYLES, ParamControl } from './ui'
+import { CAT_STYLES, ParamControl, InfoDot } from './ui'
 import SampleEditor from './SampleEditor'
 import ConfirmButton from './ConfirmButton'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
@@ -68,12 +68,13 @@ function NoiseColorPicker({ value, onChange }) {
 // Vocoder) has taken over one of the panel's params, a badge names it so the
 // greyed controls read as deliberate, not broken — the same info the per-control
 // hover tooltip carries, surfaced at a glance.
-function PanelHeader({ label, params, disabledParams, onSelect }) {
+function PanelHeader({ label, info, params, disabledParams, onSelect }) {
   const t = useT()
   const lockedBy = params.map((p) => disabledParams?.get(p.key)).find(Boolean)
   return (
     <div className="mb-2 flex items-center gap-2">
       <span className="text-[10px] uppercase tracking-wide text-faint">{label}</span>
+      {info && <InfoDot text={info} />}
       {lockedBy && (
         <button
           onClick={() => onSelect?.(lockedBy.id)}
@@ -233,7 +234,7 @@ export default function BlockControls({
           <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
             {[['osc', t('block.oscillator'), 'wave'], ['env', t('block.envelope'), 'env']].map(([group, label, which]) => (
               <div key={group} className="rounded-lg border border-edge/60 p-3">
-                <PanelHeader label={label} params={visibleParams.filter((p) => p.group === group)} disabledParams={disabledParams} onSelect={onSelect} />
+                <PanelHeader label={label} info={t(which === 'wave' ? 'block.oscInfo' : 'block.envInfo')} params={visibleParams.filter((p) => p.group === group)} disabledParams={disabledParams} onSelect={onSelect} />
                 <SynthPreview params={block.params} which={which} />
                 <div className="mt-3">
                   <ParamsGrid visibleParams={visibleParams.filter((p) => p.group === group)} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
@@ -247,7 +248,7 @@ export default function BlockControls({
               <NoiseColorPicker value={block.params.color} onChange={(v) => onParam('color', v)} />
             </div>
             <div className="rounded-lg border border-edge/60 p-3">
-              <PanelHeader label={t('block.envelope')} params={visibleParams} disabledParams={disabledParams} onSelect={onSelect} />
+              <PanelHeader label={t('block.envelope')} info={t('block.envInfo')} params={visibleParams} disabledParams={disabledParams} onSelect={onSelect} />
               <SynthPreview params={block.params} which="env" />
               <div className="mt-3">
                 <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />

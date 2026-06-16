@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { extractEnvelope } from '../audio/envelope'
-import { SampleLoadControls } from './ui'
+import { SampleLoadControls, InfoDot } from './ui'
 import { useT } from '../state/uiPrefs'
 import { useSampleLoader } from './useSampleLoader'
 import SampleEditorModal from './SampleEditorModal'
@@ -73,12 +73,17 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
   }, [curve, start, end, full])
 
   return (
-    <div
-      className="cursor-pointer"
-      onClick={onOpen}
-      title={t('sample.openEditor')}
-    >
-      <canvas ref={canvasRef} className="block h-16 w-full rounded bg-well" />
+    <div className="relative">
+      <div
+        className="cursor-pointer"
+        onClick={onOpen}
+        title={t('sample.openEditor')}
+      >
+        <canvas ref={canvasRef} className="block h-16 w-full rounded bg-well" />
+      </div>
+      <div className="absolute right-1 top-1">
+        <InfoDot text={t('block.sampleEnvInfo')} align="right" />
+      </div>
     </div>
   )
 }

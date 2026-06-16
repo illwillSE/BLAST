@@ -71,6 +71,7 @@ export const STRINGS = {
       toSwedish: 'Visa på svenska',
       toEnglish: 'Show in English',
       whatDoes: 'What does this do?',
+      whatShows: 'What does this show?',
     },
     inspector: {
       title: 'Inspector',
@@ -104,6 +105,9 @@ export const STRINGS = {
       envelope: 'Envelope',
       setBy: 'set by',
       setByTitle: 'Edit the block that controls these',
+      oscInfo: 'The shape of one repeating wave cycle — what gives the source its raw tone. Two cycles are drawn so the shape reads clearly; pitch and loudness are set elsewhere and aren’t shown here.',
+      envInfo: 'How the note’s volume changes over time. Attack rises to full, Decay falls to the Sustain level held while the note plays, then Release fades out after it ends. The faint horizontal line marks the sustain level.',
+      sampleEnvInfo: 'The amplitude contour read from the loaded sample — its loudness shape over time. Dimmed parts lie outside the trim. Click the curve to open the editor.',
     },
     sample: {
       browse: 'Browse…',
@@ -265,6 +269,7 @@ export const STRINGS = {
       toSwedish: 'Visa på svenska',
       toEnglish: 'Show in English',
       whatDoes: 'Vad gör det här?',
+      whatShows: 'Vad visar det här?',
     },
     inspector: {
       title: 'Inspektör',
@@ -298,6 +303,9 @@ export const STRINGS = {
       envelope: 'Envelope',
       setBy: 'styrs av',
       setByTitle: 'Redigera blocket som styr dessa',
+      oscInfo: 'Formen på en upprepad vågcykel — det som ger källan sin grundklang. Två cykler ritas så att formen syns tydligt; tonhöjd och volym ställs in på annat håll och visas inte här.',
+      envInfo: 'Hur tonens volym ändras över tid. Attack stiger till full nivå, Decay faller till Sustain-nivån som hålls medan tonen spelar, sedan tonar Release ut efter att den slutat. Den svaga vågräta linjen markerar sustain-nivån.',
+      sampleEnvInfo: 'Amplitudkonturen som lästs från det laddade samplet — dess volymform över tid. Nedtonade delar ligger utanför trimningen. Klicka på kurvan för att öppna redigeraren.',
     },
     sample: {
       browse: 'Bläddra…',
