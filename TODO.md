@@ -93,8 +93,36 @@ design brief and from development discussions.
       sounds (engines, wind); regions plugin emits the needed events.
 - [ ] **Sample editor polish** — arrow-key nudging of in/out points, optional
       snap-to-zero-crossing.
-- [ ] **Sequencer in source lanes** - add sequencer as a normal block and make
-      it possible to add it per lane.
+- [ ] **Sequencer per lane (placeable note sequencer)** — turn the single
+      sound-level `sound.sequencer` into a note/pitch sequencer *block* that
+      can be placed in a lane's chain (max one per lane) and maybe in master
+      (max one). Design discussion 2026-06-16; decisions settled:
+      - **Kind:** note/pitch sequencer (trigger-domain, like today) — drives
+        WHEN + WHAT PITCH a source fires. NOT an audio gate, so chain position
+        is audibly irrelevant (behaves like the pitch-LFO/env `control` blocks).
+      - **Per-lane semantics:** each lane's sequencer expands (via
+        `sequenceToNotes`) into note-events for THAT lane only. Today `trigger()`
+        applies one shared pattern to every lane (loop: per note-event → per
+        lane → `triggerLane`, engine.js:402-413); the change is to let each lane
+        consume its own sequence instead.
+      - **Clock:** per-sequencer BPM — each sequencer free-runs its own tempo
+        (polyrhythm/polytempo allowed). NOT a shared sound-level clock.
+      - **Migration:** none. Don't preserve old projects — if a saved project
+        can't load under the new model, fail with a clear error message.
+      - **Master × lane (DECIDED): master = fallback conductor.** A master-placed
+        sequencer drives only lanes that lack their own sequencer; a lane with
+        its own ignores master. One trigger source per lane, no overlap (closest
+        to "no different from today" for un-sequenced lanes). Example — Lead lane
+        has its own arp, Bass lane has none, Master has a slow 2-note pattern:
+          Lead:  do-mi-so-do  do-mi-so-do ...  (its own arp, on its own)
+          Bass:  C ........... G ...........    (follows the master pattern)
+        Each lane has exactly one boss.
+      - **Key code:** `src/audio/sequencer.js` (model + `sequenceToNotes` /
+        `sequenceSpan`); engine fan-out `trigger()`/`triggerLane`
+        (engine.js:402, :262); render window `estimateDuration` (:587, uses
+        `sequenceSpan(sound.sequencer)`); UI `SequencerModal`/`SequencerEditor`.
+        Becomes a registry block (`kind: 'control'`). Related: "Optional
+        sequencer" item above.
 
 ## Bugs
 - [ ] Sample envelope no edit
