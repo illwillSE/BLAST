@@ -220,7 +220,7 @@ export default function ChainEditor({
               </span>
             ))}
             <Conn />
-            <AddBlockMenu variant="chip" excludeKinds={['control']} excludeTypes={['visualizer']} label={t('chain.addMaster')} onAdd={(type) => handleAdd(MASTER, type)} onPaste={() => handlePaste(MASTER)} />
+            <AddBlockMenu variant="chip" excludeKinds={['control']} label={t('chain.addMaster')} onAdd={(type) => handleAdd(MASTER, type)} onPaste={() => handlePaste(MASTER)} />
             <Conn />
             <div
               onClick={(e) => select('output', e.shiftKey || e.metaKey)}
