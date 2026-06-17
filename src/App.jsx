@@ -51,6 +51,13 @@ export default function App() {
 
   const sound = project.sounds.find((s) => s.id === selectedId) ?? project.sounds[0]
 
+  // Latest project, readable from stable callbacks without a stale closure or a
+  // reducer read. playSound uses this instead of dispatch so its audio side
+  // effect fires exactly once — a side effect inside a reducer updater double-
+  // fires under StrictMode (two overlapping schedules collided on the mono voice).
+  const projectRef = useRef(project)
+  projectRef.current = project
+
   // Cancel inline name editing when switching sounds.
   useEffect(() => { setEditingName(false) }, [selectedId])
 
@@ -96,21 +103,17 @@ export default function App() {
     }), coalesceKey)
   }, [dispatch])
 
-  const playSound = useCallback(async (soundId, transpose = 0) => {
+  const playSound = useCallback((soundId, transpose = 0) => {
     setSelectedId(soundId)
-    dispatch((p) => {
-      const target = p.sounds.find((s) => s.id === soundId)
-      if (target) {
-        // When the sequencer is on, Play runs the whole sequence (the held
-        // key transposes it); otherwise it's a single note at `transpose`.
-        const notes = sequenceToNotes(target.sequencer, transpose)
-        liveEngine.play(target, notes).then(({ duration }) => {
-          emitPlay({ soundId, duration })
-        })
-      }
-      return p
+    const target = projectRef.current.sounds.find((s) => s.id === soundId)
+    if (!target) return
+    // When the sequencer is on, Play runs the whole sequence (the held
+    // key transposes it); otherwise it's a single note at `transpose`.
+    const notes = sequenceToNotes(target.sequencer, transpose)
+    liveEngine.play(target, notes).then(({ duration }) => {
+      emitPlay({ soundId, duration })
     })
-  }, [dispatch])
+  }, [])
 
   // Spacebar always plays — like a DAW transport. Only true text entry
   // (name fields, value popups) keeps Space for typing; focused sliders,
@@ -221,11 +224,11 @@ export default function App() {
   }
 
   function deleteSound(soundId) {
-    dispatch((p) => {
-      const sounds = p.sounds.filter((s) => s.id !== soundId)
-      if (soundId === selectedId && sounds.length > 0) setSelectedId(sounds[0].id)
-      return { ...p, sounds }
-    })
+    if (soundId === selectedId) {
+      const remaining = projectRef.current.sounds.filter((s) => s.id !== soundId)
+      if (remaining.length > 0) setSelectedId(remaining[0].id)
+    }
+    dispatch((p) => ({ ...p, sounds: p.sounds.filter((s) => s.id !== soundId) }))
   }
 
   // ---- block actions ------------------------------------------------------
