@@ -69,6 +69,10 @@ export const STRINGS = {
       advanced: 'Advanced',
       modeHint: 'Beginner shows a curated set of blocks and controls. Advanced shows everything.',
       language: 'Language',
+      backgroundViz: 'Background visualization',
+      backgroundVizOn: 'On',
+      backgroundVizOff: 'Off',
+      backgroundVizHint: 'Subtle motion behind the editor, shaped by the selected sound and controls.',
     },
     help: {
       toSwedish: 'Visa på svenska',
@@ -270,6 +274,10 @@ export const STRINGS = {
       advanced: 'Avancerat',
       modeHint: 'Nybörjarläget visar ett utvalt urval av block och kontroller. Avancerat visar allt.',
       language: 'Språk',
+      backgroundViz: 'Bakgrundsvisualisering',
+      backgroundVizOn: 'På',
+      backgroundVizOff: 'Av',
+      backgroundVizHint: 'Subtil rörelse bakom editorn, formad av valt ljud och dess kontroller.',
     },
     help: {
       toSwedish: 'Visa på svenska',

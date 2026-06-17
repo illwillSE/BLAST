@@ -24,7 +24,7 @@ function SelectField({ label, value, onChange, children }) {
 // export options (sample rate / channels / format) that also drive
 // "→ Sample sound" and copy-to-sample, so rendered audio matches.
 export default function SettingsModal({ project, onRenameProject, onSetExport, onNewProject, onLoadPresets, onClose }) {
-  const { mode, setMode, lang, setLang } = useUIPrefs()
+  const { mode, setMode, lang, setLang, backgroundViz, setBackgroundViz } = useUIPrefs()
   const t = useT()
   const [tab, setTab] = useState('general')
   const [confirmingNew, setConfirmingNew] = useState(false)
@@ -116,6 +116,21 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <div className="mb-0.5 text-[11px] uppercase tracking-wide text-muted">{t('settings.backgroundViz')}</div>
+                <button
+                  onClick={() => setBackgroundViz(!backgroundViz)}
+                  className={`w-full rounded border px-2 py-1 text-left text-[12px] font-semibold transition-colors ${
+                    backgroundViz
+                      ? 'border-accent-deep/50 bg-accent-deep/15 text-accent-bright'
+                      : 'border-edge bg-surface text-faint hover:text-text'
+                  }`}
+                >
+                  {backgroundViz ? t('settings.backgroundVizOn') : t('settings.backgroundVizOff')}
+                </button>
+                <p className="mt-1 text-[10px] leading-relaxed text-faint">{t('settings.backgroundVizHint')}</p>
               </div>
 
               <div className="flex gap-1.5 border-t border-divider pt-3">

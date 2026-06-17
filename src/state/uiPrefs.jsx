@@ -8,6 +8,7 @@ import { STRINGS } from '../i18n/strings'
 // key so the in-help-modal flag and the global UI language are one setting.
 const MODE_KEY = 'blast-mode'
 const LANG_KEY = 'blast-help-lang'
+const BACKGROUND_VIZ_KEY = 'blast-background-viz'
 
 const UIPrefsContext = createContext(null)
 
@@ -17,10 +18,14 @@ function readMode() {
 function readLang() {
   return localStorage.getItem(LANG_KEY) === 'sv' ? 'sv' : 'en'
 }
+function readBackgroundViz() {
+  return localStorage.getItem(BACKGROUND_VIZ_KEY) !== 'off'
+}
 
 export function UIPrefsProvider({ children }) {
   const [mode, setModeState] = useState(readMode)
   const [lang, setLangState] = useState(readLang)
+  const [backgroundViz, setBackgroundVizState] = useState(readBackgroundViz)
 
   const setMode = (m) => {
     setModeState(m)
@@ -30,6 +35,10 @@ export function UIPrefsProvider({ children }) {
     setLangState(l)
     try { localStorage.setItem(LANG_KEY, l) } catch {}
   }
+  const setBackgroundViz = (on) => {
+    setBackgroundVizState(on)
+    try { localStorage.setItem(BACKGROUND_VIZ_KEY, on ? 'on' : 'off') } catch {}
+  }
 
   // Keep the document language in sync so screen readers, spell-check and search
   // engines see the actual UI language (the static index.html only declares 'en').
@@ -37,7 +46,9 @@ export function UIPrefsProvider({ children }) {
     document.documentElement.lang = lang
   }, [lang])
 
-  const value = useMemo(() => ({ mode, setMode, lang, setLang }), [mode, lang])
+  const value = useMemo(() => ({
+    mode, setMode, lang, setLang, backgroundViz, setBackgroundViz,
+  }), [mode, lang, backgroundViz])
   return <UIPrefsContext.Provider value={value}>{children}</UIPrefsContext.Provider>
 }
 

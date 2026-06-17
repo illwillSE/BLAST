@@ -5,20 +5,11 @@ design brief and from development discussions.
 
 ## Features
 
-- [x] **Visualizer as a card** — addable analyzer block in a lane chain,
-      rendered as a card (live canvas + wave/spec/wfall/fire/off selector);
-      lane-only, taps its own chain position. No longer on the Out card.
-- [x] **Mixer → bus inspector** — removed the per-lane Mix pill; selecting the
-      ∑ Bus node now opens a mixer with one channel-strip column per lane
-      (vertical level fader, pan beneath, mute + remove). Columns overflow
-      horizontally — the "too many lanes to fit" problem is ignored for now.
-      Delay stays in the Timeline strip.
+- [ ] **Inspector minimize** - the inspector should minimize when no block is selected
+- [ ] **Noise follow pitch** - add option to noise to follow pitch
 - [ ] **Pill selection resets** — selecting a pill works, but it resets to
       the source after a couple of seconds. Is this connected to the undo
       functionality somehow? - not reproducable
-- [x] **New / empty project** — "New project" action in the Settings modal
-      (General tab) with a confirm warning; resets to a fresh single-sound
-      project and clears undo history.
 - [ ] **Browser project library** — save/load named projects in the browser
       (IndexedDB), alongside the existing ZIP download/upload. Each saved
       project is stored as a full `.blast.zip` blob; a modal mirrors the
@@ -85,8 +76,6 @@ design brief and from development discussions.
 - [ ] **Live recording waveform** — show a scrolling waveform *while*
       recording (WaveSurfer Record plugin). Today the waveform only appears
       after pressing Stop.
-- [x] **Synth visualization** — the synth source has no visual identity; a
-      rendered ADSR/waveform preview that updates while tweaking would help.
 - [ ] **Region looping** — loop the trimmed sample region for sustained
       sounds (engines, wind); regions plugin emits the needed events.
 - [ ] **Sample editor polish** — arrow-key nudging of in/out points, optional
@@ -127,10 +116,6 @@ design brief and from development discussions.
 - [ ] No visualization on metal synth
 
 ## Polish / housekeeping
-- [x] **Sample envelope visual** — render the contour canvas at devicePixelRatio
-      (crisp), give it a fixed CSS height so it no longer balloons with panel
-      width (mimics the source waveform), and show the ↔ cursor only near a
-      drag handle.
 - [ ] **Screenshot** in the README once the UI is settled.
 - [ ] **Code-split** the bundle (Tone.js pushes the main chunk past 500 kB —
       Vite build warning).

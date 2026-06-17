@@ -189,9 +189,15 @@ export async function buildChain(sound, destination) {
   // it only engages when summed voices would have clipped anyway. In the graph,
   // so it protects live playback and offline WAV export alike.
   const masterLimiter = new Tone.Limiter(-0.5)
-  disposables.push(masterOut, masterLimiter)
+  const outputMeter = new Tone.Meter({ normalRange: true, smoothing: 0.82 })
+  const nativeOutputAnalyser = Tone.getContext().createAnalyser()
+  nativeOutputAnalyser.fftSize = 2048
+  nativeOutputAnalyser.smoothingTimeConstant = 0.75
+  disposables.push(masterOut, masterLimiter, outputMeter, { dispose: () => nativeOutputAnalyser.disconnect() })
   prev.connect(masterOut)
   masterOut.connect(masterLimiter)
+  masterLimiter.connect(outputMeter)
+  masterLimiter.connect(nativeOutputAnalyser)
   masterLimiter.connect(destination)
 
   // Params like the synth's length/pitch and the pitch envelope are consumed
@@ -482,6 +488,8 @@ export async function buildChain(sound, destination) {
   return {
     trigger, apply, dispose,
     getAnalyser: (id) => built.get(id)?.nodes?.analyser ?? null,
+    getNativeOutputAnalyser: () => nativeOutputAnalyser,
+    getOutputLevel: () => outputMeter.getValue(),
   }
 }
 
@@ -639,6 +647,14 @@ export class LiveEngine {
 
   getAnalyser(id) {
     return this.handle?.getAnalyser(id) ?? null
+  }
+
+  getNativeOutputAnalyser() {
+    return this.handle?.getNativeOutputAnalyser() ?? null
+  }
+
+  getOutputLevel() {
+    return this.handle?.getOutputLevel() ?? 0
   }
 
   dispose() {

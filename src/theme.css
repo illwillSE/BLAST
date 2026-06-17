@@ -71,4 +71,6 @@
   --color-fire-hi: #fde047;       /* output "fire" gradient — top */
   --color-fire-peak: #fef3c7;     /* output "fire" — peak caps */
   --color-spectrum: #34d399;      /* spectrum analyzer bars (emerald) */
+  --color-viz-soft: #bfdbfe;      /* background visual — pale blue particles */
+  --color-viz-sharp: #93c5fd;     /* background visual — back/depth blue particles */
 }

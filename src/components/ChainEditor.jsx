@@ -6,8 +6,9 @@ import LaneRow from './LaneRow'
 import LaneTimeline from './LaneTimeline'
 import InspectorDock from './InspectorDock'
 import Chip from './Chip'
+import BackgroundVisualization from './BackgroundVisualization'
 import { getColor } from '../theme/colors'
-import { useT } from '../state/uiPrefs'
+import { useT, useUIPrefs } from '../state/uiPrefs'
 
 const Conn = () => <span className="text-[13px] text-faint">›</span>
 
@@ -17,6 +18,7 @@ export default function ChainEditor({
   onSequencer, onPasteBlock, onPasteSourceLane, onPasteValues,
 }) {
   const t = useT()
+  const { backgroundViz } = useUIPrefs()
   const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
   const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
 
@@ -151,7 +153,10 @@ export default function ChainEditor({
     <div className="flex h-full min-h-0 flex-col">
       {multiLane && <LaneTimeline sound={sound} onLaneProp={onLaneProp} />}
 
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="relative min-h-0 flex-1 overflow-auto p-4">
+        <BackgroundVisualization
+          enabled={backgroundViz}
+        />
         <div ref={wrapRef} className="relative flex items-stretch gap-6">
           <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" style={{ overflow: 'visible' }}>
             <defs>
