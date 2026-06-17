@@ -25,6 +25,8 @@ export const HELP = {
           decay: 'Time to fall from the attack peak down to the sustain level.',
           sustain: 'The volume the note holds while it lasts, relative to the peak. 0% makes a pluck; 100% holds at full volume.',
           release: 'How long the sound takes to fade to silence after the note ends.',
+          portamento: 'How long the pitch takes to slide from the previous note to the current one (glide time). Only active in Mono mode. "off" means each note jumps instantly to its pitch.',
+          legato: 'When on, notes that overlap or directly follow each other do not retrigger the envelope — only the pitch changes. Gives a smooth, connected feel. Only active in Mono mode.',
         },
       },
       noise: {
@@ -246,6 +248,8 @@ export const HELP = {
           decay: 'Tiden det tar att falla från attackens topp ner till sustain-nivån.',
           sustain: 'Volymen tonen ligger kvar på så länge den varar, i förhållande till toppen. 0 % ger ett knäpp; 100 % håller full volym.',
           release: 'Hur lång tid ljudet tar att tona ut till tystnad när tonen släpps.',
+          portamento: 'Hur lång tid tonhöjden tar att glida från föregående ton till den nuvarande (glide-tid). Bara aktiv i Mono-läge. "off" innebär att varje ton hoppar direkt till sin tonhöjd.',
+          legato: 'När den är på utlöser inte toner som överlappar eller direkt följer varandra om förloppet på nytt — bara tonhöjden ändras. Ger ett mjukt, sammankopplat känsla. Bara aktiv i Mono-läge.',
         },
       },
       noise: {

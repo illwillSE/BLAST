@@ -68,6 +68,7 @@ function Panel({ keyId, sound, handlers }) {
   return (
     <BlockControls
       block={block}
+      sound={sound}
       soundId={sound.id}
       isSource={source}
       canRemoveLane={source && sound.sources.length > 1}

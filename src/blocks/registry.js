@@ -134,6 +134,11 @@ export const BLOCK_DEFS = {
       { key: 'duration', label: 'Length', type: 'range', min: 0.05, max: 4, step: 0.01, default: 0.4, format: sec, group: 'env',
         inactive: (p) => p.sustain <= 0 ? 'No effect while Sustain is 0% — the note decays to silence on its own. Raise Sustain to hold the note for this length.' : false },
       { key: 'release', label: 'Release', type: 'range', min: 0.01, max: 4, step: 0.01, default: 0.3, scale: 'log', format: sec, group: 'env' },
+      { key: 'portamento', label: 'Glide', type: 'range', min: 0, max: 0.5, step: 0.005, default: 0,
+        format: (v) => v < 0.005 ? 'off' : sec(v), group: 'env',
+        show: (p, sound) => sound?.voicing === 'mono' },
+      { key: 'legato', label: 'Legato', type: 'toggle', default: false, group: 'env',
+        show: (p, sound) => sound?.voicing === 'mono' },
     ],
     // Polyphonic: a VoicePool of Tone.Synth voices, so chords and overlapping
     // sequence steps ring out instead of cutting each other off. The pool exposes

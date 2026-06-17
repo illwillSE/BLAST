@@ -5,6 +5,14 @@ design brief and from development discussions.
 
 ## Features
 
+- [ ] **Per-step glide in the sequencer (portamento Option C)** — add a `glide: true`
+      flag per note-event in the sequencer step data `{ pitch, len, glide? }`. In the
+      piano roll, clicking/right-clicking a note bar toggles the flag; a small ⤵ glyph
+      on the right edge of the bar marks it. The engine checks `note.glide` in
+      `triggerLane` and only applies portamento for flagged notes (global Glide time
+      still comes from the Synth block param). Legato per-step is not needed — it stays
+      global. Currently glide is always applied to all notes (Option A); Option C is a
+      superset and doesn't require rewriting the engine path.
 - [ ] **Browser project library** — save/load named projects in the browser
       (IndexedDB), alongside the existing ZIP download/upload. Each saved
       project is stored as a full `.blast.zip` blob; a modal mirrors the

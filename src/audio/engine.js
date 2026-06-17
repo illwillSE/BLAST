@@ -122,6 +122,8 @@ export async function buildChain(sound, destination) {
       src, def, nodes: created.nodes, envGain, laneVol, lanePan,
       controls, hooks, lfos: [], envBlocks: [], ampBlocks: [], hasAmpEnv: false,
       activeSampleSources: new Set(),
+      lastTranspose: 0,
+      lastNoteEnd: -Infinity,
     })
   }
 
@@ -308,7 +310,26 @@ export async function buildChain(sound, destination) {
       const ampDur = scheduleAmpEnv(lane, when, hold)
       const base = ampDur ?? (carrierHold > 0 ? carrierHold : hold)
       const noteDur = Math.max(base, carrierHold)
-      voice.triggerAttackRelease(p.freq * semisToRate(transpose), noteDur, when)
+      const freq = p.freq * semisToRate(transpose)
+
+      // Portamento: ramp detune from the pitch difference (prev→current) to 0.
+      if (mono && (p.portamento ?? 0) >= 0.005) {
+        const portCents = (lane.lastTranspose - transpose) * 100
+        voice.detune.setValueAtTime(portCents, when)
+        voice.detune.linearRampToValueAtTime(0, when + p.portamento)
+      }
+
+      // Legato: if the previous mono note is still sounding, just change
+      // pitch and reschedule the release — no envelope retrigger.
+      if (mono && p.legato && when <= lane.lastNoteEnd + 0.01) {
+        voice.frequency.setValueAtTime(freq, when)
+        voice.triggerRelease(when + noteDur)
+      } else {
+        voice.triggerAttackRelease(freq, noteDur, when)
+      }
+
+      lane.lastTranspose = transpose
+      lane.lastNoteEnd = when + noteDur
       dur = noteDur + p.release
     }
 

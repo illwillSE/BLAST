@@ -115,7 +115,7 @@ function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
 // in a responsive 2-column grid; the rich editors (sample waveform, harmonics)
 // span the full width above the grid.
 export default function BlockControls({
-  block, soundId, isSource, canRemoveLane, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams, onSelect,
+  block, sound, soundId, isSource, canRemoveLane, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams, onSelect,
 }) {
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
@@ -126,7 +126,7 @@ export default function BlockControls({
   const canPasteValues = clip?.kind === 'block' && clip.block.type === block.type
 
   const shown = def.params.filter((p) =>
-    (!p.show || p.show(block.params)) && !(block.type === 'noise' && p.key === 'color')
+    (!p.show || p.show(block.params, sound)) && !(block.type === 'noise' && p.key === 'color')
     && !(block.type === 'monitor' && p.key === 'mode')
   )
   // Beginner mode hides params tagged `advanced`. If that would empty the
