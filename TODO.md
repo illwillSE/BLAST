@@ -5,7 +5,6 @@ design brief and from development discussions.
 
 ## Features
 
-- [ ] **Noise follow pitch** - add option to noise to follow pitch
 - [ ] **Browser project library** — save/load named projects in the browser
       (IndexedDB), alongside the existing ZIP download/upload. Each saved
       project is stored as a full `.blast.zip` blob; a modal mirrors the

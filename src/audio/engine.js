@@ -319,6 +319,7 @@ export async function buildChain(sound, destination) {
       const base = ampDur ?? (carrierHold > 0 ? carrierHold : len)
       const noteDur = Math.max(base, carrierHold)
       nodes.synth.triggerAttackRelease(noteDur, when)
+      if (nodes.filter) nodes.filter.frequency.setValueAtTime(p.freq * semisToRate(transpose), when)
       dur = noteDur + p.release
     }
 
