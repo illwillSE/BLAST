@@ -37,6 +37,7 @@ Order matters — a filter before distortion sounds different than after. Drag b
 - **Auto-save** — project state (sounds, chains, params, sequencer) saves to the browser automatically; reloading the page restores the last session
 - **Project save/load** — everything (settings + original samples) packed into a single ZIP. Start over from Settings with a confirmed New Project action
 - **WAV export** — render any sound to WAV with configurable sample rate, channel count, and format
+- **Background visualization** — an optional particle field behind the editor that reacts to the live output; drag to rotate. Toggle it in Settings → General
 
 ### Controls
 

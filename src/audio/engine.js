@@ -189,16 +189,24 @@ export async function buildChain(sound, destination) {
   // it only engages when summed voices would have clipped anyway. In the graph,
   // so it protects live playback and offline WAV export alike.
   const masterLimiter = new Tone.Limiter(-0.5)
-  const outputMeter = new Tone.Meter({ normalRange: true, smoothing: 0.82 })
-  const nativeOutputAnalyser = Tone.getContext().createAnalyser()
-  nativeOutputAnalyser.fftSize = 2048
-  nativeOutputAnalyser.smoothingTimeConstant = 0.75
-  disposables.push(masterOut, masterLimiter, outputMeter, { dispose: () => nativeOutputAnalyser.disconnect() })
+  disposables.push(masterOut, masterLimiter)
   prev.connect(masterOut)
   masterOut.connect(masterLimiter)
-  masterLimiter.connect(outputMeter)
-  masterLimiter.connect(nativeOutputAnalyser)
   masterLimiter.connect(destination)
+
+  // Output taps for the background visualization — live playback only. Nothing
+  // reads them during an offline WAV render, so don't build them there.
+  let outputMeter = null
+  let nativeOutputAnalyser = null
+  if (!Tone.getContext().isOffline) {
+    outputMeter = new Tone.Meter({ normalRange: true, smoothing: 0.82 })
+    nativeOutputAnalyser = Tone.getContext().createAnalyser()
+    nativeOutputAnalyser.fftSize = 2048
+    nativeOutputAnalyser.smoothingTimeConstant = 0.75
+    disposables.push(outputMeter, { dispose: () => nativeOutputAnalyser.disconnect() })
+    masterLimiter.connect(outputMeter)
+    masterLimiter.connect(nativeOutputAnalyser)
+  }
 
   // Params like the synth's length/pitch and the pitch envelope are consumed
   // at trigger time, not held by a Tone node — so always read them from the
@@ -489,7 +497,7 @@ export async function buildChain(sound, destination) {
     trigger, apply, dispose,
     getAnalyser: (id) => built.get(id)?.nodes?.analyser ?? null,
     getNativeOutputAnalyser: () => nativeOutputAnalyser,
-    getOutputLevel: () => outputMeter.getValue(),
+    getOutputLevel: () => outputMeter?.getValue() ?? 0,
   }
 }
 
