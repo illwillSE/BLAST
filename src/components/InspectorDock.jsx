@@ -82,26 +82,42 @@ function Panel({ keyId, sound, handlers }) {
   )
 }
 
-export default function InspectorDock({ sound, selectedKeys, handlers }) {
+export default function InspectorDock({ sound, selectedKeys, handlers, minimized, onToggleMinimize }) {
   const t = useT()
   const keys = selectedKeys.filter((k) => k === 'output' || k === 'seq' || k === 'bus' || findBlock(sound, k))
   return (
     <div className="shrink-0 border-t border-divider bg-panel">
       <div className="flex items-center gap-2 border-b border-divider px-4 py-1.5">
+        <button
+          onClick={onToggleMinimize}
+          title={minimized ? t('inspector.expand') : t('inspector.collapse')}
+          className="text-[10px] leading-none text-faint transition-colors hover:text-text"
+        >
+          {minimized ? '▴' : '▾'}
+        </button>
         <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">{t('inspector.title')}</span>
         {keys.length > 1 && <span className="text-[10px] text-muted">{keys.length} blocks · {t('inspector.multi')}</span>}
       </div>
-      <div className="flex gap-8 overflow-x-auto p-4" style={{ minHeight: 168 }}>
-        {keys.length === 0 ? (
-          <Summary sound={sound} />
-        ) : (
-          keys.map((k, i) => (
-            <div key={k} className="flex min-w-0 flex-1 gap-8">
-              {i > 0 && <div className="w-px self-stretch bg-surface-hover" />}
-              <Panel keyId={k} sound={sound} handlers={handlers} />
-            </div>
-          ))
-        )}
+      {/* Grid-rows 1fr→0fr animates the variable-height body open/closed; the
+          overflow-hidden wrapper lets the track collapse past the content min-height. */}
+      <div
+        className="grid transition-[grid-template-rows] duration-500 ease-in-out"
+        style={{ gridTemplateRows: minimized ? '0fr' : '1fr' }}
+      >
+        <div className="overflow-hidden">
+          <div className="flex gap-8 overflow-x-auto p-4" style={{ minHeight: 168 }}>
+            {keys.length === 0 ? (
+              <Summary sound={sound} />
+            ) : (
+              keys.map((k, i) => (
+                <div key={k} className="flex min-w-0 flex-1 gap-8">
+                  {i > 0 && <div className="w-px self-stretch bg-surface-hover" />}
+                  <Panel keyId={k} sound={sound} handlers={handlers} />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

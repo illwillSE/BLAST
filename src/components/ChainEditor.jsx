@@ -21,11 +21,13 @@ export default function ChainEditor({
   const { backgroundViz } = useUIPrefs()
   const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
   const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
+  const [inspectorMin, setInspectorMin] = useState(false)
 
   // Reset selection/focus when switching to a different sound.
   useEffect(() => {
     setSelectedKeys([sound.sources[0]?.id])
     setFocusedLane(sound.sources[0]?.id)
+    setInspectorMin(false)
   }, [sound.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep selection valid if blocks/lanes disappear (remove, mute rebuild, etc.).
@@ -38,6 +40,7 @@ export default function ChainEditor({
   }) // eslint-disable-line react-hooks/exhaustive-deps
 
   function select(key, additive) {
+    setInspectorMin(false)
     setSelectedKeys((cur) => {
       if (additive) return cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]
       return [key]
@@ -46,7 +49,14 @@ export default function ChainEditor({
     if (laneId && !additive) setFocusedLane(laneId)
   }
 
+  // Clicking empty canvas background clears the selection and tucks the inspector away.
+  function deselect() {
+    setSelectedKeys([])
+    setInspectorMin(true)
+  }
+
   function focusLane(laneId) {
+    setInspectorMin(false)
     setFocusedLane(laneId)
     const src = sound.sources.find((s) => s.id === laneId)
     if (src) setSelectedKeys([src.id])
@@ -55,6 +65,7 @@ export default function ChainEditor({
   function handleAdd(target, type) {
     const id = onAdd(target, type)
     if (!id) return
+    setInspectorMin(false)
     setSelectedKeys([id])
     if (target !== MASTER) setFocusedLane(target)
   }
@@ -62,6 +73,7 @@ export default function ChainEditor({
   function handleAddSource() {
     const id = onAddSource()
     if (!id) return
+    setInspectorMin(false)
     setFocusedLane(id)
     setSelectedKeys([id])
   }
@@ -69,6 +81,7 @@ export default function ChainEditor({
   function handlePaste(target) {
     const id = onPasteBlock(target)
     if (!id) return
+    setInspectorMin(false)
     setSelectedKeys([id])
     if (target !== MASTER) setFocusedLane(target)
   }
@@ -76,6 +89,7 @@ export default function ChainEditor({
   function handlePasteSource() {
     const id = onPasteSourceLane()
     if (!id) return
+    setInspectorMin(false)
     setFocusedLane(id)
     setSelectedKeys([id])
   }
@@ -153,11 +167,19 @@ export default function ChainEditor({
     <div className="flex h-full min-h-0 flex-col">
       {multiLane && <LaneTimeline sound={sound} onLaneProp={onLaneProp} />}
 
-      <div className="relative min-h-0 flex-1 overflow-auto p-4">
+      {/* Clicking empty canvas (padding, gaps, lane stack background) deselects.
+          data-canvas-bg marks those background surfaces; chips/cards bubble up
+          here but carry no marker, so they don't trigger a deselect. */}
+      <div
+        data-canvas-bg
+        onClick={(e) => { if (e.target.dataset.canvasBg !== undefined) deselect() }}
+        className="relative min-h-0 flex-1 overflow-auto p-4"
+      >
         <BackgroundVisualization
           enabled={backgroundViz}
+          onBackgroundClick={deselect}
         />
-        <div ref={wrapRef} className="relative flex items-stretch gap-6">
+        <div ref={wrapRef} data-canvas-bg className="relative flex items-stretch gap-6">
           <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" style={{ overflow: 'visible' }}>
             <defs>
               <marker id="lane-arrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
@@ -171,7 +193,7 @@ export default function ChainEditor({
           </svg>
 
           {/* lanes */}
-          <div className="relative z-10 flex flex-col gap-2">
+          <div data-canvas-bg className="relative z-10 flex flex-col gap-2">
             {sound.sources.map((lane, i) => (
               <LaneRow
                 key={lane.id}
@@ -268,7 +290,7 @@ export default function ChainEditor({
         </div>
       </div>
 
-      <InspectorDock sound={sound} selectedKeys={selectedKeys} handlers={handlers} />
+      <InspectorDock sound={sound} selectedKeys={selectedKeys} handlers={handlers} minimized={inspectorMin} onToggleMinimize={() => setInspectorMin((m) => !m)} />
     </div>
   )
 }

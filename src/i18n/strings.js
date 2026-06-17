@@ -89,6 +89,8 @@ export const STRINGS = {
       polyTitle: 'Stack overlapping notes and chords',
       selectToEdit: 'select a block to edit',
       addSourceToBegin: 'Add a source to begin',
+      collapse: 'Collapse inspector',
+      expand: 'Expand inspector',
     },
     bus: {
       title: 'Bus · Mixer',
@@ -294,6 +296,8 @@ export const STRINGS = {
       polyTitle: 'Lägg överlappande noter och ackord på varandra',
       selectToEdit: 'välj ett block för att redigera',
       addSourceToBegin: 'Lägg till en källa för att börja',
+      collapse: 'Fäll ihop inspektören',
+      expand: 'Fäll ut inspektören',
     },
     bus: {
       title: 'Buss · Mixer',

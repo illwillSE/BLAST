@@ -214,8 +214,9 @@ function syncDots(dots, targets, nearest = false) {
   }
 }
 
-export default function BackgroundVisualization({ enabled }) {
+export default function BackgroundVisualization({ enabled, onBackgroundClick }) {
   const canvasRef = useRef(null)
+  const draggedRef = useRef(false)
   const audioValuesRef = useRef(new Float32Array(AUDIO_SIZE))
   const dotsRef = useRef([])
   const targetsRef = useRef([])
@@ -332,8 +333,10 @@ export default function BackgroundVisualization({ enabled }) {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
+      onClick={() => { if (!draggedRef.current) onBackgroundClick?.() }}
       onPointerDown={(e) => {
         if (e.button !== 0) return
+        draggedRef.current = false
         dragRef.current = {
           x: e.clientX,
           y: e.clientY,
@@ -347,6 +350,7 @@ export default function BackgroundVisualization({ enabled }) {
         if (!drag) return
         const dx = e.clientX - drag.x
         const dy = e.clientY - drag.y
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) draggedRef.current = true
         rotationRef.current.yaw = drag.yaw + dx * 0.008
         rotationRef.current.pitch = Math.max(-0.75, Math.min(0.75, drag.pitch - dy * 0.008))
       }}
