@@ -521,6 +521,7 @@ export async function buildChain(sound, destination) {
     getAnalyser: (id) => built.get(id)?.nodes?.analyser ?? null,
     getNativeOutputAnalyser: () => nativeOutputAnalyser,
     getOutputLevel: () => outputMeter?.getValue() ?? 0,
+    resetLegatoState: () => { for (const lane of lanes) lane.lastNoteEnd = -Infinity },
   }
 }
 
@@ -686,6 +687,10 @@ export class LiveEngine {
 
   getOutputLevel() {
     return this.handle?.getOutputLevel() ?? 0
+  }
+
+  releaseLegato() {
+    this.handle?.resetLegatoState()
   }
 
   dispose() {

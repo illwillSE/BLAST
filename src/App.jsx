@@ -134,12 +134,16 @@ export default function App() {
   // any keyboard. Offsets are semitones from the source's own Pitch (q = root),
   // so the chromatic octave rides on top of the Pitch control. Monophonic —
   // the engine has a single synth voice and samples retrigger.
+  //
+  // Legato gates on physical key hold: releasing all keys resets lastNoteEnd so
+  // the next press always gets a fresh attack, matching how a hardware synth works.
   useEffect(() => {
     const KEY_SEMIS = {
       KeyQ: 0, Digit2: 1, KeyW: 2, Digit3: 3, KeyE: 4, KeyR: 5, Digit5: 6,
       KeyT: 7, Digit6: 8, KeyY: 9, Digit7: 10, KeyU: 11, KeyI: 12,
     }
-    const onKey = (e) => {
+    const heldKeys = new Set()
+    const onKeyDown = (e) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return
       const semis = KEY_SEMIS[e.code]
       if (semis === undefined) return
@@ -148,10 +152,20 @@ export default function App() {
         el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
       if (isTextEntry) return
       e.preventDefault()
+      heldKeys.add(e.code)
       playSound(selectedId, semis)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const onKeyUp = (e) => {
+      if (!heldKeys.has(e.code)) return
+      heldKeys.delete(e.code)
+      if (heldKeys.size === 0) liveEngine.releaseLegato()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
   }, [selectedId, playSound])
 
   // Undo / redo. Skipped in text-entry fields so the browser's native text
