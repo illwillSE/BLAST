@@ -5,11 +5,7 @@ design brief and from development discussions.
 
 ## Features
 
-- [ ] **Inspector minimize** - the inspector should minimize when no block is selected
 - [ ] **Noise follow pitch** - add option to noise to follow pitch
-- [ ] **Pill selection resets** — selecting a pill works, but it resets to
-      the source after a couple of seconds. Is this connected to the undo
-      functionality somehow? - not reproducable
 - [ ] **Browser project library** — save/load named projects in the browser
       (IndexedDB), alongside the existing ZIP download/upload. Each saved
       project is stored as a full `.blast.zip` blob; a modal mirrors the
@@ -17,13 +13,6 @@ design brief and from development discussions.
       ~/.claude/plans/make-it-possible-to-lazy-owl.md
 - [ ] **Review translations** — audit Swedish/English strings in help.js for
       accuracy and completeness.
-- [ ] **Minimize inspector** — add a collapse/minimize toggle for the
-      inspector panel.
-- [ ] **Background visualization** — a subtle deterministic visual effect in
-      the background, driven by selected nodes/lanes and their control values
-      (envelopes, levels, etc.). Make it toggle on or off. I'm thinking a dot
-      cloud with soft round shapes for soft sounds and more spikes for harsh
-      sounds. when no sound is played just a faint circle rotating
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce
       zipper noise on slider edits.
 - [ ] **Tone.js feature audit** — Tone.js classes not yet used that could be
@@ -77,7 +66,8 @@ design brief and from development discussions.
       recording (WaveSurfer Record plugin). Today the waveform only appears
       after pressing Stop.
 - [ ] **Region looping** — loop the trimmed sample region for sustained
-      sounds (engines, wind); regions plugin emits the needed events.
+      sounds (engines, wind); regions plugin emits the needed events. Adhere to
+      either # of cycles or total length.
 - [ ] **Sample editor polish** — arrow-key nudging of in/out points, optional
       snap-to-zero-crossing.
 - [ ] **Sequencer per lane (placeable note sequencer)** — turn the single
@@ -110,10 +100,6 @@ design brief and from development discussions.
         `sequenceSpan(sound.sequencer)`); UI `SequencerModal`/`SequencerEditor`.
         Becomes a registry block (`kind: 'control'`). Related: "Optional
         sequencer" item above.
-
-## Bugs
-- [ ] Sample envelope no edit
-- [ ] No visualization on metal synth
 
 ## Polish / housekeeping
 - [ ] **Screenshot** in the README once the UI is settled.

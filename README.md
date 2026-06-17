@@ -41,7 +41,7 @@ Order matters — a filter before distortion sounds different than after. Drag b
 
 ### Controls
 
-Every control always shows its current value. Double-click a slider to reset it; double-click a value to type an exact number (percentages entered as 0–100). `Space` plays the selected sound.
+Every control always shows its current value. Double-click a slider to reset it; double-click a value to type an exact number (percentages entered as 0–100). `Space` plays the selected sound. Click the canvas background to deselect the active block and collapse the inspector.
 
 ## Running it
 

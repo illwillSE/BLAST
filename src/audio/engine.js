@@ -389,6 +389,7 @@ export async function buildChain(sound, destination) {
 
           srcNode.connect(nodes.gain)
           srcNode.onended = () => {
+            for (const { lfo } of lane.lfos) try { lfo.disconnect(srcNode.playbackRate) } catch {}
             lane.activeSampleSources.delete(srcNode)
             try { srcNode.disconnect(); srcNode.dispose() } catch { /* disposed */ }
           }

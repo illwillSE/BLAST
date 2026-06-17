@@ -20,15 +20,17 @@ export const DEFAULT_EXPORT = { sampleRate: 44100, channels: 2, format: 'pcm16' 
 export async function renderSoundToWav(sound, opts) {
   const { sampleRate, channels, format } = { ...DEFAULT_EXPORT, ...opts }
   const duration = estimateDuration(sound)
+  let handle
   const toneBuffer = await Tone.Offline(
     async ({ destination }) => {
-      const handle = await buildChain(sound, destination)
+      handle = await buildChain(sound, destination)
       handle.trigger(0.01, sequenceToNotes(sound.sequencer))
     },
     duration + 0.05,
     channels,
     sampleRate,
   )
+  handle?.dispose()
   const wavData = toWav(toneBuffer.get(), { float32: format === 'float32' })
   return new Blob([wavData], { type: 'audio/wav' })
 }
