@@ -6,6 +6,7 @@ import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
 import { reverseBuffer, normalizeBuffer, fadeBuffer } from '../audio/bufferOps'
 import { Button } from './ui'
 import { useUIPrefs, useT } from '../state/uiPrefs'
+import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 import { getColor } from '../theme/colors'
 
 function ToolButton({ children, onClick, disabled, title }) {
@@ -86,6 +87,7 @@ export default function SampleEditorModal({
   const t = useT()
   const [playing, setPlaying] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const { entered, handleClose } = useModalAnimation(onClose)
 
   function toggleLang() {
     setLang(lang === 'en' ? 'sv' : 'en')
@@ -99,10 +101,10 @@ export default function SampleEditorModal({
   const trimmed = block.params.trimStart != null || block.params.trimEnd != null
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [handleClose])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -208,10 +210,10 @@ export default function SampleEditorModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
-      <div className="flex w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl">
+      <div className={`flex w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl ${panelAnim(entered)}`}>
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">
             {t('sample.editorTitle')}
@@ -227,7 +229,7 @@ export default function SampleEditorModal({
             ?
           </button>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             title={t('common.close')}
             className="text-muted transition-colors hover:text-ink"
           >

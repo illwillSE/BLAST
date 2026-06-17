@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SAMPLE_RATES, EXPORT_CHANNELS, EXPORT_FORMATS } from '../audio/render'
 import { useUIPrefs, useT } from '../state/uiPrefs'
+import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 import { Button } from './ui'
 
 // A labelled native <select>, matching the chain editor's select styling.
@@ -29,6 +30,7 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
   const [tab, setTab] = useState('general')
   const [confirmingNew, setConfirmingNew] = useState(false)
   const [confirmingPresets, setConfirmingPresets] = useState(false)
+  const { entered, handleClose } = useModalAnimation(onClose)
 
   const TABS = [
     { id: 'general', label: t('settings.general') },
@@ -36,22 +38,22 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
   ]
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [handleClose])
 
   const ex = project.export
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-edge bg-panel shadow-2xl">
+      <div className={`flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-edge bg-panel shadow-2xl ${panelAnim(entered)}`}>
         <div className="flex items-center gap-2 border-b border-divider px-4 py-3">
           <span className="flex-1 text-[13px] font-semibold uppercase tracking-wider text-ink">{t('settings.title')}</span>
-          <button onClick={onClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
+          <button onClick={handleClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
         </div>
 
         <div className="flex gap-1 border-b border-divider px-3 pt-2">
@@ -143,7 +145,7 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
                     </p>
                     <div className="flex gap-1.5">
                       <button
-                        onClick={() => { setConfirmingNew(false); onNewProject(); onClose() }}
+                        onClick={() => { setConfirmingNew(false); onNewProject(); handleClose() }}
                         className="rounded border border-danger bg-danger px-2 py-0.5 text-[12px] text-white transition-colors"
                       >
                         {t('settings.startNewProject')}
@@ -161,7 +163,7 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
                     </p>
                     <div className="flex gap-1.5">
                       <button
-                        onClick={() => { setConfirmingPresets(false); onLoadPresets(); onClose() }}
+                        onClick={() => { setConfirmingPresets(false); onLoadPresets(); handleClose() }}
                         className="rounded border border-danger bg-danger px-2 py-0.5 text-[12px] text-white transition-colors"
                       >
                         {t('settings.loadPresetsConfirmBtn')}
