@@ -13,8 +13,6 @@ design brief and from development discussions.
       (vertical level fader, pan beneath, mute + remove). Columns overflow
       horizontally — the "too many lanes to fit" problem is ignored for now.
       Delay stays in the Timeline strip.
-- [ ] **Optional sequencer** — remove the sequencer from the master output;
-      make it addable only when needed (on by default once added).
 - [ ] **Pill selection resets** — selecting a pill works, but it resets to
       the source after a couple of seconds. Is this connected to the undo
       functionality somehow? - not reproducable
