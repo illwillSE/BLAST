@@ -2,7 +2,9 @@
 
 A sound design app for making game sound effects, jingles, and noises — running entirely in the browser. No backend, no accounts: open it and make sounds.
 
-![Stack](https://img.shields.io/badge/React-Vite-blue) ![Audio](https://img.shields.io/badge/audio-Tone.js-orange)
+![Stack](https://img.shields.io/badge/React-Vite-blue) ![Audio](https://img.shields.io/badge/audio-Tone.js-orange) ![Version](https://img.shields.io/badge/version-0.92-lightgrey)
+
+> **Approaching v1.0.** The core feature set is complete. Only small fixes and polish are planned before the 1.0 release. Larger additions (new synth types, modulation LFO, per-lane sequencer, project library) are slated for v2.0.
 
 ## How it works
 

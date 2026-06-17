@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { MASTER, findLane, findBlock, isSource } from '../state/model'
 import { useClipboard, getClipboard, copyBlock } from '../state/clipboard'
 import AddBlockMenu from './AddBlockMenu'
+import SequencerModal from './SequencerModal'
 import LaneRow from './LaneRow'
 import LaneTimeline from './LaneTimeline'
 import InspectorDock from './InspectorDock'
@@ -22,6 +23,7 @@ export default function ChainEditor({
   const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
   const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
   const [inspectorMin, setInspectorMin] = useState(false)
+  const [seqModalOpen, setSeqModalOpen] = useState(false)
 
   // Reset selection/focus when switching to a different sound.
   useEffect(() => {
@@ -274,7 +276,7 @@ export default function ChainEditor({
             <Conn />
             {/* Sound-level step sequencer — drives the trigger, sits after Output. */}
             <button
-              onClick={(e) => select('seq', e.shiftKey || e.metaKey)}
+              onClick={(e) => { select('seq', e.shiftKey || e.metaKey); setSeqModalOpen(true) }}
               title={t('chain.seqTitle')}
               className={`flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-colors ${
                 isSel('seq') ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
@@ -291,6 +293,7 @@ export default function ChainEditor({
       </div>
 
       <InspectorDock sound={sound} selectedKeys={selectedKeys} handlers={handlers} minimized={inspectorMin} onToggleMinimize={() => setInspectorMin((m) => !m)} />
+      {seqModalOpen && <SequencerModal sound={sound} onChange={onSequencer} onClose={() => setSeqModalOpen(false)} />}
     </div>
   )
 }

@@ -3,6 +3,16 @@
 Ideas and planned work, roughly prioritized. Items come from the original
 design brief and from development discussions.
 
+## v2.0 candidates
+
+- **Song sequencer (own window)** — a full project-level sequencer that arranges the sounds designed in the app into a composition. Multi-lane piano roll, one lane per sound. Each lane shows note events (pitch + length) placed on a timeline; playback runs all lanes simultaneously through their respective signal chains. Separate window or full-screen overlay so it doesn't compete with the chain editor UI. This is distinct from the per-sound step sequencer — that governs a single sound's trigger pattern; this governs the whole song.
+- **Sequencer per lane** — breaks saved projects (explicit migration decision); anchor for the major bump.
+- **Modulation LFO** — first cross-block reference in the model; architectural scope.
+- **New synths/effects (Tone.js audit)** — FMSynth, AMSynth, Chorus, StereoWidener, etc.; significantly expands what BLAST is.
+- **Browser project library** — moves the app from ephemeral (ZIP) to real save/load.
+
+Everything else below is v1.0 (small fixes and polish).
+
 ## Features
 
 - [ ] **Per-step glide in the sequencer (portamento Option C)** — add a `glide: true`
@@ -109,6 +119,8 @@ design brief and from development discussions.
         sequencer" item above.
 
 ## Polish / housekeeping
+- [ ] **Inspector layout** Check the inspector layout of the different blocks. 
+      try to make things wider rather than taller so it uses less screen real-estate
 - [ ] **Screenshot** in the README once the UI is settled.
 - [ ] **Code-split** the bundle (Tone.js pushes the main chunk past 500 kB —
       Vite build warning).

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Slider, Button } from './ui'
 import { useT } from '../state/uiPrefs'
+import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 import { onPlay, emitPlay } from '../utils/bus'
 import { liveEngine } from '../audio/engine'
 import {
@@ -124,11 +125,13 @@ export default function SequencerModal({ sound, onChange, onClose }) {
   const seq = sound.sequencer ?? newSequencer()
   const cols = seq.steps.length
 
+  const { entered, handleClose } = useModalAnimation(onClose)
+
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [handleClose])
 
   // Playhead: animate a column highlight over one pass when this sound plays.
   const [playCol, setPlayCol] = useState(-1)
@@ -175,10 +178,10 @@ export default function SequencerModal({ sound, onChange, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
-      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl">
+      <div className={`flex max-h-[88vh] w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl ${panelAnim(entered)}`}>
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">{t('sequencer.title')}</span>
           <button
@@ -190,7 +193,7 @@ export default function SequencerModal({ sound, onChange, onClose }) {
             {seq.enabled ? t('sequencer.on') : t('sequencer.off')}
           </button>
           <span className="flex-1 truncate font-mono text-[11px] text-muted">{sound.name}</span>
-          <button onClick={onClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
+          <button onClick={handleClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
         </div>
 
         <div className="flex flex-wrap items-end gap-4">
