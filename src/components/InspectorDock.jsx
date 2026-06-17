@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { BLOCK_DEFS, disabledSourceParams } from '../blocks/registry'
 import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
@@ -86,6 +87,20 @@ function Panel({ keyId, sound, handlers }) {
 export default function InspectorDock({ sound, selectedKeys, handlers, minimized, onToggleMinimize }) {
   const t = useT()
   const keys = selectedKeys.filter((k) => k === 'output' || k === 'seq' || k === 'bus' || findBlock(sound, k))
+
+  // Measure real content height via ResizeObserver, then animate the outer
+  // wrapper between 0 (minimized) and the measured value.
+  const innerRef = useRef(null)
+  const [contentHeight, setContentHeight] = useState(null)
+  useEffect(() => {
+    if (!innerRef.current) return
+    const ro = new ResizeObserver((entries) => {
+      setContentHeight(entries[0].borderBoxSize[0].blockSize)
+    })
+    ro.observe(innerRef.current)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <div className="shrink-0 border-t border-divider bg-panel">
       <div className="flex items-center gap-2 border-b border-divider px-4 py-1.5">
@@ -99,25 +114,23 @@ export default function InspectorDock({ sound, selectedKeys, handlers, minimized
         <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">{t('inspector.title')}</span>
         {keys.length > 1 && <span className="text-[10px] text-muted">{keys.length} blocks · {t('inspector.multi')}</span>}
       </div>
-      {/* Grid-rows 1fr→0fr animates the variable-height body open/closed; the
-          overflow-hidden wrapper lets the track collapse past the content min-height. */}
+      {/* Animate between 0 and the measured inner height for both minimize and
+          content-height changes (different blocks have different panel heights). */}
       <div
-        className="grid transition-[grid-template-rows] duration-500 ease-in-out"
-        style={{ gridTemplateRows: minimized ? '0fr' : '1fr' }}
+        className="overflow-hidden transition-[height] duration-500 ease-in-out"
+        style={{ height: minimized ? 0 : (contentHeight ?? 'auto') }}
       >
-        <div className="overflow-hidden">
-          <div className="flex gap-8 overflow-x-auto p-4" style={{ minHeight: 168 }}>
-            {keys.length === 0 ? (
-              <Summary sound={sound} />
-            ) : (
-              keys.map((k, i) => (
-                <div key={k} className="flex min-w-0 flex-1 gap-8">
-                  {i > 0 && <div className="w-px self-stretch bg-surface-hover" />}
-                  <Panel keyId={k} sound={sound} handlers={handlers} />
-                </div>
-              ))
-            )}
-          </div>
+        <div ref={innerRef} className="flex gap-8 overflow-x-auto p-4" style={{ minHeight: 168 }}>
+          {keys.length === 0 ? (
+            <Summary sound={sound} />
+          ) : (
+            keys.map((k, i) => (
+              <div key={k} className="flex min-w-0 flex-1 gap-8">
+                {i > 0 && <div className="w-px self-stretch bg-surface-hover" />}
+                <Panel keyId={k} sound={sound} handlers={handlers} />
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
