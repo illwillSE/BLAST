@@ -126,7 +126,3 @@ Everything else below is v1.0 (small fixes and polish).
       Vite build warning).
 - [ ] **Browser smoke test** (Playwright script: load, play, add blocks,
       export WAV, check console errors).
-- [ ] **Visualizer paste guard** — the visualizer is lane-only via the
-      master add-menu, but Cmd/Ctrl+V (`handlePaste(MASTER)`) bypasses that
-      and can still drop a copied visualizer onto master. Add a model- or
-      paste-level guard if it matters.

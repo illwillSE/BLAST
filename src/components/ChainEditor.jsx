@@ -25,6 +25,8 @@ export default function ChainEditor({
   const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
   const [inspectorMin, setInspectorMin] = useState(false)
   const [seqModalOpen, setSeqModalOpen] = useState(false)
+  const masterDragIndex = useRef(null)
+  const [masterDropTarget, setMasterDropTarget] = useState(null)
 
   // Reset selection/focus when switching to a different sound.
   useEffect(() => {
@@ -161,6 +163,27 @@ export default function ChainEditor({
     return () => { ro.disconnect(); window.removeEventListener('resize', compute) }
   }, [sound, focusedLane, selectedKeys])
 
+  // Master chain reorder — mirrors LaneRow's dragProps but targets MASTER.
+  function masterDragProps(index) {
+    return {
+      draggable: true,
+      onDragStart: (e) => { masterDragIndex.current = index; e.dataTransfer.effectAllowed = 'move' },
+      onDragEnd: () => { masterDragIndex.current = null; setMasterDropTarget(null) },
+      onDragOver: (e) => {
+        if (masterDragIndex.current === null || masterDragIndex.current === index) return
+        e.preventDefault()
+        setMasterDropTarget(index)
+      },
+      onDrop: (e) => {
+        e.preventDefault()
+        if (masterDragIndex.current !== null && masterDragIndex.current !== index) onMove(MASTER, masterDragIndex.current, index)
+        masterDragIndex.current = null
+        setMasterDropTarget(null)
+      },
+      style: masterDropTarget === index ? { outline: `2px dashed ${getColor('accent-deep')}`, outlineOffset: '2px', borderRadius: '8px' } : undefined,
+    }
+  }
+
   const isSel = (k) => selectedKeys.includes(k)
   const multiLane = sound.sources.length > 1
   const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onVoicing, onSequencer, onPasteValues, onSelect: select }
@@ -243,7 +266,7 @@ export default function ChainEditor({
               <div className="text-[11px] font-semibold uppercase tracking-wider text-text">{t('chain.bus')}</div>
               <div className="text-[9px] text-faint">{t('chain.allLanes')}</div>
             </div>
-            {sound.master.map((b) => (
+            {sound.master.map((b, i) => (
               <span key={b.id} className="flex items-center gap-2">
                 <Conn />
                 <Chip
@@ -251,6 +274,7 @@ export default function ChainEditor({
                   selected={isSel(b.id)}
                   onClick={(e) => select(b.id, e.shiftKey || e.metaKey)}
                   onParam={onParam}
+                  drag={masterDragProps(i)}
                 />
               </span>
             ))}
