@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { X } from 'lucide-react'
 import { extractEnvelope } from '../audio/envelope'
 import { SampleLoadControls, InfoDot } from './ui'
 import { useT } from '../state/uiPrefs'
@@ -128,7 +129,7 @@ export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
               title={t('sample.removeEnv')}
               className="shrink-0 text-muted transition-colors hover:text-danger"
             >
-              ✕
+              <X size={12} />
             </button>
           </div>
         </div>

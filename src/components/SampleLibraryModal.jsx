@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
+import { X, Play, Square } from 'lucide-react'
 import { decodeBlob } from '../audio/sampleCache'
 import { listLibrary, addToLibrary, removeFromLibrary } from '../utils/sampleLibrary'
 import { useT } from '../state/uiPrefs'
 import { Button } from './ui'
+import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 
 export default function SampleLibraryModal({ sample, onLoad, onClose }) {
   const t = useT()
+  const { entered, handleClose } = useModalAnimation(onClose)
   const [entries, setEntries] = useState([])
   const [nameInput, setNameInput] = useState(sample?.fileName?.replace(/\.[^.]+$/, '') ?? '')
   const [previewingId, setPreviewingId] = useState(null)
@@ -19,10 +22,10 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
   }, [])
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [handleClose])
 
   useEffect(() => () => {
     stopPreview()
@@ -101,16 +104,16 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
-      <div className="flex w-full max-w-lg flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl">
+      <div className={`flex w-full max-w-lg flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl ${panelAnim(entered)}`}>
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-semibold uppercase tracking-wider text-accent">
             {t('library.title')}
           </span>
           <span className="flex-1" />
-          <button onClick={onClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
+          <button onClick={handleClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink"><X size={14} /></button>
         </div>
 
         {sample && (
@@ -149,11 +152,11 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
                 <button
                   onClick={() => togglePreview(entry)}
                   title={previewingId === entry.id ? t('library.stop') : t('library.preview')}
-                  className={`w-5 shrink-0 text-center text-[12px] transition-colors ${
+                  className={`flex w-5 shrink-0 items-center justify-center transition-colors ${
                     previewingId === entry.id ? 'text-accent-bright' : 'text-muted hover:text-ink'
                   }`}
                 >
-                  {previewingId === entry.id ? '■' : '▶'}
+                  {previewingId === entry.id ? <Square size={12} /> : <Play size={12} />}
                 </button>
                 <button
                   onClick={() => handleLoad(entry)}
@@ -165,9 +168,9 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
                 <button
                   onClick={() => handleDelete(entry)}
                   title={t('library.remove')}
-                  className="shrink-0 text-[10px] text-muted transition-colors hover:text-danger"
+                  className="shrink-0 text-muted transition-colors hover:text-danger"
                 >
-                  ✕
+                  <X size={12} />
                 </button>
               </div>
             ))

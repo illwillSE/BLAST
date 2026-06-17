@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ChevronRight, ClipboardPaste } from 'lucide-react'
 import { MASTER, findLane, findBlock, isSource } from '../state/model'
 import { useClipboard, getClipboard, copyBlock } from '../state/clipboard'
 import AddBlockMenu from './AddBlockMenu'
@@ -11,7 +12,7 @@ import BackgroundVisualization from './BackgroundVisualization'
 import { getColor } from '../theme/colors'
 import { useT, useUIPrefs } from '../state/uiPrefs'
 
-const Conn = () => <span className="text-[13px] text-faint">›</span>
+const Conn = () => <ChevronRight size={12} className="shrink-0 text-faint" />
 
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
@@ -215,16 +216,16 @@ export default function ChainEditor({
             <div className="flex items-center gap-2 pl-8">
               <button
                 onClick={handleAddSource}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/80 transition-colors hover:border-accent-deep/70 hover:text-accent"
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/70 transition-colors hover:border-accent-deep hover:bg-accent-deep/10 hover:text-accent"
               >
                 <span className="text-base leading-none">+</span> {t('chain.addSource')}
               </button>
               {clip?.kind === 'block' && isSource(clip.block) && (
                 <button
                   onClick={handlePasteSource}
-                  className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/80 transition-colors hover:border-accent-deep/70 hover:text-accent"
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/70 transition-colors hover:border-accent-deep hover:bg-accent-deep/10 hover:text-accent"
                 >
-                  <span className="text-base leading-none">⇲</span> {t('chain.pasteSource')}
+                  <ClipboardPaste size={13} className="shrink-0" /> {t('chain.pasteSource')}
                 </button>
               )}
             </div>

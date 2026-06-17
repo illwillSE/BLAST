@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import { BLOCK_DEFS, disabledSourceParams } from '../blocks/registry'
 import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
@@ -107,9 +108,9 @@ export default function InspectorDock({ sound, selectedKeys, handlers, minimized
         <button
           onClick={onToggleMinimize}
           title={minimized ? t('inspector.expand') : t('inspector.collapse')}
-          className="text-[10px] leading-none text-faint transition-colors hover:text-text"
+          className="rounded p-0.5 text-faint transition-colors hover:bg-surface hover:text-text"
         >
-          {minimized ? '▴' : '▾'}
+          {minimized ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
         <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">{t('inspector.title')}</span>
         {keys.length > 1 && <span className="text-[10px] text-muted">{keys.length} blocks · {t('inspector.multi')}</span>}

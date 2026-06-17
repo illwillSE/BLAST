@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { SAMPLE_RATES, EXPORT_CHANNELS, EXPORT_FORMATS } from '../audio/render'
 import { useUIPrefs, useT } from '../state/uiPrefs'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
@@ -53,7 +54,7 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
       <div className={`flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-edge bg-panel shadow-2xl ${panelAnim(entered)}`}>
         <div className="flex items-center gap-2 border-b border-divider px-4 py-3">
           <span className="flex-1 text-[13px] font-semibold uppercase tracking-wider text-ink">{t('settings.title')}</span>
-          <button onClick={handleClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
+          <button onClick={handleClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink"><X size={14} /></button>
         </div>
 
         <div className="flex gap-1 border-b border-divider px-3 pt-2">

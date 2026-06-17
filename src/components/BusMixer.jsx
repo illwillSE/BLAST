@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { Slider, VFader } from './ui'
 import { useT } from '../state/uiPrefs'
 import ConfirmButton from './ConfirmButton'
@@ -16,8 +17,8 @@ function Strip({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemove
       <div className="flex w-full items-center justify-between gap-1 text-[10px]">
         <span className="font-semibold uppercase tracking-wider text-ink-soft">{laneNumber} · {lane.type}</span>
         {canRemove && (
-          <ConfirmButton onConfirm={onRemoveLane} className="rounded border border-edge px-1 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright">
-            ✕
+          <ConfirmButton onConfirm={onRemoveLane} className="flex items-center rounded border border-edge px-1 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright">
+            <X size={11} />
           </ConfirmButton>
         )}
       </div>

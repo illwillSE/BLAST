@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ClipboardPaste } from 'lucide-react'
 import { blocksByCategory, BLOCK_DEFS } from '../blocks/registry'
 import { useClipboard } from '../state/clipboard'
 import { useUIPrefs, useT } from '../state/uiPrefs'
@@ -40,7 +41,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
         <button
           onClick={() => setOpen((o) => !o)}
           title={menuLabel}
-          className="flex items-center gap-1 rounded-lg border border-dashed border-edge px-2.5 py-1.5 text-[12px] text-muted transition-colors hover:border-accent-deep/50 hover:text-accent"
+          className="flex items-center gap-1 rounded-lg border border-dashed border-accent-dim/50 px-2.5 py-1.5 text-[12px] text-accent-deep/70 transition-colors hover:border-accent-deep hover:bg-accent-deep/10 hover:text-accent"
         >
           <span className="text-base leading-none">+</span>
           {label != null && <span className="text-[10px] uppercase tracking-wider">{menuLabel.replace(/^(Add |Lägg till )/, '')}</span>}
@@ -48,7 +49,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-edge text-muted transition-colors hover:border-accent-deep/50 hover:text-accent"
+          className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-accent-dim/40 bg-accent-deep/5 text-accent-deep/70 transition-colors hover:border-accent-deep/60 hover:bg-accent-deep/10 hover:text-accent"
         >
           <span className="text-xl leading-none">+</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider">{menuLabel}</span>
@@ -60,9 +61,9 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
           {canPaste && (
             <button
               onClick={() => { onPaste(); setOpen(false) }}
-              className="mb-1.5 flex w-full items-baseline gap-2 rounded border border-accent-deep/40 px-1.5 py-1 text-left transition-colors hover:bg-surface"
+              className="mb-1.5 flex w-full items-center gap-2 rounded border border-accent-deep/40 px-1.5 py-1 text-left transition-colors hover:bg-surface"
             >
-              <span className="self-center text-[12px] leading-none text-accent">⇲</span>
+              <ClipboardPaste size={12} className="shrink-0 text-accent" />
               <span className="text-[12px] font-medium text-ink">{t('addMenu.paste')} {pasteDef.name}</span>
             </button>
           )}

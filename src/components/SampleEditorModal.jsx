@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import WaveSurfer from 'wavesurfer.js'
 import { onPlay } from '../utils/bus'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
@@ -233,7 +234,7 @@ export default function SampleEditorModal({
             title={t('common.close')}
             className="text-muted transition-colors hover:text-ink"
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 

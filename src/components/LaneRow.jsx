@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
+import { ChevronRight, ChevronDown } from 'lucide-react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import AddBlockMenu from './AddBlockMenu'
 import Chip from './Chip'
 import { getColor } from '../theme/colors'
 
-const Conn = () => <span className="text-[13px] text-faint">›</span>
+const Conn = () => <ChevronRight size={12} className="shrink-0 text-faint" />
 const Port = ({ portRef }) => <span ref={portRef} className="ml-1 h-2 w-2 shrink-0 rounded-full bg-edge-2" />
 
 export default function LaneRow({
@@ -19,8 +20,8 @@ export default function LaneRow({
   if (!focused) {
     return (
       <div className="flex items-center gap-2">
-        <button onClick={() => onFocusLane(lane.id)} className="w-6 text-center text-[11px] font-bold text-muted hover:text-accent">
-          ▸{laneNumber}
+        <button onClick={() => onFocusLane(lane.id)} className="flex w-6 items-center justify-center text-[11px] font-bold text-muted hover:text-accent">
+          <ChevronRight size={11} />{laneNumber}
         </button>
         <Chip block={lane} selected={isSel(lane.id)} onClick={click(lane.id)} />
         {lane.chain.filter((b) => BLOCK_DEFS[b.type]).map((b) => (
@@ -57,8 +58,8 @@ export default function LaneRow({
 
   return (
     <div className="flex items-center gap-2">
-      <button onClick={() => onFocusLane(lane.id)} className="w-6 text-center text-[11px] font-bold text-accent">
-        ▾{laneNumber}
+      <button onClick={() => onFocusLane(lane.id)} className="flex w-6 items-center justify-center text-[11px] font-bold text-accent">
+        <ChevronDown size={11} />{laneNumber}
       </button>
       <Chip block={lane} selected={isSel(lane.id)} onClick={click(lane.id)} />
       {lane.chain.filter((b) => BLOCK_DEFS[b.type]).map((b, i) => (

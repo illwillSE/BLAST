@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Play, Copy, ClipboardPaste, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useClipboard } from '../state/clipboard'
 import { useT } from '../state/uiPrefs'
 import ConfirmButton from './ConfirmButton'
@@ -25,13 +26,13 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
       <button
         onClick={(e) => { e.stopPropagation(); onPlay() }}
         title={t('soundList.play')}
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[9px] transition-colors ${
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
           selected
             ? 'border-accent/60 text-accent-bright hover:bg-accent/20'
             : 'border-edge-2 text-text hover:border-text'
         }`}
       >
-        ▶
+        <Play size={9} />
       </button>
       {editing ? (
         <input
@@ -55,17 +56,17 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
       <button
         onClick={(e) => { e.stopPropagation(); onDuplicate() }}
         title={t('soundList.duplicate')}
-        className="hidden text-[11px] text-muted hover:text-ink group-hover:block"
+        className="hidden items-center text-muted hover:text-ink group-hover:flex"
       >
-        ⧉
+        <Copy size={12} />
       </button>
       {canDelete && (
         <ConfirmButton
           onConfirm={onDelete}
-          className="hidden text-[11px] text-muted hover:text-danger group-hover:block"
+          className="hidden items-center text-muted hover:text-danger group-hover:flex"
           armedClassName="text-[11px] rounded border border-danger bg-danger px-1 text-white transition-colors"
         >
-          ✕
+          <X size={12} />
         </ConfirmButton>
       )}
     </div>
@@ -83,9 +84,9 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
         <button
           onClick={() => setCollapsed(false)}
           title={t('soundList.show')}
-          className="text-[12px] text-muted hover:text-ink"
+          className="text-muted hover:text-ink"
         >
-          ›
+          <ChevronRight size={14} />
         </button>
         <span
           className="text-[11px] font-bold uppercase tracking-widest text-muted"
@@ -105,17 +106,17 @@ export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd,
           <button
             onClick={() => setCollapsed(true)}
             title={t('soundList.collapse')}
-            className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
+            className="flex items-center rounded border border-edge px-1.5 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
           >
-            ‹
+            <ChevronLeft size={13} />
           </button>
           {clip?.kind === 'sample' && (
             <button
               onClick={onPasteAsNewSound}
               title={t('soundList.pasteAsSound')}
-              className="rounded border border-edge px-1.5 text-[13px] leading-5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
+              className="flex items-center rounded border border-edge px-1.5 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent"
             >
-              ⇲
+              <ClipboardPaste size={13} />
             </button>
           )}
           <button

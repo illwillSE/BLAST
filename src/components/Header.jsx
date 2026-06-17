@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Settings } from 'lucide-react'
 import { Button } from './ui'
 import { saveProjectZip, loadProjectZip } from '../utils/projectZip'
 import { useUIPrefs, useT } from '../state/uiPrefs'
@@ -38,7 +39,7 @@ export default function Header({ project, onRenameProject, onLoadProject, onSetE
   return (
     <header className="flex items-center gap-4 border-b border-divider bg-panel px-4 py-2.5">
       <div className="flex items-baseline gap-2">
-        <span className="text-lg font-black tracking-[0.2em] text-accent">BLAST</span>
+        <span className="text-lg font-black tracking-[0.2em] text-accent transition-all duration-200 hover:tracking-[0.27em] hover:text-accent-bright">BLAST</span>
         <span className="text-[10px] font-semibold text-faint">0.9</span>
         <span className="hidden text-[10px] uppercase tracking-[0.05em] text-faint md:block">
           {[['B','ig'],['L','oud'],['A','wesome'],['S','ound'],['T','ool']].map(([first, rest]) => (
@@ -87,7 +88,7 @@ export default function Header({ project, onRenameProject, onLoadProject, onSetE
           <Button onClick={() => fileRef.current?.click()} disabled={busy !== null}>
             {busy === 'load' ? t('header.loading') : t('header.loadZip')}
           </Button>
-          <Button onClick={() => setSettingsOpen(true)} title={t('header.settings')}><span className="text-lg leading-none">⚙</span></Button>
+          <Button onClick={() => setSettingsOpen(true)} title={t('header.settings')}><Settings size={15} /></Button>
         </div>
       </div>
       <input

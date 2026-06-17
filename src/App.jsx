@@ -19,6 +19,7 @@ import SoundList from './components/SoundList'
 import ChainEditor from './components/ChainEditor'
 import IntroModal from './components/IntroModal'
 import { Button } from './components/ui'
+import { Play } from 'lucide-react'
 
 // Clone a block (or lane), giving it a fresh id and copying an embedded sample
 // into the new id. Shared by sound duplication and clipboard paste.
@@ -411,7 +412,7 @@ export default function App() {
                   title={t('transport.play')}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-accent-deep/60 bg-accent-deep/15 text-sm text-accent-bright transition-all hover:scale-105 hover:bg-accent-deep/30 active:scale-95"
                 >
-                  ▶
+                  <Play size={16} />
                 </button>
                 {editingName ? (
                   <input

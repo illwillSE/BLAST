@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Copy, ClipboardPaste, Power, X } from 'lucide-react'
 import { BLOCK_DEFS } from '../blocks/registry'
 import { useClipboard, copyBlock } from '../state/clipboard'
 import { useUIPrefs, useT } from '../state/uiPrefs'
@@ -152,17 +153,17 @@ export default function BlockControls({
           <button
             onClick={() => copyBlock(block)}
             title={t('block.copyTitle')}
-            className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
+            className="flex items-center gap-1 rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
           >
-            ⧉ {t('block.copy')}
+            <Copy size={11} className="shrink-0" /> {t('block.copy')}
           </button>
           {canPasteValues && (
             <button
               onClick={onPasteValues}
               title={t('block.pasteValuesTitle')}
-              className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
+              className="flex items-center gap-1 rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-accent-deep/50 hover:text-accent-bright"
             >
-              ⇲ {t('block.pasteValues')}
+              <ClipboardPaste size={11} className="shrink-0" /> {t('block.pasteValues')}
             </button>
           )}
           {/* Analyzers are passive taps — nothing to bypass, so no on/off toggle. */}
@@ -170,21 +171,21 @@ export default function BlockControls({
             <button
               onClick={onToggle}
               title={block.enabled ? t('block.bypass') : t('block.enable')}
-              className={`rounded border px-2 py-0.5 transition-colors ${
+              className={`flex items-center gap-1 rounded border px-2 py-0.5 transition-colors ${
                 block.enabled
                   ? 'border-on/50 bg-on/15 text-on-bright'
                   : 'border-edge-2 text-muted'
               }`}
             >
-              ⏻ {block.enabled ? t('block.on') : t('block.bypassed')}
+              <Power size={11} className="shrink-0" /> {block.enabled ? t('block.on') : t('block.bypassed')}
             </button>
           )}
           {(!isSource || canRemoveLane) && (
             <ConfirmButton
               onConfirm={onRemove}
-              className="rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
+              className="flex items-center gap-1 rounded border border-edge px-2 py-0.5 text-text transition-colors hover:border-danger/50 hover:text-danger-bright"
             >
-              ✕ {isSource ? t('block.removeLane') : t('block.remove')}
+              <X size={11} className="shrink-0" /> {isSource ? t('block.removeLane') : t('block.remove')}
             </ConfirmButton>
           )}
         </div>

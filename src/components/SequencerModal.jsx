@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { Slider, Button } from './ui'
 import { useT } from '../state/uiPrefs'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
@@ -193,7 +194,7 @@ export default function SequencerModal({ sound, onChange, onClose }) {
             {seq.enabled ? t('sequencer.on') : t('sequencer.off')}
           </button>
           <span className="flex-1 truncate font-mono text-[11px] text-muted">{sound.name}</span>
-          <button onClick={handleClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink">✕</button>
+          <button onClick={handleClose} title={t('common.close')} className="text-muted transition-colors hover:text-ink"><X size={14} /></button>
         </div>
 
         <div className="flex flex-wrap items-end gap-4">

@@ -34,8 +34,10 @@ function MonitorCard({ block, selected, onClick, onParam, drag }) {
     <div
       onClick={onClick}
       {...(drag || {})}
-      className={`cursor-pointer overflow-hidden rounded-lg border shadow-sm transition-colors ${
-        selected ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
+      className={`overflow-hidden rounded-lg border shadow-sm transition-all duration-150 ${
+        drag ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+      } ${
+        selected ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover hover:bg-surface-hover/40'
       }`}
     >
       <div className={`bg-well px-2 ${mode === 'meter' ? 'py-1.5' : 'pt-1.5'}`}>
@@ -73,8 +75,10 @@ export default function Chip({ block, selected, onClick, onParam, drag }) {
     <button
       onClick={onClick}
       {...(drag || {})}
-      className={`flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-colors ${
-        selected ? 'border-accent-deep ring-1 ring-accent-deep/70' : 'border-edge hover:border-edge-hover'
+      className={`flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-all duration-150 ${
+        drag ? 'cursor-grab active:cursor-grabbing' : ''
+      } ${
+        selected ? `border-accent-deep ring-1 ring-accent-deep/70 ${cat.glow}` : 'border-edge hover:border-edge-hover hover:bg-surface-hover/40'
       } ${bypassed ? 'opacity-45' : ''}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />

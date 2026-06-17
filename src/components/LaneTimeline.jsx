@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { laneDuration } from '../audio/engine'
 import { useT } from '../state/uiPrefs'
 import { CAT_STYLES } from './ui'
@@ -52,7 +53,7 @@ export default function LaneTimeline({ sound, onLaneProp }) {
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-1.5 px-4 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text hover:text-ink"
       >
-        <span className="text-faint">{open ? '▾' : '▸'}</span>
+        {open ? <ChevronDown size={12} className="shrink-0 text-faint" /> : <ChevronRight size={12} className="shrink-0 text-faint" />}
         {t('laneTimeline.heading')}
       </button>
 

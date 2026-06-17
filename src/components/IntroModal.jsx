@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useUIPrefs } from '../state/uiPrefs'
 import { STRINGS } from '../i18n/strings'
 import { Button } from './ui'
+import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 
 const SEEN_KEY = 'blast-intro-seen'
 
@@ -14,35 +15,36 @@ export default function IntroModal() {
     try { return localStorage.getItem(SEEN_KEY) !== '1' } catch { return false }
   })
   const [step, setStep] = useState(0)
+  const { entered, handleClose } = useModalAnimation(() => setOpen(false))
 
   const intro = (STRINGS[lang] ?? STRINGS.en).intro
   const steps = intro.steps
   const last = step >= steps.length - 1
 
-  function dismiss() {
+  function close() {
     try { localStorage.setItem(SEEN_KEY, '1') } catch {}
-    setOpen(false)
+    handleClose()
   }
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') dismiss() }
+    const onKey = (e) => { if (e.key === 'Escape') close() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open])
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open) return null
   const cur = steps[step]
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) dismiss() }}
+      className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) close() }}
     >
-      <div className="flex w-full max-w-sm flex-col rounded-xl border border-edge bg-panel shadow-2xl">
+      <div className={`flex w-full max-w-sm flex-col rounded-xl border border-edge bg-panel shadow-2xl ${panelAnim(entered)}`}>
         <div className="flex items-center gap-2 border-b border-divider px-4 py-3">
           <span className="flex-1 text-[13px] font-semibold uppercase tracking-wider text-accent">{intro.title}</span>
-          <button onClick={dismiss} className="text-[11px] text-muted transition-colors hover:text-ink">{intro.skip}</button>
+          <button onClick={close} className="text-[11px] text-muted transition-colors hover:text-ink">{intro.skip}</button>
         </div>
 
         <div className="px-4 py-4">
@@ -58,7 +60,7 @@ export default function IntroModal() {
           </div>
           {step > 0 && <Button onClick={() => setStep((s) => s - 1)}>{intro.back}</Button>}
           {last ? (
-            <Button variant="primary" onClick={dismiss}>{intro.done}</Button>
+            <Button variant="primary" onClick={close}>{intro.done}</Button>
           ) : (
             <Button variant="primary" onClick={() => setStep((s) => s + 1)}>{intro.next}</Button>
           )}
