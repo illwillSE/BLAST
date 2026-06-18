@@ -459,6 +459,7 @@ export default function App() {
               <div className="min-h-0 flex-1">
                 <ChainEditor
                   sound={sound}
+                  initialSelectedKey={tutorial.active?.ctx?.selectId}
                   onParam={onParam}
                   onToggle={onToggle}
                   onRemove={onRemove}

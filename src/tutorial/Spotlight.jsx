@@ -85,7 +85,10 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
   // card into the viewport using its measured size on both axes — so a resize
   // that moves the target (e.g. the inspector dock growing/shrinking on a source
   // swap) can't push the card, or its Next button, off-screen.
-  let tip = { position: 'fixed', zIndex: 71, maxWidth: 320 }
+  // Tooltip sits above modals (e.g. the sequencer, z-80) so its instructions and
+  // Next stay visible while the learner works in a modal; the dim/cut-out (z-70)
+  // stays behind the modal so the modal itself reads bright.
+  let tip = { position: 'fixed', zIndex: 90, maxWidth: 320 }
   if (rect) {
     const place = step.placement ?? 'bottom'
     const w = tipSize?.w ?? 320

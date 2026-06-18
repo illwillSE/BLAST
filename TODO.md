@@ -14,7 +14,7 @@ design brief and from development discussions.
 Everything else below is v1.0 (small fixes and polish).
 
 ## Features
-
+- [ ] **Add modulation to pulse**
 - [ ] **Tutorial system (interactive, restartable, chaptered)** — guided
       do-it-yourself onboarding that explains the app. Decisions settled
       2026-06-18:
@@ -61,6 +61,26 @@ Everything else below is v1.0 (small fixes and polish).
       - **Open question:** Beginner-mode tie-in (auto-offer the tour on entering
         Beginner mode). Plumbing trivial (`mode` already in `uiPrefs`); decision
         deferred, capability not blocked.
+      - **Status (2026-06-18):** engine + overlay + progress + menu shipped, and
+        all four chapters now exist (Core flow, Sources & synthesis, Effects &
+        control blocks, Layers/sequencer/projects). **Still only basic — needs
+        more work.** Remaining:
+        - Chapters are short/shallow. Deepen coverage: sample & mic source,
+          more effect types, actually programming the sequencer grid, the bus
+          mixer (level/pan/delay per lane), save/load hands-on.
+        - Layers chapter is a light tour — only "add a layer" is hands-on; the
+          projects step is read-only (saving downloads a file, skipped in a
+          sandbox).
+        - First-run offer + Beginner-mode auto-tour (the open question) NOT built.
+        - Plan said "data-tut anchors only, no logic change" — in practice a few
+          small logic changes were needed: `ChainEditor` `initialSelectedKey`
+          pre-selection, and z-index raises (AddBlockMenu dropdown, SequencerModal,
+          Spotlight tooltip) so popups/modals sit correctly vs the overlay.
+        - No automated tests — layout verified analytically only (no browser
+          automation set up); consider Playwright specs for tooltip-on-screen
+          regressions.
+        - Tooltip placement when a step opens a modal (sequencer) is anchored to
+          the now-hidden trigger; may want a fixed/corner position over modals.
 
 - [ ] **Per-step glide in the sequencer (portamento Option C)** — add a `glide: true`
       flag per note-event in the sequencer step data `{ pitch, len, glide? }`. In the

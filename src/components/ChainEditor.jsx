@@ -17,21 +17,26 @@ const Conn = () => <ChevronRight size={12} className="shrink-0 text-faint" />
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
   onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onVoicing,
-  onSequencer, onPasteBlock, onPasteSourceLane, onPasteValues,
+  onSequencer, onPasteBlock, onPasteSourceLane, onPasteValues, initialSelectedKey,
 }) {
   const t = useT()
   const { backgroundViz } = useUIPrefs()
-  const [selectedKeys, setSelectedKeys] = useState(() => [sound.sources[0]?.id])
-  const [focusedLane, setFocusedLane] = useState(() => sound.sources[0]?.id)
+  // `initialSelectedKey` lets a caller (the tutorial) open a specific block on
+  // load — e.g. pre-select a chain block so its controls are already in the
+  // inspector. Defaults to the first source.
+  const [selectedKeys, setSelectedKeys] = useState(() => [initialSelectedKey ?? sound.sources[0]?.id])
+  const [focusedLane, setFocusedLane] = useState(() => findLane(sound, initialSelectedKey)?.id ?? sound.sources[0]?.id)
   const [inspectorMin, setInspectorMin] = useState(false)
   const [seqModalOpen, setSeqModalOpen] = useState(false)
   const masterDragIndex = useRef(null)
   const [masterDropTarget, setMasterDropTarget] = useState(null)
 
-  // Reset selection/focus when switching to a different sound.
+  // Reset selection/focus when switching to a different sound (honouring an
+  // initial pre-selection, e.g. the sound the tutorial just loaded).
   useEffect(() => {
-    setSelectedKeys([sound.sources[0]?.id])
-    setFocusedLane(sound.sources[0]?.id)
+    const initKey = initialSelectedKey ?? sound.sources[0]?.id
+    setSelectedKeys([initKey])
+    setFocusedLane(findLane(sound, initKey)?.id ?? sound.sources[0]?.id)
     setInspectorMin(false)
   }, [sound.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -40,7 +45,7 @@ export default function ChainEditor({
     || (k && findLane(sound, k)) || (k && sound.master.some((b) => b.id === k))
   useEffect(() => {
     const kept = selectedKeys.filter(valid)
-    if (kept.length !== selectedKeys.length) setSelectedKeys(kept.length ? kept : [sound.sources[0]?.id])
+    if (kept.length !== selectedKeys.length) setSelectedKeys(kept.length ? kept : [initialSelectedKey ?? sound.sources[0]?.id])
     if (!sound.sources.some((s) => s.id === focusedLane)) setFocusedLane(sound.sources[0]?.id)
   }) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -238,6 +243,7 @@ export default function ChainEditor({
             ))}
             <div className="flex items-center gap-2 pl-8">
               <button
+                data-tut="add-source"
                 onClick={handleAddSource}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/70 transition-colors hover:border-accent-deep hover:bg-accent-deep/10 hover:text-accent"
               >
@@ -301,6 +307,7 @@ export default function ChainEditor({
             <Conn />
             {/* Sound-level step sequencer — drives the trigger, sits after Output. */}
             <button
+              data-tut="sequencer"
               onClick={(e) => { select('seq', e.shiftKey || e.metaKey); setSeqModalOpen(true) }}
               title={t('chain.seqTitle')}
               className={`flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-colors ${

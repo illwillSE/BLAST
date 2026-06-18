@@ -81,7 +81,7 @@ export default function Header({ project, onRenameProject, onLoadProject, onSetE
         >
           {lang === 'en' ? '🇬🇧' : '🇸🇪'}
         </button>
-        <div className="flex gap-1.5">
+        <div data-tut="project-io" className="flex gap-1.5">
           <Button onClick={save} disabled={busy !== null}>
             {busy === 'save' ? t('header.saving') : t('header.saveZip')}
           </Button>

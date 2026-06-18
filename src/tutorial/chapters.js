@@ -60,6 +60,18 @@ function buildEffectsDemo() {
   return project
 }
 
+// Layers chapter demo: one synth lane to start — the learner adds the second
+// layer themselves. A guided tour of the three sound-level features (layers,
+// sequencer, projects); only the "add a layer" step is hands-on, the rest point
+// at controls and explain (the sequencer lives behind a modal and saving a
+// project downloads a file — neither belongs in a throwaway sandbox).
+function buildLayersDemo() {
+  const project = newProject()
+  const sound = newSound('Tutorial Layers')
+  project.sounds = [sound]
+  return project
+}
+
 export const CHAPTERS = [
   {
     id: 'core-flow',
@@ -274,7 +286,12 @@ export const CHAPTERS = [
     },
     sandbox: 'demo',
     buildDemo: buildEffectsDemo,
-    makeCtx: (demo) => ({ soundId: demo.sounds[0].id, laneId: demo.sounds[0].sources[0].id }),
+    // Pre-select the Pitch LFO so its controls open in the inspector on load —
+    // the learner tweaks it without first hunting for a chip in the dimmed lane.
+    makeCtx: (demo) => {
+      const lane = demo.sounds[0].sources[0]
+      return { soundId: demo.sounds[0].id, laneId: lane.id, selectId: lane.chain.find((b) => b.type === 'pitchlfo').id }
+    },
     steps: [
       {
         id: 'orient',
@@ -289,15 +306,15 @@ export const CHAPTERS = [
         id: 'control-tweak',
         kind: 'read',
         requireValidate: true,
-        target: '[data-tut="lane-chain"]',
-        placement: 'bottom',
+        target: '[data-tut="block-controls"]',
+        placement: 'top',
         text: {
-          en: 'Click the Pitch LFO chip in the lane to open its controls, then raise Depth and press Play. Rate sets how fast the pitch wobbles, Depth how far — a little is vibrato, a lot is a siren.',
-          sv: 'Klicka på Pitch LFO-chippet i spåret för att öppna dess kontroller, dra sedan upp Depth och tryck på Play. Rate bestämmer hur snabbt tonhöjden vibrerar, Depth hur långt — lite är vibrato, mycket är en siren.',
+          en: 'The Pitch LFO is selected and its controls are open below. Raise Depth and press Play. Rate sets how fast the pitch wobbles, Depth how far — a little is vibrato, a lot is a siren.',
+          sv: 'Pitch LFO är markerad och dess kontroller är öppna nedanför. Dra upp Depth och tryck på Play. Rate bestämmer hur snabbt tonhöjden vibrerar, Depth hur långt — lite är vibrato, mycket är en siren.',
         },
         nudge: {
-          en: 'Select the Pitch LFO chip, then drag its Depth or Rate slider to unlock Next.',
-          sv: 'Markera Pitch LFO-chippet och dra sedan i dess Depth- eller Rate-reglage för att låsa upp Nästa.',
+          en: 'Drag the Depth or Rate slider in the Pitch LFO panel to unlock Next.',
+          sv: 'Dra i Depth- eller Rate-reglaget i Pitch LFO-panelen för att låsa upp Nästa.',
         },
         validate: (project, start, ctx) => {
           const cur = pitchLfo(project, ctx)
@@ -346,7 +363,85 @@ export const CHAPTERS = [
       },
     ],
   },
-  { id: 'layers', title: { en: 'Layers, sequencer & projects', sv: 'Lager, sequencer & projekt' }, stub: true },
+  {
+    id: 'layers',
+    title: { en: 'Layers, sequencer & projects', sv: 'Lager, sequencer & projekt' },
+    description: {
+      en: 'Stack source lanes, drive timing with the sequencer, save your work.',
+      sv: 'Stapla källspår, styr timing med sequencern, spara ditt arbete.',
+    },
+    sandbox: 'demo',
+    buildDemo: buildLayersDemo,
+    makeCtx: (demo) => ({ soundId: demo.sounds[0].id, laneId: demo.sounds[0].sources[0].id }),
+    steps: [
+      {
+        id: 'orient',
+        kind: 'read',
+        target: null,
+        text: {
+          en: 'BLAST is built for game sound design — layering disparate elements into one hit: a whoosh, an impact, a tail. Each layer is its own source lane, and the lanes mix together at the bus. This tour shows layers, the sequencer, and saving your work.',
+          sv: 'BLAST är byggt för spelljuddesign — att lagra olika element till en träff: en whoosh, en impact, en svans. Varje lager är ett eget källspår, och spåren mixas ihop vid bussen. Den här rundturen visar lager, sequencern och hur du sparar ditt arbete.',
+        },
+      },
+      {
+        id: 'add-layer',
+        kind: 'do',
+        target: '[data-tut="add-source"]',
+        placement: 'right',
+        text: {
+          en: 'Click "Add source" to stack a second layer. The new lane gets its own source, its own effects, and its own level, pan and delay — so you can offset one layer in time from another.',
+          sv: 'Klicka på "Add source" för att stapla ett andra lager. Det nya spåret får en egen källa, egna effekter och egen level, pan och delay — så att du kan tidsförskjuta ett lager mot ett annat.',
+        },
+        nudge: {
+          en: 'Click the dashed "Add source" button below the lanes.',
+          sv: 'Klicka på den streckade "Add source"-knappen under spåren.',
+        },
+        validate: (project, start, ctx) => {
+          const cur = project.sounds.find((s) => s.id === ctx.soundId)
+          const was = start.sounds.find((s) => s.id === ctx.soundId)
+          return !!cur && !!was && cur.sources.length > was.sources.length
+        },
+      },
+      {
+        id: 'sequencer',
+        kind: 'read',
+        requireValidate: true,
+        target: '[data-tut="sequencer"]',
+        placement: 'left',
+        text: {
+          en: 'The step sequencer turns a single hit into a rhythm or arpeggio — it is sound-level, not an effect in the chain. Click it to open, switch it On, then press Play to hear it and use the −/+ control to change its length (the number of steps).',
+          sv: 'Steg-sequencern gör en enda träff till en rytm eller ett arpeggio — den är på ljudnivå, inte en effekt i kedjan. Klicka för att öppna, slå På den, tryck sedan på Play för att höra den och använd −/+-kontrollen för att ändra dess längd (antalet steg).',
+        },
+        nudge: {
+          en: 'Open the sequencer and switch it On to unlock Next.',
+          sv: 'Öppna sequencern och slå På den för att låsa upp Nästa.',
+        },
+        validate: (project, start, ctx) => {
+          const s = project.sounds.find((x) => x.id === ctx.soundId)
+          return !!s?.sequencer?.enabled
+        },
+      },
+      {
+        id: 'projects',
+        kind: 'read',
+        target: '[data-tut="project-io"]',
+        placement: 'bottom',
+        text: {
+          en: 'Your work saves automatically and survives a refresh. To keep or share a project, use Save to download it as a .blast file, and Load to open one later. Everything — sounds, samples and all — travels in that one file.',
+          sv: 'Ditt arbete sparas automatiskt och överlever en omladdning. För att behålla eller dela ett projekt, använd Save för att ladda ner det som en .blast-fil, och Load för att öppna en senare. Allt — ljud, samples och allt — följer med i den enda filen.',
+        },
+      },
+      {
+        id: 'recap',
+        kind: 'read',
+        target: null,
+        text: {
+          en: 'That completes the tour: layer sources for rich one-shots, sequence them for rhythm, and save projects to keep and share. You now know the whole signal path end to end. Click Finish to return to your project.',
+          sv: 'Det avslutar rundturen: lagra källor för rika one-shots, sekvensera dem för rytm och spara projekt för att behålla och dela. Du kan nu hela signalvägen från början till slut. Klicka på Klart för att återgå till ditt projekt.',
+        },
+      },
+    ],
+  },
 ]
 
 export function getChapter(id) {

@@ -13,6 +13,10 @@ export function useTutorial({ project, reset, setSelectedId }) {
   const [menuOpen, setMenuOpen] = useState(false)
   // active: { chapterId, stepIndex, ctx, stepStartProject } | null
   const [active, setActive] = useState(null)
+  // Latch for gated `read` steps: once the goal is met Next stays unlocked, so
+  // an A/B action that returns to the original state (e.g. bypass then re-enable)
+  // doesn't re-lock the button. Reset whenever the active step changes.
+  const [unlocked, setUnlocked] = useState(false)
   const stash = useRef(null) // { project, selectedId } while a demo sandbox is live
 
   // Latest project, so non-reactive callbacks read fresh state.
@@ -27,6 +31,9 @@ export function useTutorial({ project, reset, setSelectedId }) {
     if (!step || step.kind !== 'do' || !step.validate) return
     if (step.validate(project, active.stepStartProject, active.ctx)) advance()
   }, [project]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset the gated-step latch whenever the active step changes.
+  useEffect(() => { setUnlocked(false) }, [active?.chapterId, active?.stepIndex])
 
   function startChapter(chapterId, { resumeStep } = {}) {
     const chapter = getChapter(chapterId)
@@ -107,12 +114,16 @@ export function useTutorial({ project, reset, setSelectedId }) {
 
   // A gated `read` step (`requireValidate`) keeps Next disabled until its
   // validate passes — the learner can then play freely and continue when ready.
-  // Recomputed from the reactive `project` each render so the button unlocks
-  // the moment the model reaches the goal. Normal steps are always advanceable.
-  const canAdvance =
+  // `gatedReady` is recomputed from the reactive `project` each render so the
+  // button unlocks the moment the model reaches the goal; `unlocked` latches it
+  // so it stays available afterwards. Normal steps are always advanceable.
+  const gatedReady =
     activeStep?.kind === 'read' && activeStep.requireValidate && activeStep.validate
       ? activeStep.validate(project, active.stepStartProject, active.ctx)
       : true
+  const canAdvance =
+    activeStep?.kind === 'read' && activeStep.requireValidate ? (unlocked || gatedReady) : true
+  useEffect(() => { if (gatedReady) setUnlocked(true) }, [gatedReady])
 
   return {
     menuOpen,
