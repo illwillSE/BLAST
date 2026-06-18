@@ -57,7 +57,7 @@ export default function LaneRow({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div data-tut="lane-chain" className="flex items-center gap-2">
       <button onClick={() => onFocusLane(lane.id)} className="flex w-6 items-center justify-center text-[11px] font-bold text-accent">
         <ChevronDown size={11} />{laneNumber}
       </button>
@@ -69,7 +69,7 @@ export default function LaneRow({
         </span>
       ))}
       <Conn />
-      <AddBlockMenu variant="chip" onAdd={(type) => onAdd(lane.id, type)} onPaste={() => onPaste(lane.id)} />
+      <AddBlockMenu variant="chip" dataTut="add-effect" onAdd={(type) => onAdd(lane.id, type)} onPaste={() => onPaste(lane.id)} />
       <Port portRef={outputRef} />
     </div>
   )

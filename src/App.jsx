@@ -18,6 +18,9 @@ import Header from './components/Header'
 import SoundList from './components/SoundList'
 import ChainEditor from './components/ChainEditor'
 import IntroModal from './components/IntroModal'
+import TutorialMenu from './tutorial/TutorialMenu'
+import Spotlight from './tutorial/Spotlight'
+import { useTutorial } from './tutorial/useTutorial'
 import { Button } from './components/ui'
 import { Play } from 'lucide-react'
 
@@ -50,6 +53,8 @@ export default function App() {
   const [nameDraft, setNameDraft] = useState('')
 
   const sound = project.sounds.find((s) => s.id === selectedId) ?? project.sounds[0]
+
+  const tutorial = useTutorial({ project, reset, setSelectedId })
 
   // Latest project, readable from stable callbacks without a stale closure or a
   // reducer read. playSound uses this instead of dispatch so its audio side
@@ -393,6 +398,7 @@ export default function App() {
         onSetExport={setExport}
         onNewProject={newBlankProject}
         onLoadPresets={loadPresets}
+        onOpenTutorial={tutorial.openMenu}
       />
       <div className="flex min-h-0 flex-1">
         <SoundList
@@ -411,6 +417,7 @@ export default function App() {
             <>
               <div className="flex items-center gap-3 border-b border-divider px-4 py-2.5">
                 <button
+                  data-tut="play-button"
                   onClick={() => playSound(sound.id)}
                   title={t('transport.play')}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-accent-deep/60 bg-accent-deep/15 text-sm text-accent-bright transition-all hover:scale-105 hover:bg-accent-deep/30 active:scale-95"
@@ -478,6 +485,19 @@ export default function App() {
         </main>
       </div>
       <IntroModal />
+      {tutorial.menuOpen && <TutorialMenu tutorial={tutorial} onClose={tutorial.closeMenu} />}
+      {tutorial.active && (
+        <Spotlight
+          step={tutorial.activeStep}
+          stepIndex={tutorial.stepIndex}
+          totalSteps={tutorial.activeChapter.steps.length}
+          canBack={tutorial.stepIndex > 0}
+          canAdvance={tutorial.canAdvance}
+          onNext={tutorial.advance}
+          onBack={tutorial.back}
+          onSkip={tutorial.exitChapter}
+        />
+      )}
     </div>
   )
 }

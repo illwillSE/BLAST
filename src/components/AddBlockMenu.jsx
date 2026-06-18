@@ -8,7 +8,7 @@ import { CAT_STYLES } from './ui'
 // `excludeKinds` hides whole block kinds. Sources are always excluded (a lane's
 // source is switched in place on its card). The master chain also excludes
 // `control` blocks — pitch/amp modulation is per-lane, not post-mix.
-export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], excludeTypes = [], label, variant = 'box' }) {
+export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], excludeTypes = [], label, variant = 'box', dataTut }) {
   const { mode } = useUIPrefs()
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -39,6 +39,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
     <div className="relative shrink-0 self-center" ref={ref}>
       {variant === 'chip' ? (
         <button
+          data-tut={dataTut}
           onClick={() => setOpen((o) => !o)}
           title={menuLabel}
           className="flex items-center gap-1 rounded-lg border border-dashed border-accent-dim/50 px-2.5 py-1.5 text-[12px] text-accent-deep/70 transition-colors hover:border-accent-deep hover:bg-accent-deep/10 hover:text-accent"
@@ -57,7 +58,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
       )}
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 max-h-96 w-64 overflow-y-auto rounded-lg border border-edge bg-panel p-1.5 shadow-2xl">
+        <div className="absolute left-0 top-full z-[80] mt-1 max-h-96 w-64 overflow-y-auto rounded-lg border border-edge bg-panel p-1.5 shadow-2xl">
           {canPaste && (
             <button
               onClick={() => { onPaste(); setOpen(false) }}

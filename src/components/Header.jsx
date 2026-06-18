@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, HelpCircle } from 'lucide-react'
 import { Button } from './ui'
 import { saveProjectZip, loadProjectZip } from '../utils/projectZip'
 import { useUIPrefs, useT } from '../state/uiPrefs'
 import SettingsModal from './SettingsModal'
 
-export default function Header({ project, onRenameProject, onLoadProject, onSetExport, onNewProject, onLoadPresets }) {
+export default function Header({ project, onRenameProject, onLoadProject, onSetExport, onNewProject, onLoadPresets, onOpenTutorial }) {
   const { mode, setMode, lang, setLang } = useUIPrefs()
   const t = useT()
   const fileRef = useRef(null)
@@ -89,6 +89,7 @@ export default function Header({ project, onRenameProject, onLoadProject, onSetE
             {busy === 'load' ? t('header.loading') : t('header.loadZip')}
           </Button>
           <Button onClick={() => setSettingsOpen(true)} title={t('header.settings')}><Settings size={15} /></Button>
+          <Button onClick={onOpenTutorial} title={t('header.tutorial')}><HelpCircle size={15} /></Button>
         </div>
       </div>
       <input

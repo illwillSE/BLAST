@@ -137,7 +137,7 @@ export default function BlockControls({
   const visibleParams = curated.length > 0 ? curated : shown
 
   return (
-    <div className="min-w-[280px] w-full">
+    <div data-tut="block-controls" className="min-w-[280px] w-full">
       <div className="flex items-center gap-2">
         <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
         <span className={`text-[12px] font-semibold uppercase tracking-wider ${cat.text}`}>{def.name}</span>
@@ -169,6 +169,7 @@ export default function BlockControls({
           {/* Analyzers are passive taps — nothing to bypass, so no on/off toggle. */}
           {!isSource && def.kind !== 'analyzer' && (
             <button
+              data-tut="block-bypass"
               onClick={onToggle}
               title={block.enabled ? t('block.bypass') : t('block.enable')}
               className={`flex items-center gap-1 rounded border px-2 py-0.5 transition-colors ${
