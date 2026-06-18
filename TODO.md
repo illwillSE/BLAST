@@ -73,8 +73,16 @@ Everything else below is v1.0 (small fixes and polish).
 - [ ] **Browser project library** — save/load named projects in the browser
       (IndexedDB), alongside the existing ZIP download/upload. Each saved
       project is stored as a full `.blast.zip` blob; a modal mirrors the
-      Sample Library (save current under a name, list, load, delete). Plan:
-      ~/.claude/plans/make-it-possible-to-lazy-owl.md
+      Sample Library (save current under a name, list, load, delete). Samples
+      are duplicated per saved project (accepted). Reuse-heavy approach:
+      extract `buildProjectZipBlob(project)` from `saveProjectZip` in
+      `src/utils/projectZip.js` (`loadProjectZip` already takes a Blob, so feed
+      stored blobs directly); add a `projects` object store in
+      `src/utils/sampleLibrary.js` (bump `DB_VERSION` 2→3) with
+      `listProjects`/`saveProjectEntry`/`removeProject`; new
+      `ProjectLibraryModal.jsx` mirroring `SampleLibraryModal.jsx` (no audio
+      preview); `Header.jsx` gets a "Projects" button reusing `onLoadProject` →
+      `App.loadProject` → `reset()`.
 - [ ] **Review translations** — audit Swedish/English strings in help.js for
       accuracy and completeness.
 - [ ] **Smooth param ramps** — use `rampTo` for parameter changes to reduce

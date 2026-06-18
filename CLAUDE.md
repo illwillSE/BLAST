@@ -33,9 +33,17 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
+## 4. Working with the owner
+
+**The owner (Pontus) drives commits and the look; you build function.**
+
+- **Never auto-commit.** When work is done, suggest a commit message and wait — committing is always his call. Before committing, run `git log --oneline -3` + `git status --short` and write the message to describe only what is actually staged (he sometimes commits himself between turns).
+- **Visual/styling decisions are his** (layout, spacing, sizing, columns, colors, typography). Don't restyle on your own initiative — implement behavior/structure and let him drive the look. When he *points out* a visual problem, that names the problem, not authorization to pick the fix: diagnose the cause, name the lever, let him choose. **Don't screenshot to judge how the UI looks** — verify changes functionally; he does visual review himself. (Screenshots are fine when he asks you to check behavior, not aesthetics.)
+- **Log deferred work to TODO.md.** Any edge case, limitation, or known-but-unfixed behavior that gets flagged but deliberately left must be written into `TODO.md`, not just mentioned in chat.
+
 ## What this is
 
-BLAST is a browser-only sound design app (no backend): React + Vite + Tailwind v4, Tone.js for audio, WaveSurfer.js for waveforms. Each sound is a left-to-right **signal chain** of blocks: one source → effect blocks → output.
+BLAST is a browser-only sound design app (no backend): React + Vite + Tailwind v4, Tone.js for audio, WaveSurfer.js for waveforms. Each sound is a left-to-right **signal chain** of blocks: one source → effect blocks → output. **App focus: game sound design** — layering disparate elements (whoosh + impact + tail), not building one coherent musical timbre; this drives features toward per-element independence (e.g. per-lane pitch mod).
 
 ## Commands
 
@@ -104,3 +112,6 @@ Trigger-time params (synth length/pitch, pitch-env values, sample trim) are read
 - Sample and mic recording are **one** block type, not two.
 - Layered sources (per-lane `sources`) and a **sound-level step sequencer** are built (see Sequencer above; sound-level, not a chain-end block).
 - The Synth block intentionally has **no** filter section — filtering is done with Filter blocks in the chain.
+- **Swedish translations keep audio/synth terms in English** (Attack, Release, Sustain, Filter, LFO, Envelope, Reverb, Detune, Oscillator, Vocoder, etc.) — Swedish musicians know them in English. Append `(svensk term)` only when a term is obscure. Applies to help.js strings and any user-facing control label.
+- The simplified experience is **"Beginner mode"** (with an Advanced counterpart) — never "kids mode," even though target users are kids ~10–13. Keep it a credible tool, not a toy: hide complexity via a curated set of blocks/controls, not by dumbing down.
+- **Inspector panels lay controls out horizontally** (side by side), not stacked — default to a flex row beside existing controls.
