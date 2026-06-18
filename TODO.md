@@ -14,7 +14,7 @@ design brief and from development discussions.
 Everything else below is v1.0 (small fixes and polish).
 
 ## Features
-- [ ] **Add modulation to pulse**
+- [x] **Add modulation to pulse**
 - [ ] **Tutorial system (interactive, restartable, chaptered)** — guided
       do-it-yourself onboarding that explains the app. Decisions settled
       2026-06-18:

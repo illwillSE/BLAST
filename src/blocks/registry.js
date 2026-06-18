@@ -105,6 +105,7 @@ export const BLOCK_DEFS = {
     category: 'source',
     kind: 'source',
     description: 'Oscillator with envelope',
+    structureParams: ['wave'],
     // `group` ('osc' | 'env') splits the controls into the two panels in the UI,
     // each headed by its matching preview canvas.
     params: [
@@ -123,6 +124,13 @@ export const BLOCK_DEFS = {
         show: (p) => p.wave === 'square' || p.wave === 'sawtooth' || p.wave === 'triangle' },
       { key: 'width', label: 'Width', type: 'range', min: -0.95, max: 0.95, step: 0.01, default: 0, group: 'osc', advanced: true,
         percent: true, format: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`, show: (p) => p.wave === 'pulse' },
+      { key: 'pwmRate', label: 'PWM Rate', type: 'range', min: 0, max: 30, step: 0.1, default: 0, group: 'osc', advanced: true,
+        format: (v) => v <= 0 ? 'off' : `${v.toFixed(1)}Hz`, show: (p) => p.wave === 'pulse' },
+      { key: 'pwmDepth', label: 'PWM Depth', type: 'range', min: 0, max: 0.95, step: 0.01, default: 0, group: 'osc', advanced: true,
+        percent: true, format: (v) => `${Math.round(v * 100)}%`, show: (p) => p.wave === 'pulse' },
+      { key: 'pwmWave', label: 'PWM Wave', type: 'select', default: 'sine', group: 'osc', advanced: true,
+        options: ['sine', 'triangle', 'square', 'sawtooth'].map((v) => ({ value: v, label: v })),
+        show: (p) => p.wave === 'pulse' && p.pwmRate > 0 && p.pwmDepth > 0 },
       { key: 'harmonics', label: 'Harmonics', type: 'harmonics', group: 'osc', advanced: true,
         default: [1, 0.6, 0.4, 0.25, 0.15, 0.1, 0.07, 0.05], show: (p) => p.wave === 'custom' },
       { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 220, scale: 'log', format: hz, group: 'osc' },

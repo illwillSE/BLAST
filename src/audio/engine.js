@@ -6,6 +6,9 @@ import { sequenceSpan } from './sequencer'
 
 const centsToRate = (cents) => Math.pow(2, cents / 1200)
 const semisToRate = (semis) => Math.pow(2, semis / 12)
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
+const PULSE_WIDTH_MIN = -0.95
+const PULSE_WIDTH_MAX = 0.95
 
 // Max overlapping sample voices per lane. Retriggers stack up to this, then the
 // oldest is stolen — so fast playing / sequence steps ring out instead of
@@ -44,6 +47,17 @@ function flattenEnv(synth) {
   const envelope = { attack: 0.005, decay: 0, sustain: 1, release: 0.01 }
   if (synth.voices) synth.set({ envelope }) // VoicePool
   else Object.assign(synth.envelope, envelope) // NoiseSynth singleton
+}
+
+function applyPulsePwm(lfo, params) {
+  const base = clamp(params.width ?? 0, PULSE_WIDTH_MIN, PULSE_WIDTH_MAX)
+  const depth = Math.max(0, params.pwmDepth ?? 0)
+  const rate = Math.max(0, params.pwmRate ?? 0)
+  const active = params.wave === 'pulse' && rate > 0 && depth > 0
+  lfo.frequency.value = active ? rate : 0.001
+  lfo.type = params.pwmWave ?? 'sine'
+  lfo.min = active ? clamp(base - depth, PULSE_WIDTH_MIN, PULSE_WIDTH_MAX) : base
+  lfo.max = active ? clamp(base + depth, PULSE_WIDTH_MIN, PULSE_WIDTH_MAX) : base
 }
 
 // Builds the full Tone.js graph for one sound and returns a handle with
@@ -120,7 +134,7 @@ export async function buildChain(sound, destination) {
 
     lanes.push({
       src, def, nodes: created.nodes, envGain, laneVol, lanePan,
-      controls, hooks, lfos: [], envBlocks: [], ampBlocks: [], hasAmpEnv: false,
+      controls, hooks, lfos: [], pwmLfo: null, envBlocks: [], ampBlocks: [], hasAmpEnv: false,
       activeSampleSources: new Set(),
       lastTranspose: 0,
       lastNoteEnd: -Infinity,
@@ -159,8 +173,17 @@ export async function buildChain(sound, destination) {
         lfo.min = -lb.params.depth
         lfo.max = lb.params.depth
       }
+      if (lane.src.type === 'synth' && lane.src.params.wave === 'pulse') {
+        const pwmLfo = new Tone.LFO({ frequency: 0.001, min: lane.src.params.width ?? 0, max: lane.src.params.width ?? 0, type: lane.src.params.pwmWave ?? 'sine' })
+        applyPulsePwm(pwmLfo, lane.src.params)
+        pwmLfo.start()
+        disposables.push(pwmLfo)
+        lane.pwmLfo = pwmLfo
+        built.get(lane.src.id).nodes.pwmLfo = pwmLfo
+      }
       for (const voice of pool.voices) {
         for (const { lfo } of lane.lfos) lfo.connect(voice.detune)
+        if (lane.pwmLfo && voice.oscillator?.width) lane.pwmLfo.connect(voice.oscillator.width)
         if (lane.envBlocks.length > 0) {
           const envSignal = new Tone.Signal(0)
           disposables.push(envSignal)
@@ -471,6 +494,7 @@ export async function buildChain(sound, destination) {
         lane.def.apply(lane.nodes, src.params)
         if (lane.hasAmpEnv && (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type))) flattenEnv(lane.nodes.synth)
       }
+      if (lane.pwmLfo) applyPulsePwm(lane.pwmLfo, src.params)
       // Live voicing toggle (not structural — no rebuild): retune the pool gain.
       if (isSynthSource(lane.src.type)) lane.nodes.synth.setVoicing(soundNow.voicing === 'mono')
 

@@ -17,7 +17,10 @@ export const HELP = {
         params: {
           wave: 'The oscillator shape: sine is pure, triangle mellow, square hollow, sawtooth bright and brassy. pulse is a square with adjustable width; custom lets you draw your own harmonic mix.',
           partials: 'Limits how many harmonics the wave is built from. full is the complete bright wave; lower numbers round it off toward a sine — a softer, more retro tone. (Only for triangle/square/sawtooth.)',
-          width: 'The duty cycle of the pulse wave, from thin and nasal to a full square at 0%. Sweep it (e.g. with a separate effect) for the classic PWM shimmer.',
+          width: 'The base duty cycle of the pulse wave, from thin and nasal to a full square at 0%. PWM moves around this setting.',
+          pwmRate: 'How fast pulse-width modulation moves. 0Hz turns it off; faster rates give shimmer, buzz, and retro laser movement.',
+          pwmDepth: 'How far PWM pushes the pulse width away from the base Width. Higher values sound more animated and nasal.',
+          pwmWave: 'The shape of the PWM movement. sine is smooth, triangle is even, square jumps between two widths, and sawtooth ramps.',
           harmonics: 'Draw your own waveform: each bar is the level of one harmonic (the first is the fundamental). Drag the bars up and down to build a custom timbre.',
           freq: 'The base pitch of the note, in hertz. 220Hz is the A below middle C; lower is deeper, higher is shriller.',
           duration: 'How long the note is held before it starts fading out. The total sound length is roughly Length + Release. Only has an effect when Sustain is above 0% — at 0% the note decays to silence on its own (set by attack + decay + release), so Length does nothing.',
@@ -240,7 +243,10 @@ export const HELP = {
         params: {
           wave: 'Oscillatorns form: sinus är ren, triangel dov, fyrkant ihålig, sågtand ljus och vass. pulse är en fyrkant med justerbar bredd; custom låter dig rita din egen övertonsmix.',
           partials: 'Begränsar hur många övertoner vågen byggs av. full är hela den ljusa vågen; lägre värden rundar av den mot en sinus — ett mjukare, mer retroaktigt ljud. (Bara för triangel/fyrkant/sågtand.)',
-          width: 'Pulsvågens pulskvot, från tunn och nasal till en hel fyrkant vid 0 %. Svep den (t.ex. med en separat effekt) för det klassiska PWM-skimret.',
+          width: 'Pulsvågens grund-pulskvot, från tunn och nasal till en hel fyrkant vid 0 %. PWM rör sig runt den här inställningen.',
+          pwmRate: 'Hur snabbt PWM rör pulskvoten. 0 Hz stänger av det; snabbare värden ger skimmer, buzz och retro-laser-rörelse.',
+          pwmDepth: 'Hur långt PWM trycker pulskvoten bort från grundvärdet Width. Högre värden låter mer animerat och nasalt.',
+          pwmWave: 'Formen på PWM-rörelsen. sine är mjuk, triangle är jämn, square hoppar mellan två bredder och sawtooth rampar.',
           harmonics: 'Rita din egen vågform: varje stapel är nivån på en överton (den första är grundtonen). Dra staplarna upp och ner för att bygga en egen klangfärg.',
           freq: 'Tonens grundton i hertz. 220 Hz är A:t under ettstrukna C; lägre är djupare, högre är gällare.',
           duration: 'Hur länge tonen hålls innan den börjar klinga ut. Ljudets totala längd är ungefär Length + Release. Har bara effekt när Sustain är över 0 % — vid 0 % tonar tonen ut av sig själv (bestäms av attack + decay + release), så Length gör ingenting.',
