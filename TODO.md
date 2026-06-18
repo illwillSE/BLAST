@@ -5,7 +5,7 @@ design brief and from development discussions.
 
 ## v2.0 candidates
 
-- **Song sequencer (own window)** — a full project-level sequencer that arranges the sounds designed in the app into a composition. Multi-lane piano roll, one lane per sound. Each lane shows note events (pitch + length) placed on a timeline; playback runs all lanes simultaneously through their respective signal chains. Separate window or full-screen overlay so it doesn't compete with the chain editor UI. This is distinct from the per-sound step sequencer — that governs a single sound's trigger pattern; this governs the whole song.
+- **Melody sequencer (own window)** — a full project-level sequencer that arranges the sounds designed in the app into a composition. Multi-lane piano roll, one lane per sound. Each lane shows note events (pitch + length) placed on a timeline; playback runs all lanes simultaneously through their respective signal chains. Separate window or full-screen overlay so it doesn't compete with the chain editor UI. This is distinct from the per-sound step sequencer — that governs a single sound's trigger pattern; this governs the whole song.
 - **Sequencer per lane** — breaks saved projects (explicit migration decision); anchor for the major bump.
 - **Modulation LFO** — first cross-block reference in the model; architectural scope.
 - **New synths/effects (Tone.js audit)** — FMSynth, AMSynth, Chorus, StereoWidener, etc.; significantly expands what BLAST is.
@@ -14,6 +14,53 @@ design brief and from development discussions.
 Everything else below is v1.0 (small fixes and polish).
 
 ## Features
+
+- [ ] **Tutorial system (interactive, restartable, chaptered)** — guided
+      do-it-yourself onboarding that explains the app. Decisions settled
+      2026-06-18:
+      - **Interactivity:** spotlight overlay (dim screen, cut-out highlight,
+        anchored tooltip). Steps are either `do` (validated action) or `read`
+        (Next to advance). `do` steps advance when the real project/model state
+        reaches the goal — verified via `model.js` helpers (`allBlocks`,
+        `findBlock`), NOT by trusting a click. Always offer a **Skip** escape.
+      - **Off-script:** gently guide back (re-highlight target + show a `nudge`),
+        never hard-lock interaction.
+      - **Sandbox:** per-chapter — a chapter either loads a curated throwaway
+        demo project (`sandbox: 'demo'`, built from `newProject`/`newSound`/
+        `newBlock`) or annotates the live project (`sandbox: 'live'`). Demo
+        chapters stash the live project, `reset()` to the demo, and restore on
+        exit. (Riskiest mechanic — prototype the stash/restore first.)
+      - **Authoring:** declarative content data `src/tutorial/chapters.js`
+        (registry-style, like `blocks/registry.js` + `help.js`). Step shape:
+        `{ id, target, text:{en,sv}, placement, action, validate(project,ui),
+        nudge:{en,sv} }`. `target` is a stable `data-tut="…"` attribute added
+        to existing UI (Header, AddBlockMenu, ChainEditor) — the only edits to
+        existing components, no logic change. Add a dev-time console warning
+        when a step's target selector finds nothing.
+      - **Progress:** per-chapter AND per-step in
+        `localStorage['blast_tutorial']` `{ completed:{}, current:{chapter,step} }`.
+        Resumes mid-chapter. **Restartable** = clear the key. NOT project data,
+        never serialized into the ZIP/autosave — same pattern as `uiPrefs`.
+      - **Entry:** `?` button in Header → course screen (`TutorialMenu.jsx`)
+        listing chapters with done/in-progress badges + Resume + Restart +
+        per-topic shortcuts (run one topic vs the whole app). First-run offer
+        reuses the `IntroModal` pattern when no `blast_tutorial` key exists.
+      - **Language:** EN + SV with EN fallback (mirror `help.js`); chrome strings
+        go in a new `tutorial` namespace in `src/i18n/strings.js`.
+      - **New files:** `src/tutorial/{chapters,useTutorial,Spotlight,
+        TutorialMenu,progress}.js(x)`. `useTutorial` is a context provider
+        wrapping App content: holds chapter/step, watches `project` for
+        validation auto-advance, handles sandbox swap + progress I/O. Spotlight
+        uses `getBoundingClientRect` + ResizeObserver to keep the cut-out
+        aligned (pattern already used for the inspector).
+      - **Scope (first build):** full engine + overlay + progress + menu +
+        `data-tut` anchors, plus ONE polished **Core flow** chapter
+        (orient → play → add effect → tweak param → reorder → bypass/recap),
+        `sandbox: 'demo'`. Other chapters stubbed as titled placeholders:
+        Sources & synthesis, Effects & control blocks, Layers/sequencer/projects.
+      - **Open question:** Beginner-mode tie-in (auto-offer the tour on entering
+        Beginner mode). Plumbing trivial (`mode` already in `uiPrefs`); decision
+        deferred, capability not blocked.
 
 - [ ] **Per-step glide in the sequencer (portamento Option C)** — add a `glide: true`
       flag per note-event in the sequencer step data `{ pitch, len, glide? }`. In the
