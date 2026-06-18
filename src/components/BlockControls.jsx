@@ -148,7 +148,7 @@ export default function BlockControls({
         >
           i
         </button>
-        {isSource && <span className="ml-1"><SourceTypeSwitch block={block} onSwapSource={onSwapSource} /></span>}
+        {isSource && <span data-tut="source-swap" className="ml-1"><SourceTypeSwitch block={block} onSwapSource={onSwapSource} /></span>}
         <div className="ml-auto flex items-center gap-1.5 text-[10px]">
           <button
             onClick={() => copyBlock(block)}
@@ -233,7 +233,7 @@ export default function BlockControls({
         {block.type === 'synth' ? (
           <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
             {[['osc', t('block.oscillator'), 'wave'], ['env', t('block.envelope'), 'env']].map(([group, label, which]) => (
-              <div key={group} className="rounded-lg border border-edge/60 p-3">
+              <div key={group} data-tut={group === 'osc' ? 'source-osc' : 'source-env'} className="rounded-lg border border-edge/60 p-3">
                 <PanelHeader label={label} titleKey={which === 'wave' ? 'block.oscillator' : 'block.envelope'} textKey={which === 'wave' ? 'block.oscInfo' : 'block.envInfo'} params={visibleParams.filter((p) => p.group === group)} disabledParams={disabledParams} onSelect={onSelect} />
                 <SynthPreview params={block.params} which={which} />
                 <div className="mt-3">

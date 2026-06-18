@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useUIPrefs } from '../state/uiPrefs'
 import { STRINGS } from '../i18n/strings'
 
@@ -17,6 +17,12 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
   const [rect, setRect] = useState(null)
   const warnedRef = useRef(false)
   const startRef = useRef(0)
+  // Measured tooltip size, so we can keep it inside the viewport on both axes —
+  // the inspector dock resizes when a panel's content changes (e.g. swapping the
+  // source type), which moves anchored targets and could push the tooltip (and
+  // its Next button) off-screen.
+  const tipRef = useRef(null)
+  const [tipSize, setTipSize] = useState(null)
 
   useEffect(() => { startRef.current = Date.now(); warnedRef.current = false }, [step])
 
@@ -49,6 +55,17 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
     }
   }, [step])
 
+  // Track the tooltip's own size so positioning can clamp it into the viewport.
+  useLayoutEffect(() => {
+    if (!tipRef.current) return
+    const ro = new ResizeObserver(() => {
+      const r = tipRef.current?.getBoundingClientRect()
+      if (r) setTipSize({ w: r.width, h: r.height })
+    })
+    ro.observe(tipRef.current)
+    return () => ro.disconnect()
+  }, [step])
+
   if (!step) return null
   const tut = (STRINGS[lang] ?? STRINGS.en).tutorial
   const text = step.text[lang] ?? step.text.en
@@ -64,18 +81,23 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
       }
     : { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', pointerEvents: 'none', zIndex: 70 }
 
-  // Anchor the tooltip near the cut-out per `placement`; fall back to centered.
+  // Anchor the tooltip near the cut-out per `placement`, then clamp the whole
+  // card into the viewport using its measured size on both axes — so a resize
+  // that moves the target (e.g. the inspector dock growing/shrinking on a source
+  // swap) can't push the card, or its Next button, off-screen.
   let tip = { position: 'fixed', zIndex: 71, maxWidth: 320 }
   if (rect) {
     const place = step.placement ?? 'bottom'
-    // For top/bottom, anchor the tooltip's left edge to the target but keep its
-    // 320px width inside the viewport so right-side targets don't get crammed
-    // against the screen edge.
-    const clampX = Math.min(rect.left, window.innerWidth - 320 - 8)
-    if (place === 'right') tip = { ...tip, top: rect.top, left: rect.left + rect.width + PAD * 2 + 8 }
-    else if (place === 'left') tip = { ...tip, top: rect.top, left: Math.max(8, rect.left - 8), transform: 'translateX(-100%)' }
-    else if (place === 'top') tip = { ...tip, top: Math.max(8, rect.top - 8), left: Math.max(8, clampX), transform: 'translateY(-100%)' }
-    else tip = { ...tip, top: rect.top + rect.height + PAD * 2 + 8, left: Math.max(8, clampX) }
+    const w = tipSize?.w ?? 320
+    const h = tipSize?.h ?? 0
+    let top, left
+    if (place === 'right') { top = rect.top; left = rect.left + rect.width + PAD * 2 + 8 }
+    else if (place === 'left') { top = rect.top; left = rect.left - PAD * 2 - 8 - w }
+    else if (place === 'top') { top = rect.top - PAD - 8 - h; left = rect.left }
+    else { top = rect.top + rect.height + PAD * 2 + 8; left = rect.left }
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8))
+    top = Math.max(8, Math.min(top, window.innerHeight - h - 8))
+    tip = { ...tip, top, left }
   } else {
     tip = { ...tip, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
   }
@@ -91,7 +113,7 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
   return (
     <>
       <div style={cutout} />
-      <div style={tip} className="flex flex-col rounded-xl border border-edge bg-panel shadow-2xl">
+      <div ref={tipRef} style={tip} className="flex flex-col rounded-xl border border-edge bg-panel shadow-2xl">
         <div className="flex items-center gap-2 border-b border-divider px-4 py-2.5">
           <span className="flex-1 text-[11px] font-semibold uppercase tracking-wider text-accent">
             {tut.step} {stepIndex + 1}/{totalSteps}
