@@ -62,12 +62,14 @@ Everything else below is v1.0 (small fixes and polish).
         Beginner mode). Plumbing trivial (`mode` already in `uiPrefs`); decision
         deferred, capability not blocked.
       - **Status (2026-06-18):** engine + overlay + progress + menu shipped, and
-        all four chapters now exist (Core flow, Sources & synthesis, Effects &
-        control blocks, Layers/sequencer/projects). **Still only basic — needs
-        more work.** Remaining:
-        - Chapters are short/shallow. Deepen coverage: sample & mic source,
-          more effect types, actually programming the sequencer grid, the bus
-          mixer (level/pan/delay per lane), save/load hands-on.
+        five chapters now exist (Core flow, Sources & synthesis, Effects &
+        control blocks, Layers/sequencer/projects, The Sampler). **Still only
+        basic — needs more work.** Remaining:
+        - Chapters are short/shallow. Deepen coverage: more effect types,
+          actually programming the sequencer grid, the bus mixer (level/pan/
+          delay per lane), save/load hands-on. (Sampler chapter added: load/mic,
+          library, trim, crop/fade/reverse/normalize — read-tour since sample
+          data lives in the cache, not the validated project; only trim gates.)
         - Layers chapter is a light tour — only "add a layer" is hands-on; the
           projects step is read-only (saving downloads a file, skipped in a
           sandbox).

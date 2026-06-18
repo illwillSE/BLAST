@@ -211,7 +211,7 @@ export default function SampleEditorModal({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
+      className={`fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div className={`flex w-full max-w-5xl flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl ${panelAnim(entered)}`}>
@@ -263,7 +263,7 @@ export default function SampleEditorModal({
           </div>
         )}
 
-        <div ref={containerRef} className="rounded border border-divider bg-well" />
+        <div ref={containerRef} data-tut="sample-editor-region" className="rounded border border-divider bg-well" />
         <div className="text-[10px] text-faint">
           {t('sample.zoomHint')}
         </div>
@@ -274,7 +274,7 @@ export default function SampleEditorModal({
           </Button>
           <TimeField label={t('sample.in')} value={trimStart} onCommit={(v) => setTrim(v, trimEnd)} />
           <TimeField label={t('sample.out')} value={trimEnd} onCommit={(v) => setTrim(trimStart, v)} />
-          <div className="ml-auto flex flex-wrap gap-1.5">
+          <div data-tut="sample-tools" className="ml-auto flex flex-wrap gap-1.5">
             <ToolButton onClick={onUndo} disabled={!canUndo} title={t('sample.undoTitle')}>{t('sample.undo')}</ToolButton>
             <ToolButton onClick={() => onApplyEdit(reverseBuffer)} title={t('sample.reverseTitle')}>{t('sample.reverse')}</ToolButton>
             <ToolButton onClick={() => onApplyEdit(normalizeBuffer)} title={t('sample.normalizeTitle')}>{t('sample.normalize')}</ToolButton>

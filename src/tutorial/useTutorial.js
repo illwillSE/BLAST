@@ -47,6 +47,9 @@ export function useTutorial({ project, reset, setSelectedId }) {
       const ctx = chapter.makeCtx(demo)
       reset(demo)
       setSelectedId(ctx.soundId)
+      // Optional side-effects outside the serializable project (e.g. loading a
+      // demo sample into the cache). onExit cleans them up on teardown.
+      chapter.onEnter?.(demo, ctx)
       setActive({ chapterId, stepIndex, ctx, stepStartProject: demo })
     } else {
       stash.current = null
@@ -63,7 +66,7 @@ export function useTutorial({ project, reset, setSelectedId }) {
       const next = cur.stepIndex + 1
       if (next >= chapter.steps.length) {
         markCompleted(cur.chapterId)
-        teardown()
+        teardown(cur)
         return null
       }
       setCurrent(cur.chapterId, next)
@@ -81,8 +84,10 @@ export function useTutorial({ project, reset, setSelectedId }) {
     })
   }
 
-  // Restore the stashed live project (demo sandbox only) and clear active state.
-  function teardown() {
+  // Restore the stashed live project (demo sandbox only), run the chapter's
+  // onExit cleanup (e.g. drop a demo sample from the cache), and clear state.
+  function teardown(act) {
+    if (act) getChapter(act.chapterId)?.onExit?.(act.ctx)
     if (stash.current) {
       reset(stash.current.project)
       setSelectedId(stash.current.selectedId)
@@ -92,13 +97,13 @@ export function useTutorial({ project, reset, setSelectedId }) {
 
   // Skip/escape: leave the chapter but keep progress so Resume picks it back up.
   function exitChapter() {
-    teardown()
+    teardown(active)
     setActive(null)
   }
 
   function restartAll() {
     resetProgress()
-    teardown()
+    teardown(active)
     setActive(null)
   }
 

@@ -104,7 +104,7 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
+      className={`fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-6 ${backdropAnim(entered)}`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div className={`flex w-full max-w-lg flex-col gap-3 rounded-xl border border-edge bg-panel p-4 shadow-2xl ${panelAnim(entered)}`}>

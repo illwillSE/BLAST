@@ -83,6 +83,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
       {sample ? (
         <div>
           <div
+            data-tut="sample-wave"
             className="relative cursor-pointer"
             onClick={() => setEditorOpen(true)}
             title={t('sample.openEditor')}

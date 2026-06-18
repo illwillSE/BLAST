@@ -8,7 +8,9 @@
 // `target` is a `data-tut="…"` selector string, or null for a centered card
 // (orientation / recap). `validate` advances a `do` step when the real model
 // reaches the goal — verified via model helpers, never by trusting a click.
-import { newProject, newSound, newBlock, findLane } from '../state/model'
+import { newProject, newSound, newBlock, newLane, findLane } from '../state/model'
+import { setSample, removeSample, decodeBlob } from '../audio/sampleCache'
+import { bufferToWavBlob } from '../audio/bufferOps'
 
 // The lane this chapter operates on, resolved fresh from a given project.
 function lane(project, ctx) {
@@ -70,6 +72,42 @@ function buildLayersDemo() {
   const sound = newSound('Tutorial Layers')
   project.sounds = [sound]
   return project
+}
+
+// Sampler chapter demo: a single Sample source. The buffer is loaded into the
+// sample cache by the chapter's onEnter hook (samples live in the cache, not the
+// serializable project), so the editor and tools have audio to work on.
+function buildSamplerDemo() {
+  const project = newProject()
+  const sound = newSound('Tutorial Sampler')
+  sound.sources = [newLane('sample')]
+  project.sounds = [sound]
+  return project
+}
+
+// Synthesize a short demo clip (a decaying tone + a noisy transient) and load it
+// into the sample cache for `blockId`, via the same decode path a real file uses
+// — so the waveform, trim, and destructive tools all behave normally.
+async function loadDemoSample(blockId) {
+  const Ctx = window.AudioContext || window.webkitAudioContext
+  const ctx = new Ctx()
+  const sr = ctx.sampleRate
+  const n = Math.floor(sr * 1.6)
+  const buf = ctx.createBuffer(1, n, sr)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < n; i++) {
+    const t = i / sr
+    const env = Math.exp(-3 * t)
+    const tone = Math.sin(2 * Math.PI * 220 * t) * 0.6 + Math.sin(2 * Math.PI * 440 * t) * 0.25
+    const transient = (Math.random() * 2 - 1) * 0.5 * Math.exp(-25 * t)
+    data[i] = (tone * env + transient) * 0.85
+  }
+  const blob = bufferToWavBlob(buf)
+  ctx.close?.()
+  try {
+    const audioBuffer = await decodeBlob(blob)
+    setSample(blockId, { blob, fileName: 'demo-hit.wav', audioBuffer })
+  } catch { /* if decode fails the chapter still runs, just without a waveform */ }
 }
 
 export const CHAPTERS = [
@@ -438,6 +476,100 @@ export const CHAPTERS = [
         text: {
           en: 'That completes the tour: layer sources for rich one-shots, sequence them for rhythm, and save projects to keep and share. You now know the whole signal path end to end. Click Finish to return to your project.',
           sv: 'Det avslutar rundturen: lagra källor för rika one-shots, sekvensera dem för rytm och spara projekt för att behålla och dela. Du kan nu hela signalvägen från början till slut. Klicka på Klart för att återgå till ditt projekt.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sampler',
+    title: { en: 'The Sampler', sv: 'Samplern' },
+    description: {
+      en: 'Load or record audio, save to your library, trim, crop, fade and more.',
+      sv: 'Ladda eller spela in ljud, spara i biblioteket, trimma, klipp, fade m.m.',
+    },
+    sandbox: 'demo',
+    buildDemo: buildSamplerDemo,
+    makeCtx: (demo) => ({ soundId: demo.sounds[0].id, laneId: demo.sounds[0].sources[0].id }),
+    // The sample buffer lives in the cache, not the project — load it on enter,
+    // drop it on exit so the throwaway demo leaves nothing behind.
+    onEnter: (demo, ctx) => loadDemoSample(ctx.laneId),
+    onExit: (ctx) => removeSample(ctx.laneId),
+    steps: [
+      {
+        id: 'orient',
+        kind: 'read',
+        target: null,
+        text: {
+          en: 'The Sample source plays back audio you load or record, instead of a synth oscillator — perfect for real-world hits, voices and field recordings. We loaded a short demo clip to work on. Samples travel inside the project file, so nothing is lost when you save.',
+          sv: 'Sample-källan spelar upp ljud du laddar eller spelar in, istället för en synth-oscillator — perfekt för verkliga träffar, röster och fältinspelningar. Vi laddade ett kort demoklipp att jobba med. Samples följer med i projektfilen, så inget går förlorat när du sparar.',
+        },
+      },
+      {
+        id: 'load',
+        kind: 'read',
+        target: '[data-tut="sample-load"]',
+        placement: 'top',
+        text: {
+          en: 'Three ways to get audio in: Browse to pick a file, Record to capture from your microphone (Record → Stop), or drag an audio file straight onto the waveform. A new clip replaces the old one.',
+          sv: 'Tre sätt att få in ljud: Browse för att välja en fil, Record för att spela in från mikrofonen (Record → Stop), eller dra en ljudfil direkt på vågformen. Ett nytt klipp ersätter det gamla.',
+        },
+      },
+      {
+        id: 'library',
+        kind: 'read',
+        target: '[data-tut="sample-library"]',
+        placement: 'top',
+        text: {
+          en: 'Library saves the current clip under a name so you can reuse it in any project, and load saved clips back in. Your library lives in this browser — handy for sounds you reach for often.',
+          sv: 'Library sparar det aktuella klippet under ett namn så att du kan återanvända det i vilket projekt som helst, och ladda tillbaka sparade klipp. Ditt bibliotek finns i den här webbläsaren — smidigt för ljud du använder ofta.',
+        },
+      },
+      {
+        id: 'open-editor',
+        kind: 'read',
+        target: '[data-tut="sample-wave"]',
+        placement: 'top',
+        text: {
+          en: 'Click the waveform to open the full sample editor, where you trim and shape the clip. Open it now, then click Next.',
+          sv: 'Klicka på vågformen för att öppna den fullständiga sample-editorn, där du trimmar och formar klippet. Öppna den nu och klicka sedan på Nästa.',
+        },
+      },
+      {
+        id: 'trim',
+        kind: 'read',
+        requireValidate: true,
+        target: '[data-tut="sample-editor-region"]',
+        placement: 'top',
+        text: {
+          en: 'Drag the edges of the highlighted region to set the in and out points — only that slice plays, and it is non-destructive (the file is untouched). Use the In / Out fields below for exact times, and Play region to audition.',
+          sv: 'Dra i kanterna på den markerade regionen för att sätta in- och ut-punkter — bara den biten spelas, och det är icke-förstörande (filen rörs inte). Använd In / Out-fälten nedanför för exakta tider, och Play region för att lyssna.',
+        },
+        nudge: {
+          en: 'Drag a region edge (or type an In/Out value) in the sample editor to unlock Next.',
+          sv: 'Dra i en regionkant (eller skriv ett In/Out-värde) i sample-editorn för att låsa upp Nästa.',
+        },
+        validate: (project, start, ctx) => {
+          const l = lane(project, ctx)
+          return !!l && (l.params.trimStart != null || l.params.trimEnd != null)
+        },
+      },
+      {
+        id: 'tools',
+        kind: 'read',
+        target: '[data-tut="sample-tools"]',
+        placement: 'top',
+        text: {
+          en: 'These tools change the audio itself (destructive, but Undo reverts each one): ✂ Crop cuts the file down to your region; Fade in / Fade out ramp the start or end; Reverse flips it backwards; Normalize lifts it to full volume. Try a few, then Undo.',
+          sv: 'De här verktygen ändrar själva ljudet (förstörande, men Undo ångrar varje steg): ✂ Crop klipper ner filen till din region; Fade in / Fade out tonar in eller ut; Reverse vänder det baklänges; Normalize höjer det till full volym. Testa några och tryck sedan Undo.',
+        },
+      },
+      {
+        id: 'recap',
+        kind: 'read',
+        target: null,
+        text: {
+          en: 'That is the Sampler: load or record audio, save it to your library, trim a slice non-destructively, and crop, fade, reverse or normalize the file itself. Click Finish to return to your project.',
+          sv: 'Det är Samplern: ladda eller spela in ljud, spara det i biblioteket, trimma en bit icke-förstörande, och crop, fade, reverse eller normalize själva filen. Klicka på Klart för att återgå till ditt projekt.',
         },
       },
     ],

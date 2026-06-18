@@ -303,14 +303,14 @@ export function SampleLoadControls({ block, recording, onBrowse, onStartRecordin
   const canPaste = clip?.kind === 'sample'
   return (
     <>
-      <div className="mt-2 flex gap-1.5">
+      <div data-tut="sample-load" className="mt-2 flex gap-1.5">
         <Button onClick={onBrowse} className="flex-1">{t('sample.browse')}</Button>
         {recording ? (
           <Button onClick={onStopRecording} variant="danger" className="flex-1 animate-pulse">{t('sample.stop')}</Button>
         ) : (
           <Button onClick={onStartRecording} variant="danger" className="flex-1">{t('sample.record')}</Button>
         )}
-        <Button onClick={onOpenLibrary} title={t('sample.libraryTitle')}>{t('sample.library')}</Button>
+        <Button onClick={onOpenLibrary} title={t('sample.libraryTitle')} data-tut="sample-library">{t('sample.library')}</Button>
       </div>
       <div className="mt-1.5 flex gap-1.5">
         <Button onClick={() => copySample(block)} disabled={!hasSample} className="flex-1 disabled:opacity-40">{t('sample.copySample')}</Button>
