@@ -9,7 +9,7 @@ const Conn = () => <ChevronRight size={12} className="shrink-0 text-faint" />
 const Port = ({ portRef }) => <span ref={portRef} className="ml-1 h-2 w-2 shrink-0 rounded-full bg-edge-2" />
 
 export default function LaneRow({
-  lane, laneNumber, focused, selectedKeys, onSelect, onFocusLane, onMove, onAdd, onPaste, onParam, outputRef,
+  lane, laneNumber, focused, selectedKeys, onSelect, onFocusLane, onMove, onAdd, onPaste, onParam, onAddMenuOpen, outputRef,
 }) {
   const dragIndex = useRef(null)
   const [dropTarget, setDropTarget] = useState(null)
@@ -69,7 +69,7 @@ export default function LaneRow({
         </span>
       ))}
       <Conn />
-      <AddBlockMenu variant="chip" dataTut="add-effect" onAdd={(type) => onAdd(lane.id, type)} onPaste={() => onPaste(lane.id)} />
+      <AddBlockMenu variant="chip" dataTut="add-effect" onAdd={(type) => onAdd(lane.id, type)} onPaste={() => onPaste(lane.id)} onOpen={onAddMenuOpen} />
       <Port portRef={outputRef} />
     </div>
   )

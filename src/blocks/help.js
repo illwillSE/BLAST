@@ -36,9 +36,6 @@ export const HELP = {
         summary: 'Generates noise — the pitchless "shh" sound that underlies snares, wind, explosions and breath. Choose the colour (frequency balance) and shape it with the envelope.',
         params: {
           color: 'white is equal energy at all frequencies — bright and hissy. pink rolls off the highs for a warmer, more natural sound. brown rolls off even more — low, rumbling and thunderous.',
-          followPitch: 'When on, a resonant bandpass filter tunes the noise to the triggered note — turns unpitched noise into a pitched percussive or tonal source. Great for tuned snares, pitched wind, and melodic noise.',
-          freq: 'The center frequency of the pitch filter (used as the base when Follow Pitch is on). The sequencer or keyboard transposes around this.',
-          resonance: 'How narrow and tonal the filter is. Low values give broad, coloured noise; high values give a near-sine, very tonal ring. 6–15 is a useful range.',
           duration: 'How long the noise is held before it fades out. Only has an effect when Sustain is above 0% — at 0% the burst decays to silence on its own (set by attack + decay + release), so Length does nothing.',
           attack: 'How quickly the noise rises from silence. Very short = sharp transient; longer = swell.',
           decay: 'Time to fall from the attack peak to the sustain level.',
@@ -46,6 +43,7 @@ export const HELP = {
           release: 'How long the noise takes to fade to silence after the burst ends.',
         },
         notes: [
+          'Noise has no pitch of its own — it has no fundamental frequency to tune. Add a Pitch Shift block after it in the chain to give it a tonal, pitched quality (it works on any audio signal, not just instruments).',
           'Noise pairs well with filters — a band-pass Filter narrows it to a tone colour, a low-pass darkens it, a high-pass cuts body and leaves hiss.',
           'Vocoder works well with noise as the carrier: the noise’s energy across all frequencies means the speech sample’s spectrum shapes it clearly.',
         ],
@@ -262,9 +260,6 @@ export const HELP = {
         summary: 'Genererar brus — det tonlösa "shhh"-ljudet som ligger till grund för trumvirvel, vind, explosioner och andetag. Välj färg (frekvensbalans) och forma det med förloppet.',
         params: {
           color: 'white har lika energi på alla frekvenser — ljust och väsande. pink tonar ner diskanten för ett varmare, mer naturligt ljud. brown tonar ner ännu mer — lågt, mullrande och åskliknande.',
-          followPitch: 'När den är på lägger ett resonant bandpassfilter till tonhöjd i bruset — gör otonalt brus till en tonhöjdsbestämd slagverk- eller tonkälla. Bra för stämda trumvirvelljud, tonhöjdssatt vind och melodiskt brus.',
-          freq: 'Mittpunktsfrekvensen för tonhöjdsfiltret (används som bas när Follow Pitch är på). Sequencern eller tangentbordet transponerar runt detta.',
-          resonance: 'Hur smalt och tonalt filtret är. Låga värden ger brett, färgat brus; höga värden ger ett nästan sinusliknande, tydligt tonalt klang. 6–15 är ett användbart område.',
           duration: 'Hur länge bruset hålls innan det tonar ut. Har bara effekt när Sustain är över 0 % — vid 0 % tonar skuttet ut av sig självt (bestäms av attack + decay + release), så Length gör ingenting.',
           attack: 'Hur snabbt bruset stiger från tystnad. Mycket kort ger en skarp transient; längre ger en insvällning.',
           decay: 'Tiden det tar att falla från attackens topp ner till sustain-nivån.',
@@ -272,6 +267,7 @@ export const HELP = {
           release: 'Hur lång tid bruset tar att tona ut till tystnad efter anslaget.',
         },
         notes: [
+          'Brus har ingen egen tonhöjd — det har ingen grundton att stämma. Lägg till ett Pitch Shift-block efter det i kedjan för att ge det en tonal, tonhöjdsbestämd karaktär (det fungerar på all ljudsignal, inte bara instrument).',
           'Brus passar bra med filter — ett bandpass-filter smalar av det till en klangfärg, ett lågpassfilter mörknar det, ett högpassfilter tar bort kroppen och lämnar väsande.',
           'Vocoder fungerar bra med brus som carrier: brusets energi på alla frekvenser gör att talets spektrum formar det tydligt.',
         ],

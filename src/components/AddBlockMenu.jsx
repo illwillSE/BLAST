@@ -8,11 +8,16 @@ import { CAT_STYLES } from './ui'
 // `excludeKinds` hides whole block kinds. Sources are always excluded (a lane's
 // source is switched in place on its card). The master chain also excludes
 // `control` blocks — pitch/amp modulation is per-lane, not post-mix.
-export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], excludeTypes = [], label, variant = 'box', dataTut }) {
+export default function AddBlockMenu({ onAdd, onPaste, onOpen, excludeKinds = [], excludeTypes = [], label, variant = 'box', dataTut }) {
   const { mode } = useUIPrefs()
   const t = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+
+  function toggleOpen() {
+    if (!open) onOpen?.()
+    setOpen((o) => !o)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -40,7 +45,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
       {variant === 'chip' ? (
         <button
           data-tut={dataTut}
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggleOpen}
           title={menuLabel}
           className="flex items-center gap-1 rounded-lg border border-dashed border-accent-dim/50 px-2.5 py-1.5 text-[12px] text-accent-deep/70 transition-colors hover:border-accent-deep hover:bg-accent-deep/10 hover:text-accent"
         >
@@ -49,7 +54,7 @@ export default function AddBlockMenu({ onAdd, onPaste, excludeKinds = [], exclud
         </button>
       ) : (
         <button
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggleOpen}
           className="flex h-24 w-32 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-accent-dim/40 bg-accent-deep/5 text-accent-deep/70 transition-colors hover:border-accent-deep/60 hover:bg-accent-deep/10 hover:text-accent"
         >
           <span className="text-xl leading-none">+</span>

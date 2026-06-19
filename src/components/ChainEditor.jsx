@@ -237,6 +237,7 @@ export default function ChainEditor({
                 onAdd={handleAdd}
                 onPaste={handlePaste}
                 onParam={onParam}
+                onAddMenuOpen={() => setInspectorMin(true)}
                 outputRef={setPortRef(lane.id)}
               />
             ))}
@@ -284,7 +285,7 @@ export default function ChainEditor({
               </span>
             ))}
             <Conn />
-            <AddBlockMenu variant="chip" excludeKinds={['control']} label={t('chain.addMaster')} onAdd={(type) => handleAdd(MASTER, type)} onPaste={() => handlePaste(MASTER)} />
+            <AddBlockMenu variant="chip" excludeKinds={['control']} label={t('chain.addMaster')} onAdd={(type) => handleAdd(MASTER, type)} onPaste={() => handlePaste(MASTER)} onOpen={() => setInspectorMin(true)} />
             <Conn />
             <div
               onClick={(e) => select('output', e.shiftKey || e.metaKey)}

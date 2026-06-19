@@ -174,13 +174,9 @@ export const BLOCK_DEFS = {
     category: 'source',
     kind: 'source',
     description: 'White, pink or brown noise — wind, snares, explosions',
-    structureParams: ['followPitch'],
     params: [
       { key: 'color', label: 'Color', type: 'select', default: 'white',
         options: ['white', 'pink', 'brown'].map((v) => ({ value: v, label: v })) },
-      { key: 'followPitch', label: 'Follow Pitch', type: 'toggle', default: false },
-      { key: 'freq', label: 'Pitch', type: 'range', min: 30, max: 4000, step: 1, default: 200, scale: 'log', format: hz, show: (p) => p.followPitch },
-      { key: 'resonance', label: 'Resonance', type: 'range', min: 1, max: 40, step: 0.5, default: 8, format: (v) => v.toFixed(1), show: (p) => p.followPitch },
       // Envelope controls ordered to match the envelope preview's left-to-right
       // shape: attack → decay → sustain → Length (the sustain hold) → release.
       { key: 'attack', label: 'Attack', type: 'range', min: 0.001, max: 2, step: 0.001, default: 0.005, scale: 'log', format: sec },
@@ -208,20 +204,14 @@ export const BLOCK_DEFS = {
         noise: { type: p.color },
         envelope: { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release },
       })
-      if (p.followPitch) {
-        const filter = new Tone.Filter({ type: 'bandpass', frequency: p.freq, Q: p.resonance })
-        synth.connect(filter)
-        return { nodes: { synth, filter }, input: null, output: filter }
-      }
       return { nodes: { synth }, input: null, output: synth }
     },
-    apply({ synth, filter }, p) {
+    apply({ synth }, p) {
       synth.noise.type = p.color
       synth.envelope.attack = p.attack
       synth.envelope.decay = p.decay
       synth.envelope.sustain = p.sustain
       synth.envelope.release = p.release
-      if (filter) { filter.frequency.value = p.freq; filter.Q.value = p.resonance }
     },
   },
 
