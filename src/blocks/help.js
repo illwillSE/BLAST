@@ -13,11 +13,11 @@ export const HELP = {
     },
     blocks: {
       synth: {
-        summary: 'Generates a tone from scratch. Shape it with the waveform, pitch, and the attack/decay/sustain/release envelope.',
+        summary: 'Generates a tone from scratch. Shape it with the waveform, pitch, pulse-width modulation (PWM), and the attack/decay/sustain/release envelope.',
         params: {
-          wave: 'The oscillator shape: sine is pure, triangle mellow, square hollow, sawtooth bright and brassy. pulse is a square with adjustable width; custom lets you draw your own harmonic mix.',
+          wave: 'The oscillator shape: sine is pure, triangle mellow, square hollow, sawtooth bright and brassy. pulse is a square with adjustable width and optional PWM movement; custom lets you draw your own harmonic mix.',
           partials: 'Limits how many harmonics the wave is built from. full is the complete bright wave; lower numbers round it off toward a sine — a softer, more retro tone. (Only for triangle/square/sawtooth.)',
-          width: 'The base duty cycle of the pulse wave, from thin and nasal to a full square at 0%. PWM moves around this setting.',
+          width: 'The base duty cycle of the pulse wave, from thin and nasal to a full square at 0%. PWM modulates around this setting, so Width is the center point of the movement.',
           pwmRate: 'How fast pulse-width modulation moves. 0Hz turns it off; faster rates give shimmer, buzz, and retro laser movement.',
           pwmDepth: 'How far PWM pushes the pulse width away from the base Width. Higher values sound more animated and nasal.',
           pwmWave: 'The shape of the PWM movement. sine is smooth, triangle is even, square jumps between two widths, and sawtooth ramps.',
@@ -239,11 +239,11 @@ export const HELP = {
     },
     blocks: {
       synth: {
-        summary: 'Skapar en ton från grunden. Forma den med vågformen, tonhöjden och ADSR-förloppet (attack/decay/sustain/release).',
+        summary: 'Skapar en ton från grunden. Forma den med vågformen, tonhöjden, pulse-width modulation (PWM) och ADSR-förloppet (attack/decay/sustain/release).',
         params: {
-          wave: 'Oscillatorns form: sinus är ren, triangel dov, fyrkant ihålig, sågtand ljus och vass. pulse är en fyrkant med justerbar bredd; custom låter dig rita din egen övertonsmix.',
+          wave: 'Oscillatorns form: sinus är ren, triangel dov, fyrkant ihålig, sågtand ljus och vass. pulse är en fyrkant med justerbar bredd och valfri PWM-rörelse; custom låter dig rita din egen övertonsmix.',
           partials: 'Begränsar hur många övertoner vågen byggs av. full är hela den ljusa vågen; lägre värden rundar av den mot en sinus — ett mjukare, mer retroaktigt ljud. (Bara för triangel/fyrkant/sågtand.)',
-          width: 'Pulsvågens grund-pulskvot, från tunn och nasal till en hel fyrkant vid 0 %. PWM rör sig runt den här inställningen.',
+          width: 'Pulsvågens grund-pulskvot, från tunn och nasal till en hel fyrkant vid 0 %. PWM modulerar runt den här inställningen, så Width är rörelsens mittpunkt.',
           pwmRate: 'Hur snabbt PWM rör pulskvoten. 0 Hz stänger av det; snabbare värden ger skimmer, buzz och retro-laser-rörelse.',
           pwmDepth: 'Hur långt PWM trycker pulskvoten bort från grundvärdet Width. Högre värden låter mer animerat och nasalt.',
           pwmWave: 'Formen på PWM-rörelsen. sine är mjuk, triangle är jämn, square hoppar mellan två bredder och sawtooth rampar.',
