@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useUIPrefs } from '../state/uiPrefs'
 import { STRINGS } from '../i18n/strings'
 import { Button } from './ui'
+import BlastMark from './BlastMark'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 
 const SEEN_KEY = 'blast-intro-seen'
@@ -42,6 +43,10 @@ export default function IntroModal() {
       onMouseDown={(e) => { if (e.target === e.currentTarget) close() }}
     >
       <div className={`flex w-full max-w-sm flex-col rounded-xl border border-edge bg-panel shadow-2xl ${panelAnim(entered)}`}>
+        <div className="flex items-center justify-center gap-3 border-b border-divider px-4 pt-5 pb-4">
+          <BlastMark size={44} />
+          <span className="text-2xl font-black tracking-[0.2em] text-accent">BLAST</span>
+        </div>
         <div className="flex items-center gap-2 border-b border-divider px-4 py-3">
           <span className="flex-1 text-[13px] font-semibold uppercase tracking-wider text-accent">{intro.title}</span>
           <button onClick={close} className="text-[11px] text-muted transition-colors hover:text-ink">{intro.skip}</button>
