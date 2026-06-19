@@ -223,7 +223,7 @@ export default function ChainEditor({
           </svg>
 
           {/* lanes */}
-          <div data-canvas-bg className="relative z-10 flex flex-col gap-2">
+          <div data-canvas-bg className="relative z-20 flex flex-col gap-2">
             {sound.sources.map((lane, i) => (
               <LaneRow
                 key={lane.id}
