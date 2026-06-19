@@ -190,13 +190,12 @@ export default function ChainEditor({
   }
 
   const isSel = (k) => selectedKeys.includes(k)
-  const multiLane = sound.sources.length > 1
   const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onVoicing, onSequencer, onPasteValues, onSelect: select }
   const seqOn = sound.sequencer?.enabled
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {multiLane && <LaneTimeline sound={sound} onLaneProp={onLaneProp} />}
+      <LaneTimeline sound={sound} onLaneProp={onLaneProp} />
 
       {/* Clicking empty canvas (padding, gaps, lane stack background) deselects.
           data-canvas-bg marks those background surfaces; chips/cards bubble up

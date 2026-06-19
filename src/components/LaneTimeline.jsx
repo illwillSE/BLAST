@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { laneDuration } from '../audio/engine'
 import { useT } from '../state/uiPrefs'
+import { onPlay } from '../utils/bus'
 import { CAT_STYLES } from './ui'
 
 // A time-domain view of the lanes, stacked to align with the chain rows below.
@@ -18,6 +19,28 @@ export default function LaneTimeline({ sound, onLaneProp }) {
   const t = useT()
   const [open, setOpen] = useState(true)
   const drag = useRef(null)
+
+  // Playhead: animate across the timeline over the most recently played sound's
+  // duration. Non-interactive (pointer-events-none); a new play cancels and
+  // restarts the animation, so only the latest trigger is ever shown.
+  const [playheadX, setPlayheadX] = useState(null)
+  const rafRef = useRef(0)
+  useEffect(() => {
+    const off = onPlay((info) => {
+      if (info.soundId !== sound.id) return
+      const durationMs = info.duration * 1000
+      const start = performance.now()
+      cancelAnimationFrame(rafRef.current)
+      const tick = () => {
+        const elapsed = performance.now() - start
+        if (elapsed >= durationMs) { setPlayheadX(null); return }
+        setPlayheadX(elapsed / 1000)
+        rafRef.current = requestAnimationFrame(tick)
+      }
+      tick()
+    })
+    return () => { off(); cancelAnimationFrame(rafRef.current) }
+  }, [sound.id])
 
   const lanes = sound.sources ?? []
   const spans = lanes.map((lane) => ({ lane, len: laneDuration(lane), delay: lane.delay ?? 0 }))
@@ -93,6 +116,13 @@ export default function LaneTimeline({ sound, onLaneProp }) {
                 )
               })}
             </div>
+
+            {playheadX !== null && (
+              <div
+                className="pointer-events-none absolute top-0 bottom-0 w-px bg-accent-deep"
+                style={{ left: playheadX * PX_PER_SEC }}
+              />
+            )}
           </div>
         </div>
       )}
