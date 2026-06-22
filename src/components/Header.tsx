@@ -3,16 +3,28 @@ import { Settings, HelpCircle } from 'lucide-react'
 import { Button } from './ui'
 import { saveProjectZip, loadProjectZip } from '../utils/projectZip'
 import { useUIPrefs, useT } from '../state/uiPrefs'
+import type { Mode } from '../state/uiPrefs'
+import type { ExportSettings, Project } from '../types'
 import SettingsModal from './SettingsModal'
 
 export const APP_VERSION = '0.91'
 
-export default function Header({ project, onRenameProject, onLoadProject, onSetExport, onNewProject, onLoadPresets, onOpenTutorial }) {
+interface HeaderProps {
+  project: Project
+  onRenameProject: (name: string) => void
+  onLoadProject: (project: Project) => void
+  onSetExport: (settings: Partial<ExportSettings>) => void
+  onNewProject: () => void
+  onLoadPresets: () => void
+  onOpenTutorial: () => void
+}
+
+export default function Header({ project, onRenameProject, onLoadProject, onSetExport, onNewProject, onLoadPresets, onOpenTutorial }: HeaderProps) {
   const { mode, setMode, lang, setLang } = useUIPrefs()
   const t = useT()
-  const fileRef = useRef(null)
-  const [busy, setBusy] = useState(null) // 'save' | 'load' | null
-  const [error, setError] = useState(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState<'save' | 'load' | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   async function save() {
@@ -21,19 +33,19 @@ export default function Header({ project, onRenameProject, onLoadProject, onSetE
     try {
       await saveProjectZip(project)
     } catch (e) {
-      setError(`${t('header.saveFailed')}: ${e.message}`)
+      setError(`${t('header.saveFailed')}: ${e instanceof Error ? e.message : String(e)}`)
     }
     setBusy(null)
   }
 
-  async function load(file) {
+  async function load(file: File) {
     setBusy('load')
     setError(null)
     try {
       const loaded = await loadProjectZip(file)
       onLoadProject(loaded)
     } catch (e) {
-      setError(e.message)
+      setError(e instanceof Error ? e.message : String(e))
     }
     setBusy(null)
   }
@@ -64,7 +76,7 @@ export default function Header({ project, onRenameProject, onLoadProject, onSetE
       {/* Right cluster: mode toggle · language flag · file/settings actions. */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-px rounded-md border border-edge bg-surface p-0.5">
-          {[['beginner', t('settings.beginner')], ['advanced', t('settings.advanced')]].map(([id, label]) => (
+          {([['beginner', t('settings.beginner')], ['advanced', t('settings.advanced')]] as [Mode, string][]).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setMode(id)}

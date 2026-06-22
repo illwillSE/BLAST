@@ -1,16 +1,33 @@
 import { X } from 'lucide-react'
 import { Slider, VFader } from './ui'
 import { useT } from '../state/uiPrefs'
+import type { RangeParamDef } from '../blocks/registry'
+import type { Lane, Sound } from '../types'
 import ConfirmButton from './ConfirmButton'
 
 // The bus mixer — opens when the ∑ Bus node is selected. One channel-strip
 // column per lane: a vertical level fader, a smaller pan control beneath it,
 // plus the lane's mute and remove controls. Columns overflow horizontally; we
 // intentionally don't handle "too many lanes to fit" yet.
-const LEVEL_DEF = { key: 'level', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
-const PAN_DEF = { key: 'pan', label: 'Pan', type: 'range', min: -1, max: 1, step: 0.01, default: 0, format: (v) => (Math.abs(v) < 0.01 ? 'C' : v < 0 ? `${Math.round(-v * 100)}L` : `${Math.round(v * 100)}R`) }
+const LEVEL_DEF: RangeParamDef = { key: 'level', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
+const PAN_DEF: RangeParamDef = { key: 'pan', label: 'Pan', type: 'range', min: -1, max: 1, step: 0.01, default: 0, format: (v) => (Math.abs(v) < 0.01 ? 'C' : v < 0 ? `${Math.round(-v * 100)}L` : `${Math.round(v * 100)}R`) }
 
-function Strip({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemoveLane }) {
+interface BusHandlers {
+  onLaneProp: (laneId: string, key: string, value: number) => void
+  onToggle: (laneId: string) => void
+  onRemoveLane: (laneId: string) => void
+}
+
+interface StripProps {
+  lane: Lane
+  laneNumber: number
+  canRemove: boolean
+  onLaneProp: BusHandlers['onLaneProp']
+  onToggleMute: () => void
+  onRemoveLane: () => void
+}
+
+function Strip({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemoveLane }: StripProps) {
   const t = useT()
   return (
     <div className={`flex w-28 shrink-0 flex-col items-center gap-2 rounded-lg border border-edge bg-surface p-2 ${lane.enabled ? '' : 'opacity-50'}`}>
@@ -38,7 +55,7 @@ function Strip({ lane, laneNumber, canRemove, onLaneProp, onToggleMute, onRemove
   )
 }
 
-export default function BusMixer({ sound, handlers }) {
+export default function BusMixer({ sound, handlers }: { sound: Sound; handlers: BusHandlers }) {
   const t = useT()
   const lanes = sound.sources ?? []
   return (

@@ -2,27 +2,35 @@ import { useEffect, useRef, useState } from 'react'
 import { X, Play, Square } from 'lucide-react'
 import { decodeBlob } from '../audio/sampleCache'
 import { listLibrary, addToLibrary, removeFromLibrary } from '../utils/sampleLibrary'
+import type { LibraryEntry } from '../utils/sampleLibrary'
 import { useT } from '../state/uiPrefs'
+import type { CachedSample } from '../blocks/registry'
 import { Button } from './ui'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 
-export default function SampleLibraryModal({ sample, onLoad, onClose }) {
+interface SampleLibraryModalProps {
+  sample: CachedSample | null
+  onLoad: (blob: Blob, fileName: string) => void | Promise<void>
+  onClose: () => void
+}
+
+export default function SampleLibraryModal({ sample, onLoad, onClose }: SampleLibraryModalProps) {
   const t = useT()
   const { entered, handleClose } = useModalAnimation(onClose)
-  const [entries, setEntries] = useState([])
+  const [entries, setEntries] = useState<LibraryEntry[]>([])
   const [nameInput, setNameInput] = useState(sample?.fileName?.replace(/\.[^.]+$/, '') ?? '')
-  const [previewingId, setPreviewingId] = useState(null)
+  const [previewingId, setPreviewingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const sourceRef = useRef(null)
-  const ctxRef = useRef(null)
-  const activeIdRef = useRef(null)
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const ctxRef = useRef<AudioContext | null>(null)
+  const activeIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     listLibrary().then(setEntries)
   }, [])
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [handleClose])
@@ -34,19 +42,19 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
 
   function stopPreview() {
     activeIdRef.current = null
-    try { sourceRef.current?.stop() } catch {}
+    try { sourceRef.current?.stop() } catch { /* already stopped */ }
     sourceRef.current = null
     setPreviewingId(null)
   }
 
-  async function togglePreview(entry) {
+  async function togglePreview(entry: LibraryEntry) {
     const wasPlaying = previewingId === entry.id
     stopPreview()
     if (wasPlaying) return
 
     activeIdRef.current = entry.id
     setPreviewingId(entry.id)
-    let buf
+    let buf: AudioBuffer
     try { buf = await decodeBlob(entry.blob) } catch { setPreviewingId(null); return }
     if (activeIdRef.current !== entry.id) return
 
@@ -55,7 +63,7 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
     src.buffer = buf
     src.connect(ctx.destination)
     src.start()
-    src.onended = () => setPreviewingId(p => (p === entry.id ? null : p))
+    src.onended = () => setPreviewingId((p) => (p === entry.id ? null : p))
     sourceRef.current = src
   }
 
@@ -74,13 +82,13 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
     }
   }
 
-  async function handleDelete(entry) {
+  async function handleDelete(entry: LibraryEntry) {
     if (previewingId === entry.id) stopPreview()
     await removeFromLibrary(entry.id)
-    setEntries(e => e.filter(x => x.id !== entry.id))
+    setEntries((e) => e.filter((x) => x.id !== entry.id))
   }
 
-  async function handleLoad(entry) {
+  async function handleLoad(entry: LibraryEntry) {
     await onLoad(entry.blob, entry.fileName)
     onClose()
   }
@@ -135,7 +143,7 @@ export default function SampleLibraryModal({ sample, onLoad, onClose }) {
           {entries.length === 0 ? (
             <div className="py-8 text-center text-[11px] text-muted">{t('library.empty')}</div>
           ) : (
-            entries.map(entry => (
+            entries.map((entry) => (
               <div
                 key={entry.id}
                 className="flex items-center gap-2 rounded border border-edge bg-surface/70 px-2.5 py-1.5"

@@ -1,13 +1,30 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { SAMPLE_RATES, EXPORT_CHANNELS, EXPORT_FORMATS } from '../audio/render'
 import { useUIPrefs, useT } from '../state/uiPrefs'
+import type { Lang, Mode } from '../state/uiPrefs'
+import type { ExportSettings, Project } from '../types'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 import { Button } from './ui'
 import { deleteAllData } from '../utils/sampleLibrary'
 
+interface SettingsModalProps {
+  project: Project
+  onRenameProject: (name: string) => void
+  onSetExport: (settings: Partial<ExportSettings>) => void
+  onNewProject: () => void
+  onLoadPresets: () => void
+  onClose: () => void
+}
+
 // A labelled native <select>, matching the chain editor's select styling.
-function SelectField({ label, value, onChange, children }) {
+function SelectField({ label, value, onChange, children }: {
+  label: string
+  value: string | number
+  onChange: React.ChangeEventHandler<HTMLSelectElement>
+  children: ReactNode
+}) {
   return (
     <label className="block select-none">
       <div className="mb-0.5 text-[11px] uppercase tracking-wide text-muted">{label}</div>
@@ -26,7 +43,7 @@ function SelectField({ label, value, onChange, children }) {
 // project-level settings can slot in later. The Export tab holds the sample
 // export options (sample rate / channels / format) that also drive
 // "→ Sample sound" and copy-to-sample, so rendered audio matches.
-export default function SettingsModal({ project, onRenameProject, onSetExport, onNewProject, onLoadPresets, onClose }) {
+export default function SettingsModal({ project, onRenameProject, onSetExport, onNewProject, onLoadPresets, onClose }: SettingsModalProps) {
   const { mode, setMode, lang, setLang, backgroundViz, setBackgroundViz } = useUIPrefs()
   const t = useT()
   const [tab, setTab] = useState('general')
@@ -43,13 +60,13 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
   ]
 
   async function handleClearAll() {
-    try { await deleteAllData() } catch {}
-    try { localStorage.clear() } catch {}
+    try { await deleteAllData() } catch { /* nothing to clear */ }
+    try { localStorage.clear() } catch { /* storage disabled */ }
     window.location.reload()
   }
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [handleClose])
@@ -99,7 +116,7 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
               <div>
                 <div className="mb-0.5 text-[11px] uppercase tracking-wide text-muted">{t('settings.mode')}</div>
                 <div className="flex items-center gap-px rounded-md border border-edge bg-surface p-0.5">
-                  {[['beginner', t('settings.beginner')], ['advanced', t('settings.advanced')]].map(([id, label]) => (
+                  {([['beginner', t('settings.beginner')], ['advanced', t('settings.advanced')]] as [Mode, string][]).map(([id, label]) => (
                     <button
                       key={id}
                       onClick={() => setMode(id)}
@@ -117,7 +134,7 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
               <div>
                 <div className="mb-0.5 text-[11px] uppercase tracking-wide text-muted">{t('settings.language')}</div>
                 <div className="flex items-center gap-px rounded-md border border-edge bg-surface p-0.5">
-                  {[['en', '🇬🇧 English'], ['sv', '🇸🇪 Svenska']].map(([id, label]) => (
+                  {([['en', '🇬🇧 English'], ['sv', '🇸🇪 Svenska']] as [Lang, string][]).map(([id, label]) => (
                     <button
                       key={id}
                       onClick={() => setLang(id)}
