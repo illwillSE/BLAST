@@ -2,13 +2,20 @@ import { BLOCK_DEFS } from '../blocks/registry'
 import { HELP } from '../blocks/help'
 import { useUIPrefs } from '../state/uiPrefs'
 import { CAT_STYLES, formatValue } from './ui'
+import type { BlockType } from '../types'
 import HelpModal from './HelpModal'
+
+interface BlockHelpModalProps {
+  type: BlockType
+  onParam?: (key: string, value: unknown) => void
+  onClose: () => void
+}
 
 // Help window opened from the (i) icon in a block's title bar. Content is
 // looked up by block type, so every block type gets this for free. The flag
 // toggles English/Swedish via the shared UI-language preference, so it stays in
 // sync with the rest of the app's language.
-export default function BlockHelpModal({ type, onParam, onClose }) {
+export default function BlockHelpModal({ type, onParam, onClose }: BlockHelpModalProps) {
   const def = BLOCK_DEFS[type]
   const cat = CAT_STYLES[def.category]
   const { lang, mode } = useUIPrefs()
@@ -17,11 +24,12 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
   const en = HELP.en
   const block = t.blocks[type] ?? {}
   const blockEn = en.blocks[type] ?? {}
-  const paramHelp = (key) =>
+  const paramHelp = (key: string): string | null =>
     block.params?.[key] ?? t.common[key] ?? blockEn.params?.[key] ?? en.common[key] ?? null
 
   // Match the inspector: in Beginner mode, advanced params aren't listed here.
   const helpParams = def.params.filter((p) => mode === 'advanced' || !p.advanced)
+  const notes = block.notes ?? blockEn.notes
 
   return (
     <HelpModal dot={cat.dot} title={def.name} titleClass={cat.text} onClose={onClose}>
@@ -30,7 +38,7 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
             {block.summary ?? blockEn.summary ?? def.description}
           </p>
 
-          {def.examples?.length > 0 && onParam && (
+          {def.examples && def.examples.length > 0 && onParam && (
             <div>
               <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">
                 {t.headings.examples}
@@ -76,13 +84,13 @@ export default function BlockHelpModal({ type, onParam, onClose }) {
             </div>
           )}
 
-          {(block.notes ?? blockEn.notes)?.length > 0 && (
+          {notes && notes.length > 0 && (
             <div>
               <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-faint">
                 {t.headings.notes}
               </div>
               <ul className="space-y-1.5">
-                {(block.notes ?? blockEn.notes).map((note, i) => (
+                {notes.map((note, i) => (
                   <li key={i} className="flex gap-1.5 text-[12px] leading-relaxed text-muted">
                     <span className="text-faint">·</span>
                     {note}

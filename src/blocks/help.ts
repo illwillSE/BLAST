@@ -4,7 +4,19 @@
 // add its entry here too (both languages). Missing Swedish entries fall
 // back to English; params without an entry fall back to `common`.
 
-export const HELP = {
+export interface BlockHelp {
+  summary?: string
+  params?: Record<string, string>
+  notes?: string[]
+}
+
+export interface HelpLang {
+  headings: Record<string, string>
+  common: Record<string, string>
+  blocks: Record<string, BlockHelp>
+}
+
+export const HELP: Record<'en' | 'sv', HelpLang> = {
   en: {
     headings: { controls: 'Controls', notes: 'Good to know', examples: 'Examples — click to apply' },
     common: {

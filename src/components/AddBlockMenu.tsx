@@ -4,15 +4,27 @@ import { blocksByCategory, BLOCK_DEFS } from '../blocks/registry'
 import { useClipboard } from '../state/clipboard'
 import { useUIPrefs, useT } from '../state/uiPrefs'
 import { CAT_STYLES } from './ui'
+import type { BlockKind, BlockType } from '../types'
+
+interface AddBlockMenuProps {
+  onAdd: (type: BlockType) => void
+  onPaste?: () => void
+  onOpen?: () => void
+  excludeKinds?: BlockKind[]
+  excludeTypes?: string[]
+  label?: string
+  variant?: 'box' | 'chip'
+  dataTut?: string
+}
 
 // `excludeKinds` hides whole block kinds. Sources are always excluded (a lane's
 // source is switched in place on its card). The master chain also excludes
 // `control` blocks — pitch/amp modulation is per-lane, not post-mix.
-export default function AddBlockMenu({ onAdd, onPaste, onOpen, excludeKinds = [], excludeTypes = [], label, variant = 'box', dataTut }) {
+export default function AddBlockMenu({ onAdd, onPaste, onOpen, excludeKinds = [], excludeTypes = [], label, variant = 'box', dataTut }: AddBlockMenuProps) {
   const { mode } = useUIPrefs()
   const t = useT()
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const ref = useRef<HTMLDivElement>(null)
 
   function toggleOpen() {
     if (!open) onOpen?.()
@@ -21,15 +33,15 @@ export default function AddBlockMenu({ onAdd, onPaste, onOpen, excludeKinds = []
 
   useEffect(() => {
     if (!open) return
-    const close = (e) => {
-      if (!ref.current?.contains(e.target)) setOpen(false)
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
     }
     window.addEventListener('mousedown', close)
     return () => window.removeEventListener('mousedown', close)
   }, [open])
 
   const menuLabel = label ?? t('addMenu.add')
-  const hidden = new Set(['source', ...excludeKinds])
+  const hidden = new Set<string>(['source', ...excludeKinds])
   const hiddenTypes = new Set(excludeTypes)
   const categories = blocksByCategory({ includeAdvanced: mode === 'advanced' })
     .map((c) => ({ ...c, blocks: c.blocks.filter((def) => !hidden.has(def.kind) && !hiddenTypes.has(def.type)) }))
@@ -66,7 +78,7 @@ export default function AddBlockMenu({ onAdd, onPaste, onOpen, excludeKinds = []
         <div className="absolute left-0 top-full z-[80] mt-1 max-h-96 w-64 overflow-y-auto rounded-lg border border-edge bg-panel p-1.5 shadow-2xl">
           {canPaste && (
             <button
-              onClick={() => { onPaste(); setOpen(false) }}
+              onClick={() => { onPaste?.(); setOpen(false) }}
               className="mb-1.5 flex w-full items-center gap-2 rounded border border-accent-deep/40 px-1.5 py-1 text-left transition-colors hover:bg-surface"
             >
               <ClipboardPaste size={12} className="shrink-0 text-accent" />
