@@ -4,16 +4,26 @@ import { extractEnvelope } from '../audio/envelope'
 import { SampleLoadControls, InfoDot } from './ui'
 import { useT } from '../state/uiPrefs'
 import { useSampleLoader } from './useSampleLoader'
+import type { Block, SamplenvParams } from '../types'
 import SampleEditorModal from './SampleEditorModal'
 import SampleLibraryModal from './SampleLibraryModal'
 import { getColor } from '../theme/colors'
 
+interface EnvelopePreviewProps {
+  audioBuffer: AudioBuffer
+  smoothing: number
+  amount: number
+  trimStart?: number
+  trimEnd?: number
+  onOpen: () => void
+}
+
 // Draws the full amplitude curve with the trimmed region dimmed, so you can see
 // the contour the source follows. Clicking opens the full editor — where the
 // in/out points are dragged — the same interaction as the Sample source card.
-function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, onOpen }) {
+function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, onOpen }: EnvelopePreviewProps) {
   const t = useT()
-  const canvasRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const full = audioBuffer.duration
   const start = Math.max(0, trimStart ?? 0)
   const end = Math.min(full, trimEnd ?? full)
@@ -40,13 +50,15 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
       canvas.width = width * dpr
       canvas.height = height * dpr
       const ctx = canvas.getContext('2d')
+      if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, width, height)
       ctx.beginPath()
       for (let i = 0; i < curve.length; i++) {
         const x = (i / (curve.length - 1)) * width
-        const y = height - Math.min(1, curve[i]) * (height - 2) - 1
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+        const y = height - Math.min(1, curve[i]!) * (height - 2) - 1
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
       }
       ctx.strokeStyle = getColor('info')
       ctx.lineWidth = 1.5
@@ -89,10 +101,16 @@ function EnvelopePreview({ audioBuffer, smoothing, amount, trimStart, trimEnd, o
   )
 }
 
+interface EnvelopeSampleLoaderProps {
+  block: Block
+  soundId: string
+  onParam: (key: string, value: unknown) => void
+}
+
 // File load (drop/browse) and mic recording for the Sample Envelope block,
 // plus the shared full editor (zoom, trim, crop/reverse/normalize). Stores
 // into the same sample cache keyed by block id, so save/load is free.
-export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
+export default function EnvelopeSampleLoader({ block, soundId, onParam }: EnvelopeSampleLoaderProps) {
   const t = useT()
   const {
     sample, dragOver, recording, error, dragProps,
@@ -102,7 +120,8 @@ export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
     libraryOpen, setLibraryOpen,
   } = useSampleLoader(block, onParam)
 
-  const trimmed = sample && (block.params.trimStart != null || block.params.trimEnd != null)
+  const p = block.params as SamplenvParams
+  const trimmed = sample && (p.trimStart != null || p.trimEnd != null)
 
   return (
     <div
@@ -113,10 +132,10 @@ export default function EnvelopeSampleLoader({ block, soundId, onParam }) {
         <div>
           <EnvelopePreview
             audioBuffer={sample.audioBuffer}
-            smoothing={block.params.smoothing}
-            amount={block.params.amount}
-            trimStart={block.params.trimStart}
-            trimEnd={block.params.trimEnd}
+            smoothing={p.smoothing}
+            amount={p.amount}
+            trimStart={p.trimStart}
+            trimEnd={p.trimEnd}
             onOpen={() => setEditorOpen(true)}
           />
           <div className="mt-1 flex items-center justify-between gap-2">

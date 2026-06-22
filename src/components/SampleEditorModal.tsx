@@ -1,16 +1,26 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import WaveSurfer from 'wavesurfer.js'
 import { onPlay } from '../utils/bus'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
+import type { Region } from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
 import { reverseBuffer, normalizeBuffer, fadeBuffer } from '../audio/bufferOps'
 import { Button } from './ui'
 import { useUIPrefs, useT } from '../state/uiPrefs'
+import type { Lang } from '../state/uiPrefs'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 import { getColor } from '../theme/colors'
+import type { CachedSample } from '../blocks/registry'
+import type { Block, SampleParams } from '../types'
 
-function ToolButton({ children, onClick, disabled, title }) {
+function ToolButton({ children, onClick, disabled, title }: {
+  children: ReactNode
+  onClick: () => void
+  disabled?: boolean
+  title?: string
+}) {
   return (
     <button
       onClick={onClick}
@@ -23,7 +33,7 @@ function ToolButton({ children, onClick, disabled, title }) {
   )
 }
 
-function TimeField({ label, value, onCommit }) {
+function TimeField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }) {
   const [draft, setDraft] = useState(value.toFixed(3))
   useEffect(() => setDraft(value.toFixed(3)), [value])
 
@@ -52,7 +62,7 @@ function TimeField({ label, value, onCommit }) {
   )
 }
 
-const HELP_ITEMS = {
+const HELP_ITEMS: Record<Lang, { label: string; text: string }[]> = {
   en: [
     { label: 'Zoom', text: 'Mouse wheel zooms the waveform. Scroll left/right when zoomed in.' },
     { label: 'Trim', text: "Drag the highlighted region's edges to set in/out points. Only the trimmed part plays." },
@@ -75,15 +85,27 @@ const HELP_ITEMS = {
   ],
 }
 
+interface SampleEditorModalProps {
+  block: Block
+  sample: CachedSample
+  soundId: string
+  onParam: (key: string, value: unknown) => void
+  onApplyEdit: (fn: (buf: AudioBuffer) => AudioBuffer | null) => void
+  onCrop: () => void
+  onUndo: () => void
+  canUndo: boolean
+  onClose: () => void
+}
+
 // Full-screen sample editor: zoomable waveform (mouse wheel), draggable
 // trim region with exact in/out fields, edit tools, region audition.
 export default function SampleEditorModal({
   block, sample, soundId, onParam, onApplyEdit, onCrop, onUndo, canUndo, onClose,
-}) {
-  const containerRef = useRef(null)
-  const wsRef = useRef(null)
-  const regionRef = useRef(null)
-  const animRef = useRef(null)
+}: SampleEditorModalProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const wsRef = useRef<WaveSurfer | null>(null)
+  const regionRef = useRef<Region | null>(null)
+  const animRef = useRef(0)
   const { lang, setLang } = useUIPrefs()
   const t = useT()
   const [playing, setPlaying] = useState(false)
@@ -93,16 +115,17 @@ export default function SampleEditorModal({
   function toggleLang() {
     setLang(lang === 'en' ? 'sv' : 'en')
   }
-  const paramsRef = useRef(block.params)
-  paramsRef.current = block.params
+  const paramsRef = useRef<SampleParams>(block.params as SampleParams)
+  paramsRef.current = block.params as SampleParams
 
+  const bp = block.params as SampleParams
   const full = sample.audioBuffer.duration
-  const trimStart = Math.max(0, block.params.trimStart ?? 0)
-  const trimEnd = Math.min(full, block.params.trimEnd ?? full)
-  const trimmed = block.params.trimStart != null || block.params.trimEnd != null
+  const trimStart = Math.max(0, bp.trimStart ?? 0)
+  const trimEnd = Math.min(full, bp.trimEnd ?? full)
+  const trimmed = bp.trimStart != null || bp.trimEnd != null
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [handleClose])
@@ -144,9 +167,9 @@ export default function SampleEditorModal({
     })
 
     // Stop audition when playback leaves the region.
-    ws.on('timeupdate', (t) => {
+    ws.on('timeupdate', (time) => {
       const region = regionRef.current
-      if (region && ws.isPlaying() && t >= region.end) {
+      if (region && ws.isPlaying() && time >= region.end) {
         ws.pause()
         ws.setTime(region.start)
       }
@@ -169,19 +192,19 @@ export default function SampleEditorModal({
     cancelAnimationFrame(animRef.current)
     if (ws.isPlaying()) ws.pause()
     const p = paramsRef.current
-    const full = sample.audioBuffer.duration
-    const trimStart = Math.max(0, p.trimStart ?? 0)
-    const trimEnd = Math.min(full, p.trimEnd ?? full)
+    const fullDur = sample.audioBuffer.duration
+    const tStart = Math.max(0, p.trimStart ?? 0)
+    const tEnd = Math.min(fullDur, p.trimEnd ?? fullDur)
     // A looping grain cloud has no single sweep — leave the cursor put.
     if (p.mode === 'granular' && p.loop) return
     // Granular speed is decoupled from pitch; normal mode is pitch-as-varispeed.
     const rate = p.mode === 'granular' ? Math.max(0.1, p.speed || 1) : Math.pow(2, (p.pitch ?? 0) / 12)
-    const dur = Math.max(0.01, (trimEnd - trimStart) / Math.max(0.05, rate))
+    const dur = Math.max(0.01, (tEnd - tStart) / Math.max(0.05, rate))
     const t0 = performance.now()
-    const step = (now) => {
-      const t = (now - t0) / 1000 / dur
-      if (t >= 1 || !wsRef.current) return
-      wsRef.current.setTime(trimStart + t * (trimEnd - trimStart))
+    const step = (now: number) => {
+      const frac = (now - t0) / 1000 / dur
+      if (frac >= 1 || !wsRef.current) return
+      wsRef.current.setTime(tStart + frac * (tEnd - tStart))
       animRef.current = requestAnimationFrame(step)
     }
     animRef.current = requestAnimationFrame(step)
@@ -189,7 +212,7 @@ export default function SampleEditorModal({
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), [])
 
-  function setTrim(start, end) {
+  function setTrim(start: number, end: number) {
     const s = Math.max(0, Math.min(start, full))
     const e = Math.max(s + 0.002, Math.min(end, full))
     regionRef.current?.setOptions({ start: s, end: e })

@@ -4,19 +4,26 @@ import { onPlay } from '../utils/bus'
 import { SampleLoadControls } from './ui'
 import { useT } from '../state/uiPrefs'
 import { useSampleLoader } from './useSampleLoader'
+import type { Block, SampleParams } from '../types'
 import SampleEditorModal from './SampleEditorModal'
 import SampleLibraryModal from './SampleLibraryModal'
 import { getColor } from '../theme/colors'
 
+interface SampleEditorProps {
+  block: Block
+  soundId: string
+  onParam: (key: string, value: unknown) => void
+}
+
 // Waveform display with playback cursor, trim region, edit tools, and the
 // two ways to fill the sample buffer: file load (drop/browse) and mic.
-export default function SampleEditor({ block, soundId, onParam }) {
+export default function SampleEditor({ block, soundId, onParam }: SampleEditorProps) {
   const t = useT()
-  const containerRef = useRef(null)
-  const cursorRef = useRef(null)
-  const animRef = useRef(null)
-  const paramsRef = useRef(block.params)
-  paramsRef.current = block.params
+  const containerRef = useRef<HTMLDivElement>(null)
+  const cursorRef = useRef<HTMLDivElement>(null)
+  const animRef = useRef(0)
+  const paramsRef = useRef<SampleParams>(block.params as SampleParams)
+  paramsRef.current = block.params as SampleParams
 
   const {
     sample, dragOver, recording, error, dragProps,
@@ -56,14 +63,14 @@ export default function SampleEditor({ block, soundId, onParam }) {
     const rate = p.mode === 'granular' ? Math.max(0.1, p.speed || 1) : Math.pow(2, (p.pitch || 0) / 12)
     const duration = Math.max(0.01, (trimEnd - trimStart) / Math.max(0.05, rate))
     const start = performance.now()
-    const step = (now) => {
-      const t = (now - start) / 1000 / duration
+    const step = (now: number) => {
+      const frac = (now - start) / 1000 / duration
       if (!cursorRef.current) return
-      if (t >= 1) {
+      if (frac >= 1) {
         cursorRef.current.style.opacity = '0'
         return
       }
-      const posSec = trimStart + t * (trimEnd - trimStart)
+      const posSec = trimStart + frac * (trimEnd - trimStart)
       cursorRef.current.style.opacity = '1'
       cursorRef.current.style.left = `${((posSec / full) * 100).toFixed(2)}%`
       animRef.current = requestAnimationFrame(step)
@@ -73,7 +80,7 @@ export default function SampleEditor({ block, soundId, onParam }) {
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), [])
 
-  const trimmed = sample && (block.params.trimStart != null || block.params.trimEnd != null)
+  const trimmed = sample && ((block.params as SampleParams).trimStart != null || (block.params as SampleParams).trimEnd != null)
 
   return (
     <div
