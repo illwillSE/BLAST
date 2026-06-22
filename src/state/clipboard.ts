@@ -9,37 +9,53 @@
 
 import { useSyncExternalStore } from 'react'
 import { getSample } from '../audio/sampleCache'
+import type { CachedSample } from '../blocks/registry'
+import type { Block, BlockParams, BlockType } from '../types'
 
-let entry = null
-const listeners = new Set()
+export interface BlockClipboard {
+  kind: 'block'
+  block: { type: BlockType; enabled: boolean; params: BlockParams }
+  sample: CachedSample | null
+}
 
-export function setClipboard(e) {
+export interface SampleClipboard {
+  kind: 'sample'
+  sample: CachedSample
+  label: string
+}
+
+export type ClipboardEntry = BlockClipboard | SampleClipboard
+
+let entry: ClipboardEntry | null = null
+const listeners = new Set<() => void>()
+
+export function setClipboard(e: ClipboardEntry | null): void {
   entry = e
   listeners.forEach((fn) => fn())
 }
 
-export function getClipboard() {
+export function getClipboard(): ClipboardEntry | null {
   return entry
 }
 
-export function clearClipboard() {
+export function clearClipboard(): void {
   setClipboard(null)
 }
 
-export function onClipboardChange(fn) {
+export function onClipboardChange(fn: () => void): () => void {
   listeners.add(fn)
-  return () => listeners.delete(fn)
+  return () => { listeners.delete(fn) }
 }
 
 // Re-renders the caller whenever the clipboard changes (to enable/disable paste
 // affordances). Returns the current entry.
-export function useClipboard() {
+export function useClipboard(): ClipboardEntry | null {
   return useSyncExternalStore(onClipboardChange, getClipboard, getClipboard)
 }
 
 // ---- copy helpers (read-only; safe to call from anywhere) ------------------
 
-export function copyBlock(block) {
+export function copyBlock(block: Block): void {
   setClipboard({
     kind: 'block',
     block: structuredClone({ type: block.type, enabled: block.enabled, params: block.params }),
@@ -47,7 +63,7 @@ export function copyBlock(block) {
   })
 }
 
-export function copySample(block) {
+export function copySample(block: Block): void {
   const sample = getSample(block.id)
   if (!sample) return
   setClipboard({ kind: 'sample', sample, label: sample.fileName })

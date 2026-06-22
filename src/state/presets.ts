@@ -1,5 +1,7 @@
 import { newLane, newBlock, uid } from './model'
 import { DEFAULT_EXPORT } from '../audio/render'
+import { newSequencer } from '../audio/sequencer'
+import type { Block, BlockType, ParamsForType, Project, SourceType, Sound } from '../types'
 
 // Demo sounds that exercise every block type and the polyphonic voice pool, so a
 // quick listen across the sound list catches regressions after engine changes.
@@ -16,7 +18,7 @@ import { DEFAULT_EXPORT } from '../audio/render'
 // click away.
 
 // A chain/master block with a few params overridden.
-const blk = (type, params) => {
+function blk<T extends BlockType>(type: T, params?: Partial<ParamsForType<T>>): Block {
   const b = newBlock(type)
   if (params) Object.assign(b.params, params)
   return b
@@ -24,14 +26,20 @@ const blk = (type, params) => {
 
 // A single-lane sound: one source (with overridden params) + its effects chain,
 // plus an optional master chain.
-const sound = (name, srcType, srcParams, chain = [], master = []) => {
+function sound<T extends SourceType>(
+  name: string,
+  srcType: T,
+  srcParams?: Partial<ParamsForType<T>>,
+  chain: Block[] = [],
+  master: Block[] = [],
+): Sound {
   const lane = newLane(srcType)
   if (srcParams) Object.assign(lane.params, srcParams)
   lane.chain = chain
-  return { id: uid('snd'), name, outputVolume: 0, sources: [lane], master }
+  return { id: uid('snd'), name, outputVolume: 0, voicing: 'poly', sources: [lane], master, sequencer: newSequencer() }
 }
 
-export function presetSounds() {
+export function presetSounds(): Sound[] {
   return [
     // — Synth pad. Polyphony headline (long release → tapping q/w/e/r stacks into
     // a chord), plus Detune (unison, structural rebuild), Filter low-pass, Pitch
@@ -83,6 +91,6 @@ export function presetSounds() {
   ]
 }
 
-export function presetProject() {
+export function presetProject(): Project {
   return { name: 'BLAST Presets', version: 1, export: { ...DEFAULT_EXPORT }, sounds: presetSounds() }
 }

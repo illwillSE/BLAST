@@ -8,7 +8,13 @@
 // the owner's standing preference, so those are read from the registry and never
 // routed through this table.
 
-export const STRINGS = {
+// A nested table of UI strings: leaves are strings, branches are sub-tables, and
+// a few keys (e.g. tutorial `steps`) hold arrays of sub-tables.
+export interface StringTree {
+  [key: string]: string | StringTree | (string | StringTree)[]
+}
+
+export const STRINGS: Record<'en' | 'sv', StringTree> = {
   en: {
     common: {
       cancel: 'Cancel',
