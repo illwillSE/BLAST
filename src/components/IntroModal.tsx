@@ -7,6 +7,17 @@ import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 
 const SEEN_KEY = 'blast-intro-seen'
 
+// The intro block of the i18n table — narrowed from the loose StringTree at the
+// read boundary (t() can't return the `steps` array).
+interface IntroStrings {
+  title: string
+  skip: string
+  back: string
+  done: string
+  next: string
+  steps: { title: string; body: string }[]
+}
+
 // Light, dismissible first-run intro. Shown once (gated by localStorage), then
 // never again. Not project data — purely a one-time UI nudge. Steps come from
 // the i18n table so they translate with the rest of the chrome.
@@ -18,24 +29,24 @@ export default function IntroModal() {
   const [step, setStep] = useState(0)
   const { entered, handleClose } = useModalAnimation(() => setOpen(false))
 
-  const intro = (STRINGS[lang] ?? STRINGS.en).intro
+  const intro = ((STRINGS[lang] ?? STRINGS.en).intro) as unknown as IntroStrings
   const steps = intro.steps
   const last = step >= steps.length - 1
 
   function close() {
-    try { localStorage.setItem(SEEN_KEY, '1') } catch {}
+    try { localStorage.setItem(SEEN_KEY, '1') } catch { /* storage full / disabled */ }
     handleClose()
   }
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') close() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open) return null
-  const cur = steps[step]
+  const cur = steps[step]!
 
   return (
     <div

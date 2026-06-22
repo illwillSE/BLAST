@@ -2,9 +2,21 @@ import { useState } from 'react'
 import { Play, Copy, ClipboardPaste, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useClipboard } from '../state/clipboard'
 import { useT } from '../state/uiPrefs'
+import type { Sound } from '../types'
 import ConfirmButton from './ConfirmButton'
 
-function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, onDelete, canDelete }) {
+interface SoundRowProps {
+  sound: Sound
+  selected: boolean
+  onSelect: () => void
+  onPlay: () => void
+  onRename: (name: string) => void
+  onDuplicate: () => void
+  onDelete: () => void
+  canDelete: boolean
+}
+
+function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, onDelete, canDelete }: SoundRowProps) {
   const t = useT()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(sound.name)
@@ -73,7 +85,19 @@ function SoundRow({ sound, selected, onSelect, onPlay, onRename, onDuplicate, on
   )
 }
 
-export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd, onRename, onDuplicate, onDelete, onPasteAsNewSound }) {
+interface SoundListProps {
+  sounds: Sound[]
+  selectedId: string
+  onSelect: (id: string) => void
+  onPlay: (id: string) => void
+  onAdd: () => void
+  onRename: (id: string, name: string) => void
+  onDuplicate: (id: string) => void
+  onDelete: (id: string) => void
+  onPasteAsNewSound: () => void
+}
+
+export default function SoundList({ sounds, selectedId, onSelect, onPlay, onAdd, onRename, onDuplicate, onDelete, onPasteAsNewSound }: SoundListProps) {
   const clip = useClipboard()
   const t = useT()
   const [collapsed, setCollapsed] = useState(false)
