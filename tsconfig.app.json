@@ -15,11 +15,6 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    // Incremental migration: .ts and .js coexist. .js files are not type-checked
-    // (checkJs:false) so they stay green until each is converted.
-    "allowJs": true,
-    "checkJs": false,
-
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
