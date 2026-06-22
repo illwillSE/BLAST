@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc -b",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && gh-pages -d dist"
+    "deploy": "tsc -b && vite build && gh-pages -d dist"
   },
   "dependencies": {
     "audiobuffer-to-wav": "^1.0.0",
@@ -20,9 +21,13 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^26.0.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.4",
     "gh-pages": "^6.3.0",
     "tailwindcss": "^4.0.0",
+    "typescript": "^6.0.3",
     "vite": "^6.0.0"
   }
 }
