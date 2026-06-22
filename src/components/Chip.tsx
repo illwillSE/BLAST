@@ -1,15 +1,20 @@
 import { BLOCK_DEFS } from '../blocks/registry'
 import { CAT_STYLES, formatValue } from './ui'
+import type { Block, MonitorBlock } from '../types'
 import OutputVisualizer from './OutputVisualizer'
 import DebugMeter from './DebugMeter'
 
+type DragProps = React.HTMLAttributes<HTMLElement>
+type OnParam = (blockId: string, key: string, value: unknown) => void
+
 // One or two key values for a chip, e.g. "low-pass · 800Hz".
-export function chipSummary(block) {
+export function chipSummary(block: Block): string {
   const def = BLOCK_DEFS[block.type]
+  const params = block.params as Record<string, unknown>
   return def.params
-    .filter((p) => p.type !== 'harmonics' && (!p.show || p.show(block.params)))
+    .filter((p) => p.type !== 'harmonics' && (!p.show || p.show(params)))
     .slice(0, 2)
-    .map((p) => formatValue(p, block.params[p.key]))
+    .map((p) => formatValue(p, params[p.key]))
     .join(' · ')
 }
 
@@ -25,10 +30,18 @@ const VIEW_OPTS = [
   { value: 'off', label: 'off' },
 ]
 
+interface ChipProps {
+  block: Block
+  selected: boolean
+  onClick: () => void
+  onParam: OnParam
+  drag?: DragProps
+}
+
 // The Monitor is rendered as a card (live canvas / meter + view selector) rather
 // than a plain chip, so it shows the signal at its point in the chain among the
 // pills.
-function MonitorCard({ block, selected, onClick, onParam, drag }) {
+function MonitorCard({ block, selected, onClick, onParam, drag }: { block: MonitorBlock } & Omit<ChipProps, 'block'>) {
   const mode = block.params.mode ?? 'wave'
   return (
     <div
@@ -65,9 +78,9 @@ function MonitorCard({ block, selected, onClick, onParam, drag }) {
 
 // A single block node in the graph. Selected = amber ring; bypassed = dim +
 // struck-through name (sources are never "bypassed" — they mute via the lane).
-export default function Chip({ block, selected, onClick, onParam, drag }) {
+export default function Chip({ block, selected, onClick, onParam, drag }: ChipProps) {
   const def = BLOCK_DEFS[block.type]
-  if (def.type === 'monitor') return <MonitorCard block={block} selected={selected} onClick={onClick} onParam={onParam} drag={drag} />
+  if (block.type === 'monitor') return <MonitorCard block={block} selected={selected} onClick={onClick} onParam={onParam} drag={drag} />
   const cat = CAT_STYLES[def.category]
   const bypassed = !block.enabled && def.kind !== 'source' && def.kind !== 'analyzer'
   const summary = chipSummary(block)

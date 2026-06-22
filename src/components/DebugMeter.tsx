@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { liveEngine } from '../audio/engine'
+import type { Block } from '../types'
 
 // Numeric level readout for the Monitor block's `meter` view. Reads the block's
 // own analyser tap (signal at this point in the chain) every animation frame —
@@ -8,17 +9,19 @@ import { liveEngine } from '../audio/engine'
 // `compact` prop tightens the layout for the narrow chain card.
 
 const FLOOR_DB = -100
-const toDb = (a) => (a > 0 ? Math.max(FLOOR_DB, 20 * Math.log10(a)) : FLOOR_DB)
-const fmtDb = (db) => (db <= FLOOR_DB ? '−∞ dB' : `${db.toFixed(1)} dB`)
+const toDb = (a: number) => (a > 0 ? Math.max(FLOOR_DB, 20 * Math.log10(a)) : FLOOR_DB)
+const fmtDb = (db: number) => (db <= FLOOR_DB ? '−∞ dB' : `${db.toFixed(1)} dB`)
 // Map a dB level to a 0–100% bar width over a -60..0 dB window.
-const barPct = (db) => `${Math.max(0, Math.min(1, (db + 60) / 60)) * 100}%`
+const barPct = (db: number) => `${Math.max(0, Math.min(1, (db + 60) / 60)) * 100}%`
+
+interface Held { peak: number; min: number; max: number }
 
 // Held values live outside the component, keyed by block id, so they survive the
 // card unmounting (the inspector only mounts the selected block) and the engine
 // rebuilding when other blocks are added/removed — only an explicit reset clears
 // them. peak = loudest amplitude, min/max = raw sample extremes.
-const heldStore = new Map()
-const getHeld = (id) => {
+const heldStore = new Map<string, Held>()
+const getHeld = (id: string): Held => {
   let h = heldStore.get(id)
   if (!h) {
     h = { peak: 0, min: 0, max: 0 }
@@ -27,7 +30,16 @@ const getHeld = (id) => {
   return h
 }
 
-function Meter({ label, valRef, barRef, tickRef, compact }) {
+type SpanRef = React.RefObject<HTMLSpanElement>
+type DivRef = React.RefObject<HTMLDivElement>
+
+function Meter({ label, valRef, barRef, tickRef, compact }: {
+  label: string
+  valRef: SpanRef
+  barRef: DivRef
+  tickRef?: DivRef
+  compact: boolean
+}) {
   return (
     <div className="flex items-center gap-2 text-[10px]">
       <span className={`${compact ? 'w-7' : 'w-8'} uppercase tracking-wider text-faint`}>{label}</span>
@@ -42,18 +54,18 @@ function Meter({ label, valRef, barRef, tickRef, compact }) {
   )
 }
 
-export default function DebugMeter({ block, compact = false }) {
-  const peakValRef = useRef(null)
-  const peakBarRef = useRef(null)
-  const maxValRef = useRef(null)
-  const maxTickRef = useRef(null)
-  const rmsValRef = useRef(null)
-  const rmsBarRef = useRef(null)
-  const rangeRef = useRef(null)
-  const dcRef = useRef(null)
+export default function DebugMeter({ block, compact = false }: { block: Block; compact?: boolean }) {
+  const peakValRef = useRef<HTMLSpanElement>(null)
+  const peakBarRef = useRef<HTMLDivElement>(null)
+  const maxValRef = useRef<HTMLSpanElement>(null)
+  const maxTickRef = useRef<HTMLDivElement>(null)
+  const rmsValRef = useRef<HTMLSpanElement>(null)
+  const rmsBarRef = useRef<HTMLDivElement>(null)
+  const rangeRef = useRef<HTMLSpanElement>(null)
+  const dcRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    let raf
+    let raf: number
     const draw = () => {
       raf = requestAnimationFrame(draw)
       const analyser = liveEngine.getAnalyser(block.id)
@@ -66,7 +78,7 @@ export default function DebugMeter({ block, compact = false }) {
         analyser.size = 1024
         return
       }
-      const v = analyser.getValue()
+      const v = analyser.getValue() as Float32Array
       let peak = 0
       let min = 0
       let max = 0
@@ -76,7 +88,7 @@ export default function DebugMeter({ block, compact = false }) {
       for (let i = 0; i < n; i++) {
         // A blown-up source can push NaN/Inf through the tap; clamp to 0 so a bad
         // signal can't poison the readout (same guard as OutputVisualizer).
-        let s = v[i]
+        let s = v[i] ?? 0
         if (!Number.isFinite(s)) s = 0
         if (s < min) min = s
         if (s > max) max = s

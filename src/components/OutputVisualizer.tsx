@@ -21,13 +21,13 @@ const CLIP_COLOR = '#ff3b30'
 const WF_MIN_DB = -85
 const WF_MAX_DB = -25
 const WF_GAMMA = 0.6
-export default function OutputVisualizer({ blockId, mode }) {
-  const canvasRef = useRef(null)
-  const peaksRef = useRef([])
+export default function OutputVisualizer({ blockId, mode }: { blockId: string; mode: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const peaksRef = useRef<number[]>([])
   const clipUntilRef = useRef(0) // timestamp the clip indicator stays lit until
 
   useEffect(() => {
-    let raf
+    let raf: number
     // Palette tokens resolved once (CSS is loaded by mount); used in the loop.
     const fireLo = getColor('fire-lo')
     const accentDeep = getColor('accent-deep')
@@ -40,12 +40,12 @@ export default function OutputVisualizer({ blockId, mode }) {
     // fading into the canvas background. Built lazily on first waterfall frame
     // (not at mount — the palette tokens aren't resolvable until CSS applies,
     // and addColorStop throws on an empty color string).
-    let lut = null
-    const buildLut = () => {
+    let lut: Uint8ClampedArray | null = null
+    const buildLut = (): Uint8ClampedArray => {
       const off = document.createElement('canvas')
       off.width = 256
       off.height = 1
-      const octx = off.getContext('2d')
+      const octx = off.getContext('2d')!
       const g = octx.createLinearGradient(0, 0, 256, 0)
       g.addColorStop(0, getColor('well'))
       g.addColorStop(0.15, fireLo)
@@ -62,6 +62,7 @@ export default function OutputVisualizer({ blockId, mode }) {
       const canvas = canvasRef.current
       if (!canvas) return
       const ctx = canvas.getContext('2d')
+      if (!ctx) return
       const { width, height } = canvas
       // The waterfall keeps prior frames and scrolls them; every other mode
       // repaints from scratch.
@@ -79,7 +80,8 @@ export default function OutputVisualizer({ blockId, mode }) {
         return // first read after retuning is garbage; skip a frame
       }
 
-      const values = analyser.getValue()
+      // Single-channel waveform/fft tap → a flat Float32Array.
+      const values = analyser.getValue() as Float32Array
       // A blown-up source (e.g. an overdriven Metal hit) can push NaN/Inf
       // through the analyser; clamp non-finite samples to 0 so a bad signal
       // can never blank the display.
@@ -93,7 +95,7 @@ export default function OutputVisualizer({ blockId, mode }) {
       if (mode === 'wave') {
         let peak = 0
         for (let i = 0; i < values.length; i++) {
-          const a = Math.abs(values[i])
+          const a = Math.abs(values[i]!)
           if (a > peak) peak = a
         }
         if (peak >= CLIP_THRESHOLD) clipUntilRef.current = performance.now() + CLIP_HOLD_MS
@@ -108,7 +110,7 @@ export default function OutputVisualizer({ blockId, mode }) {
         const n = values.length
         const barW = width / n
         for (let i = 0; i < n; i++) {
-          const t = (values[i] - WF_MIN_DB) / (WF_MAX_DB - WF_MIN_DB)
+          const t = (values[i]! - WF_MIN_DB) / (WF_MAX_DB - WF_MIN_DB)
           const norm = Math.max(0, Math.min(1, t)) ** WF_GAMMA // dB window → 0..1, brightened
           const idx = ((norm * 255) | 0) * 4
           ctx.fillStyle = `rgb(${lut[idx]},${lut[idx + 1]},${lut[idx + 2]})`
@@ -126,13 +128,13 @@ export default function OutputVisualizer({ blockId, mode }) {
         ctx.shadowColor = accentDeep
         ctx.shadowBlur = 6
         for (let i = 0; i < n; i++) {
-          const norm = Math.max(0, (values[i] + 100) / 100) // dB → 0..1
+          const norm = Math.max(0, (values[i]! + 100) / 100) // dB → 0..1
           peaks[i] = Math.max(norm, (peaks[i] ?? 0) - 0.012) // caps fall slowly
           const h = Math.max(1, norm * mid)
           ctx.fillStyle = gradient
           // mirrored around the center line
           ctx.fillRect(i * barW + 0.5, mid - h, Math.max(1, barW - 1.5), h * 2)
-          const peakY = peaks[i] * mid
+          const peakY = peaks[i]! * mid
           if (peakY > 1) {
             ctx.fillStyle = firePeak
             ctx.fillRect(i * barW + 0.5, mid - peakY - 1.5, Math.max(1, barW - 1.5), 1.5)
@@ -144,7 +146,7 @@ export default function OutputVisualizer({ blockId, mode }) {
         const barW = width / values.length
         ctx.fillStyle = spectrum
         for (let i = 0; i < values.length; i++) {
-          const norm = Math.max(0, (values[i] + 100) / 100) // dB → 0..1
+          const norm = Math.max(0, (values[i]! + 100) / 100) // dB → 0..1
           const h = norm * height
           ctx.fillRect(i * barW, height - h, Math.max(1, barW - 1), h)
         }
@@ -155,7 +157,7 @@ export default function OutputVisualizer({ blockId, mode }) {
         const halfH = height / 2 - 1
         for (let i = 0; i < values.length; i++) {
           const x = (i / (values.length - 1)) * width
-          const y = height / 2 - values[i] * halfH
+          const y = height / 2 - values[i]! * halfH
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }

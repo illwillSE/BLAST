@@ -1,16 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { getColor } from '../theme/colors'
+import type { SynthParams } from '../types'
 
 // Size the backing store to the element's real pixel size so lines stay crisp
 // on hi-dpi / when CSS stretches the canvas. Returns a context already scaled to
 // CSS-pixel coordinates plus the CSS width/height to draw against.
-function setupCanvas(canvas) {
+function setupCanvas(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; width: number; height: number } {
   const dpr = window.devicePixelRatio || 1
   const width = canvas.clientWidth
   const height = canvas.clientHeight
   canvas.width = Math.round(width * dpr)
   canvas.height = Math.round(height * dpr)
-  const ctx = canvas.getContext('2d')
+  const ctx = canvas.getContext('2d')!
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, width, height)
   return { ctx, width, height }
@@ -20,7 +21,7 @@ function setupCanvas(canvas) {
 // the wave types `oscillatorOptions` maps to in registry.js. The band-limited
 // `partials` count is intentionally ignored here — the preview draws the ideal
 // shape, which is close enough to read at a glance.
-function waveAt(p, phase) {
+function waveAt(p: SynthParams, phase: number): number {
   switch (p.wave) {
     case 'sine':
       return Math.sin(2 * Math.PI * phase)
@@ -34,7 +35,7 @@ function waveAt(p, phase) {
     case 'custom': {
       const h = Array.isArray(p.harmonics) && p.harmonics.length ? p.harmonics : [1]
       let v = 0
-      for (let k = 0; k < h.length; k++) v += h[k] * Math.sin(2 * Math.PI * (k + 1) * phase)
+      for (let k = 0; k < h.length; k++) v += h[k]! * Math.sin(2 * Math.PI * (k + 1) * phase)
       return v
     }
     case 'sawtooth':
@@ -43,7 +44,7 @@ function waveAt(p, phase) {
   }
 }
 
-function drawWave(canvas, p) {
+function drawWave(canvas: HTMLCanvasElement, p: SynthParams): void {
   const { ctx, width, height } = setupCanvas(canvas)
   const mid = height / 2
   const amp = mid - 1.5
@@ -57,14 +58,15 @@ function drawWave(canvas, p) {
   for (let x = 0; x <= width; x++) {
     const phase = ((x / width) * cycles) % 1
     const y = mid - (waveAt(p, phase) / peak) * amp
-    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    if (x === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
   }
   ctx.strokeStyle = getColor('accent')
   ctx.lineWidth = 1
   ctx.stroke()
 }
 
-function drawEnv(canvas, p) {
+function drawEnv(canvas: HTMLCanvasElement, p: SynthParams): void {
   const { ctx, width, height } = setupCanvas(canvas)
   const pad = 1
   const top = pad
@@ -78,8 +80,8 @@ function drawEnv(canvas, p) {
   // is held for whatever's left of the note after attack+decay.
   const hold = Math.max(0, (p.duration ?? 0) - a - d)
   const total = a + d + hold + r || 1
-  const xAt = (t) => (t / total) * width
-  const yAt = (lvl) => bottom - lvl * span
+  const xAt = (t: number) => (t / total) * width
+  const yAt = (lvl: number) => bottom - lvl * span
 
   // Faint sustain-level guide.
   ctx.strokeStyle = getColor('accent', '33')
@@ -103,13 +105,14 @@ function drawEnv(canvas, p) {
 // Read-only preview of one synth facet — `which` 'wave' draws the oscillator
 // cycle, 'env' draws the ADSR envelope. Redraws from `params` on every tweak
 // (and on resize, to stay crisp) — pure math, no audio nodes.
-export default function SynthPreview({ params, which }) {
-  const ref = useRef(null)
+export default function SynthPreview({ params, which }: { params: SynthParams; which: 'wave' | 'env' }) {
+  const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const draw = () => {
       if (!ref.current) return
-      which === 'env' ? drawEnv(ref.current, params) : drawWave(ref.current, params)
+      if (which === 'env') drawEnv(ref.current, params)
+      else drawWave(ref.current, params)
     }
     draw()
     const ro = new ResizeObserver(draw)
