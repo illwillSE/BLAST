@@ -14,6 +14,16 @@
 // etc.) render from this same shape, so the UI can be swapped without touching
 // playback or persistence.
 
+import type { Sequencer, SeqNote } from '../types'
+
+// A flattened trigger event. `offset` is seconds from the trigger start; a chord
+// is several events at the same offset, a sequence is several at rising offsets.
+export interface SeqEvent {
+  transpose: number
+  offset?: number
+  duration?: number
+}
+
 export const SEQ_MIN_STEPS = 2
 export const SEQ_MAX_STEPS = 16
 
@@ -23,7 +33,7 @@ export const SEQ_MAX_STEPS = 16
 // sequencer shows the same range; widen here if more reach is ever needed.
 export const SEQ_RANGE = { lo: -12, hi: 12 }
 
-export function newSequencer() {
+export function newSequencer(): Sequencer {
   return {
     enabled: false,
     bpm: 120, // quarter-note tempo; each step is a 16th note (see stepSeconds)
@@ -41,18 +51,18 @@ export function newSequencer() {
 
 // Seconds per step. Each step is a 16th note (4 per beat), so a 16-step grid is
 // exactly one bar at the given quarter-note BPM — the standard sequencer layout.
-export function stepSeconds(seq) {
+export function stepSeconds(seq: Sequencer): number {
   return (60 / Math.max(1, seq?.bpm ?? 120)) * 0.25
 }
 
 // A note's pitch/length, tolerant of the old v1 shape (a bare semitone number)
 // in case a project was saved before per-note length existed.
-const notePitch = (note) => (typeof note === 'number' ? note : note.pitch)
-const noteLen = (note) => (typeof note === 'number' ? 1 : note.len ?? 1)
+const notePitch = (note: SeqNote | number): number => (typeof note === 'number' ? note : note.pitch)
+const noteLen = (note: SeqNote | number): number => (typeof note === 'number' ? 1 : note.len ?? 1)
 
 // Wall-clock end of the sequence (last note's offset + its sounding length), so
 // the render / duration window covers a long final note. Zero when inactive.
-export function sequenceSpan(seq) {
+export function sequenceSpan(seq: Sequencer): number {
   if (!seq?.enabled || !seq.steps?.length) return 0
   const step = stepSeconds(seq)
   const gate = seq.gate ?? 0.9
@@ -73,11 +83,11 @@ export function sequenceSpan(seq) {
 // A note held for `len` steps plays for `len × step × gate`; overlapping notes
 // (a long note ringing into later steps) stack on the VoicePool. Rests (steps
 // with no notes) contribute no events; several notes in one step form a chord.
-export function sequenceToNotes(seq, transpose = 0) {
+export function sequenceToNotes(seq: Sequencer, transpose = 0): number | SeqEvent[] {
   if (!seq?.enabled || !seq.steps?.length) return transpose
   const step = stepSeconds(seq)
   const gate = seq.gate ?? 0.9
-  const events = []
+  const events: SeqEvent[] = []
   seq.steps.forEach((s, i) => {
     for (const note of s.notes ?? []) {
       const duration = Math.max(0.02, noteLen(note) * step * gate)

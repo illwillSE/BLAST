@@ -5,18 +5,28 @@
 
 const WINDOW_SEC = 0.01 // RMS window (~10ms)
 
+interface ExtractOptions {
+  smoothing?: number
+  amount?: number
+  trimStart?: number
+  trimEnd?: number
+}
+
 // Extract a normalized amplitude envelope from an AudioBuffer.
 //   smoothing — seconds of moving-average smoothing applied to the curve
 //   amount    — 0..1 blend between a flat tone (0) and the full contour (1)
 //   trimStart/trimEnd — seconds; restrict extraction to this slice (non-destructive)
-export function extractEnvelope(audioBuffer, { smoothing = 0.02, amount = 1, trimStart, trimEnd } = {}) {
+export function extractEnvelope(
+  audioBuffer: AudioBuffer,
+  { smoothing = 0.02, amount = 1, trimStart, trimEnd }: ExtractOptions = {},
+): Float32Array<ArrayBuffer> {
   const sr = audioBuffer.sampleRate
   const win = Math.max(1, Math.floor(sr * WINDOW_SEC))
   const total = audioBuffer.length
   const from = Math.max(0, Math.min(Math.floor((trimStart ?? 0) * sr), total))
   const to = Math.max(from, Math.min(Math.ceil((trimEnd ?? audioBuffer.duration) * sr), total))
   const n = to - from
-  const channels = []
+  const channels: Float32Array[] = []
   for (let c = 0; c < audioBuffer.numberOfChannels; c++) channels.push(audioBuffer.getChannelData(c))
 
   const count = Math.max(1, Math.ceil(n / win))
@@ -29,7 +39,7 @@ export function extractEnvelope(audioBuffer, { smoothing = 0.02, amount = 1, tri
     let samples = 0
     for (let i = start; i < end; i++) {
       for (const data of channels) {
-        const s = data[i]
+        const s = data[i]! // in-bounds: i < to <= channel length
         sum += s * s
         samples++
       }
@@ -45,23 +55,23 @@ export function extractEnvelope(audioBuffer, { smoothing = 0.02, amount = 1, tri
   const floor = peak * 0.04
   let peak2 = 0
   for (let w = 0; w < count; w++) {
-    rms[w] = Math.max(0, rms[w] - floor)
-    if (rms[w] > peak2) peak2 = rms[w]
+    rms[w] = Math.max(0, rms[w]! - floor)
+    if (rms[w]! > peak2) peak2 = rms[w]!
   }
-  if (peak2 > 1e-6) for (let w = 0; w < count; w++) rms[w] /= peak2
+  if (peak2 > 1e-6) for (let w = 0; w < count; w++) rms[w] = rms[w]! / peak2
 
   const smoothed = smoothCurve(rms, Math.round(smoothing / WINDOW_SEC))
 
   // Blend toward a flat 1.0 — amount 0 leaves the source unshaped (constant),
   // amount 1 follows the sample's contour exactly.
   for (let w = 0; w < smoothed.length; w++) {
-    smoothed[w] = Math.max(0, 1 + amount * (smoothed[w] - 1))
+    smoothed[w] = Math.max(0, 1 + amount * (smoothed[w]! - 1))
   }
   return smoothed
 }
 
 // Symmetric moving average, radius in windows. radius < 1 = no smoothing.
-function smoothCurve(curve, radius) {
+function smoothCurve(curve: Float32Array<ArrayBuffer>, radius: number): Float32Array<ArrayBuffer> {
   if (radius < 1) return curve
   const n = curve.length
   const out = new Float32Array(n)
@@ -70,7 +80,7 @@ function smoothCurve(curve, radius) {
     let c = 0
     for (let k = -radius; k <= radius; k++) {
       const j = i + k
-      if (j >= 0 && j < n) { sum += curve[j]; c++ }
+      if (j >= 0 && j < n) { sum += curve[j]!; c++ }
     }
     out[i] = sum / c
   }

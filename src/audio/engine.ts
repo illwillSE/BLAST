@@ -1,12 +1,37 @@
 import * as Tone from 'tone'
 import { BLOCK_DEFS } from '../blocks/registry'
+import type { AnyBlockDef, TriggerContext } from '../blocks/registry'
 import { getSample } from './sampleCache'
 import { extractEnvelope } from './envelope'
 import { sequenceSpan } from './sequencer'
+import type { SeqEvent } from './sequencer'
+import { VoicePool } from './voicePool'
+import type { PoolVoice } from './voicePool'
+import type {
+  Block,
+  Lane,
+  NoiseParams,
+  PitchenvBlock,
+  PitchlfoBlock,
+  SamplenvBlock,
+  Sound,
+  SynthParams,
+  VocoderBlock,
+} from '../types'
 
-const centsToRate = (cents) => Math.pow(2, cents / 1200)
-const semisToRate = (semis) => Math.pow(2, semis / 12)
-const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
+// ---------------------------------------------------------------------------
+// Dynamic-dispatch note: the engine builds the Tone graph by iterating blocks
+// and dispatching on `block.type` / `def.kind` — relationships the type system
+// can't follow from a value-level tag. So a block's node bundle (typed `unknown`
+// at the registry boundary) is read through the permissive `NodeBundle` view,
+// and a few `as` casts narrow a source's pool/params after a runtime kind check
+// (isSynthSource / isNoiseSource / src.type === 'sample'). Each such cast is
+// guarded by exactly that check.
+// ---------------------------------------------------------------------------
+
+const centsToRate = (cents: number) => Math.pow(2, cents / 1200)
+const semisToRate = (semis: number) => Math.pow(2, semis / 12)
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 const PULSE_WIDTH_MIN = -0.95
 const PULSE_WIDTH_MAX = 0.95
 
@@ -15,24 +40,85 @@ const PULSE_WIDTH_MAX = 0.95
 // hard-cutting each other (the old behavior stopped every voice on each trigger).
 const MAX_SAMPLE_VOICES = 8
 
+// The mutable node bundle the engine reaches into. A block's create() returns an
+// opaque bundle; the engine reads the members it knows are present for a given
+// block kind, and adds `envGain` to source bundles.
+interface NodeBundle {
+  synth?: VoicePool | Tone.NoiseSynth
+  gain?: Tone.Volume
+  envGain?: Tone.Gain
+  lfo?: Tone.LFO
+  pwmLfo?: Tone.LFO
+  analyser?: Tone.Analyser
+}
+
+interface BuiltEntry {
+  def: AnyBlockDef
+  nodes: NodeBundle
+}
+
+interface DisposableLike {
+  dispose(): void
+}
+
+type TriggerHook = (when: number, ctx: TriggerContext<Record<string, unknown>>) => void
+
+type SampleSource = Tone.ToneBufferSource | Tone.GrainPlayer
+
+interface LaneRuntime {
+  src: Lane
+  def: AnyBlockDef
+  nodes: NodeBundle
+  envGain: Tone.Gain
+  laneVol: Tone.Volume
+  lanePan: Tone.Panner
+  controls: Block[]
+  hooks: { block: Block; onTrigger: TriggerHook }[]
+  lfos: { block: PitchlfoBlock; lfo: Tone.LFO }[]
+  pwmLfo: Tone.LFO | null
+  envBlocks: PitchenvBlock[]
+  ampBlocks: SamplenvBlock[]
+  hasAmpEnv: boolean
+  activeSampleSources: Set<SampleSource>
+  lastTranspose: number
+  lastNoteEnd: number
+  voiceEnv: Map<PoolVoice, Tone.Signal>
+}
+
+export interface EngineHandle {
+  trigger(when?: number, notes?: number | SeqEvent[]): number
+  apply(sound: Sound): void
+  dispose(): void
+  getAnalyser(id: string): Tone.Analyser | null
+  getNativeOutputAnalyser(): AnalyserNode | null
+  getOutputLevel(): number | number[]
+  resetLegatoState(): void
+}
+
 // Synth-family sources share the Tone API the engine's pitch/trigger path needs:
 // a `synth` node with `.detune` (cents), `.envelope` (ADSR), and
 // triggerAttackRelease(freq, dur, when). Tone.Synth and Tone.MetalSynth both qualify.
-const isSynthSource = (type) => type === 'synth' || type === 'metal'
+const isSynthSource = (type: string) => type === 'synth' || type === 'metal'
 
 // NoiseSynth shares the `.envelope` (ADSR) interface with Synth, but has no
 // `.detune` and its triggerAttackRelease takes (duration, when) — no frequency.
-const isNoiseSource = (type) => type === 'noise'
+const isNoiseSource = (type: string) => type === 'noise'
 
 // Metal has no Length param — its percussive note runs attack+decay (down to its
 // 0 floor), then the release tail. Synth/Noise are held for their explicit Length.
-const synthHold = (p, type) => (type === 'metal' ? p.attack + p.decay : p.duration)
+const synthHold = (p: SynthParams, type: string) => (type === 'metal' ? p.attack + p.decay : p.duration)
+
+// Collect a create() bundle's nodes (single nodes + arrays like vocoder bands)
+// into a flat disposable list. The bundle is opaque (`unknown`) at this boundary.
+function collectNodes(nodes: unknown): DisposableLike[] {
+  return Object.values(nodes as Record<string, DisposableLike | DisposableLike[]>).flat()
+}
 
 // Coerce the trigger() `notes` argument into a note-event list. A bare number is
 // the legacy single-note transpose (keyboard play); undefined/empty becomes one
 // note at the source's own pitch. An array of { transpose, offset, duration }
 // passes through — a chord (offset 0) or a sequence (rising offsets).
-function normalizeNotes(notes) {
+function normalizeNotes(notes: number | SeqEvent[]): SeqEvent[] {
   if (typeof notes === 'number') return [{ transpose: notes, offset: 0 }]
   if (Array.isArray(notes) && notes.length) return notes
   return [{ transpose: 0, offset: 0 }]
@@ -43,13 +129,13 @@ function normalizeNotes(notes) {
 // the source's envGain) is the only thing shaping volume. Pitched sources are
 // VoicePools (no single `.envelope`) so they go through `.set`, which fans out
 // to every voice; the noise source is a plain NoiseSynth singleton.
-function flattenEnv(synth) {
+function flattenEnv(synth: VoicePool | Tone.NoiseSynth): void {
   const envelope = { attack: 0.005, decay: 0, sustain: 1, release: 0.01 }
-  if (synth.voices) synth.set({ envelope }) // VoicePool
+  if (synth instanceof VoicePool) synth.set({ envelope }) // VoicePool
   else Object.assign(synth.envelope, envelope) // NoiseSynth singleton
 }
 
-function applyPulsePwm(lfo, params) {
+function applyPulsePwm(lfo: Tone.LFO, params: SynthParams): void {
   const base = clamp(params.width ?? 0, PULSE_WIDTH_MIN, PULSE_WIDTH_MAX)
   const depth = Math.max(0, params.pwmDepth ?? 0)
   const rate = Math.max(0, params.pwmRate ?? 0)
@@ -68,13 +154,13 @@ function applyPulsePwm(lfo, params) {
 // laneVolume → lanePanner → sourceBus. All lanes mix at sourceBus, then the
 // shared master chain → masterOut → destination. Lane controls (pitch LFO /
 // pitch env / sample envelope) are per-lane and not in the audio path.
-export async function buildChain(sound, destination) {
-  const built = new Map() // blockId -> { def, nodes }
-  const disposables = []
-  const readyPromises = []
-  const lanes = [] // per-lane runtime state
-  const masterHooks = [] // master inserts that fire on every Play (rare)
-  const triggerNodes = new Set() // transient nodes hooks spawn (e.g. vocoder modulator)
+export async function buildChain(sound: Sound, destination: Tone.InputNode): Promise<EngineHandle> {
+  const built = new Map<string, BuiltEntry>()
+  const disposables: DisposableLike[] = []
+  const readyPromises: Promise<unknown>[] = []
+  const lanes: LaneRuntime[] = [] // per-lane runtime state
+  const masterHooks: { block: Block; onTrigger: TriggerHook }[] = [] // master inserts that fire on every Play (rare)
+  const triggerNodes = new Set<Tone.ToneAudioNode>() // transient nodes hooks spawn (e.g. vocoder modulator)
 
   // All lanes mix into one bus before the master chain.
   const sourceBus = new Tone.Gain(1)
@@ -84,10 +170,11 @@ export async function buildChain(sound, destination) {
   for (const src of sound.sources ?? []) {
     if (!src.enabled) continue // muted lane: skip entirely (structural)
     const def = BLOCK_DEFS[src.type]
-    if (!def || def.kind !== 'source') continue
+    if (!def || def.kind !== 'source' || !def.create) continue
 
     const created = def.create(src.params)
-    Object.values(created.nodes).flat().forEach((n) => disposables.push(n))
+    const nodes = created.nodes as NodeBundle
+    collectNodes(created.nodes).forEach((n) => disposables.push(n))
     if (created.ready) readyPromises.push(created.ready)
 
     // Each source runs through its own envGain (unity by default) before the
@@ -95,12 +182,12 @@ export async function buildChain(sound, destination) {
     const envGain = new Tone.Gain(1)
     disposables.push(envGain)
     created.output.connect(envGain)
-    created.nodes.envGain = envGain
-    built.set(src.id, { def, nodes: created.nodes })
+    nodes.envGain = envGain
+    built.set(src.id, { def, nodes })
 
-    const controls = [] // this lane's enabled control blocks
-    const hooks = [] // this lane's per-trigger insert hooks (e.g. vocoder)
-    let prev = envGain
+    const controls: Block[] = [] // this lane's enabled control blocks
+    const hooks: { block: Block; onTrigger: TriggerHook }[] = [] // this lane's per-trigger insert hooks (e.g. vocoder)
+    let prev: Tone.ToneAudioNode | VoicePool = envGain
 
     for (const block of src.chain ?? []) {
       const bdef = BLOCK_DEFS[block.type]
@@ -113,12 +200,13 @@ export async function buildChain(sound, destination) {
       // Analyzers are passive taps with no on/off — always build them so the tap
       // stays live (a stale enabled:false can't strand it). Inserts honor bypass.
       if (!block.enabled && bdef.kind !== 'analyzer') continue
+      if (!bdef.create) continue
       const c = bdef.create(block.params)
-      Object.values(c.nodes).flat().forEach((n) => disposables.push(n))
+      collectNodes(c.nodes).forEach((n) => disposables.push(n))
       if (c.ready) readyPromises.push(c.ready)
-      built.set(block.id, { def: bdef, nodes: c.nodes })
+      built.set(block.id, { def: bdef, nodes: c.nodes as NodeBundle })
       if (c.onTrigger) hooks.push({ block, onTrigger: c.onTrigger })
-      prev.connect(c.input)
+      prev.connect(c.input!)
       prev = c.output
     }
 
@@ -133,29 +221,32 @@ export async function buildChain(sound, destination) {
     lanePan.connect(sourceBus)
 
     lanes.push({
-      src, def, nodes: created.nodes, envGain, laneVol, lanePan,
+      src, def, nodes, envGain, laneVol, lanePan,
       controls, hooks, lfos: [], pwmLfo: null, envBlocks: [], ampBlocks: [], hasAmpEnv: false,
       activeSampleSources: new Set(),
       lastTranspose: 0,
       lastNoteEnd: -Infinity,
+      voiceEnv: new Map(),
     })
   }
 
   // --- per-lane pitch + amplitude modulation wiring ----------------------
   for (const lane of lanes) {
-    lane.ampBlocks = lane.controls.filter((b) => b.type === 'samplenv')
-    lane.envBlocks = lane.controls.filter((b) => b.type === 'pitchenv')
+    lane.ampBlocks = lane.controls.filter((b): b is SamplenvBlock => b.type === 'samplenv')
+    lane.envBlocks = lane.controls.filter((b): b is PitchenvBlock => b.type === 'pitchenv')
     lane.hasAmpEnv = lane.ampBlocks.length > 0
 
     // Sample Envelope flattens this lane's synth/noise ADSR so the curve owns volume.
-    if (lane.hasAmpEnv && (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type))) flattenEnv(lane.nodes.synth)
+    if (lane.hasAmpEnv && (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type)) && lane.nodes.synth) {
+      flattenEnv(lane.nodes.synth)
+    }
 
-    for (const block of lane.controls.filter((b) => b.type === 'pitchlfo')) {
+    for (const block of lane.controls.filter((b): b is PitchlfoBlock => b.type === 'pitchlfo')) {
       const lfo = new Tone.LFO({ frequency: block.params.rate, min: -1, max: 1, type: block.params.wave })
       lfo.start()
       disposables.push(lfo)
       lane.lfos.push({ block, lfo })
-      built.get(block.id).nodes.lfo = lfo
+      built.get(block.id)!.nodes.lfo = lfo
     }
 
     // Synth sources: wire the pitch LFO and pitch envelope into *every* voice's
@@ -166,24 +257,26 @@ export async function buildChain(sound, destination) {
     // voice was allocated via `lane.voiceEnv`. Base pitch is baked into each
     // note's frequency (`p.freq * semisToRate(transpose)`), independent of this.
     if (isSynthSource(lane.src.type)) {
-      const pool = lane.nodes.synth
+      const pool = lane.nodes.synth as VoicePool
       pool.setVoicing(sound.voicing === 'mono') // initial gain (offline render reads it here)
-      lane.voiceEnv = new Map()
       for (const { block: lb, lfo } of lane.lfos) {
         lfo.min = -lb.params.depth
         lfo.max = lb.params.depth
       }
       if (lane.src.type === 'synth' && lane.src.params.wave === 'pulse') {
-        const pwmLfo = new Tone.LFO({ frequency: 0.001, min: lane.src.params.width ?? 0, max: lane.src.params.width ?? 0, type: lane.src.params.pwmWave ?? 'sine' })
-        applyPulsePwm(pwmLfo, lane.src.params)
+        const sp = lane.src.params
+        const pwmLfo = new Tone.LFO({ frequency: 0.001, min: sp.width ?? 0, max: sp.width ?? 0, type: sp.pwmWave ?? 'sine' })
+        applyPulsePwm(pwmLfo, sp)
         pwmLfo.start()
         disposables.push(pwmLfo)
         lane.pwmLfo = pwmLfo
-        built.get(lane.src.id).nodes.pwmLfo = pwmLfo
+        built.get(lane.src.id)!.nodes.pwmLfo = pwmLfo
       }
       for (const voice of pool.voices) {
         for (const { lfo } of lane.lfos) lfo.connect(voice.detune)
-        if (lane.pwmLfo && voice.oscillator?.width) lane.pwmLfo.connect(voice.oscillator.width)
+        // Pulse width is only on Synth's OmniOscillator; absent on MetalSynth.
+        const osc = (voice as Tone.Synth).oscillator as { width?: Tone.InputNode } | undefined
+        if (lane.pwmLfo && osc?.width) lane.pwmLfo.connect(osc.width)
         if (lane.envBlocks.length > 0) {
           const envSignal = new Tone.Signal(0)
           disposables.push(envSignal)
@@ -195,16 +288,16 @@ export async function buildChain(sound, destination) {
   }
 
   // --- master chain after the mix bus ------------------------------------
-  let prev = sourceBus
+  let prev: Tone.ToneAudioNode | VoicePool = sourceBus
   for (const block of sound.master ?? []) {
     const bdef = BLOCK_DEFS[block.type]
-    if (!bdef || bdef.kind === 'control' || (!block.enabled && bdef.kind !== 'analyzer')) continue
+    if (!bdef || bdef.kind === 'control' || (!block.enabled && bdef.kind !== 'analyzer') || !bdef.create) continue
     const c = bdef.create(block.params)
-    Object.values(c.nodes).flat().forEach((n) => disposables.push(n))
+    collectNodes(c.nodes).forEach((n) => disposables.push(n))
     if (c.ready) readyPromises.push(c.ready)
-    built.set(block.id, { def: bdef, nodes: c.nodes })
+    built.set(block.id, { def: bdef, nodes: c.nodes as NodeBundle })
     if (c.onTrigger) masterHooks.push({ block, onTrigger: c.onTrigger })
-    prev.connect(c.input)
+    prev.connect(c.input!)
     prev = c.output
   }
 
@@ -221,14 +314,14 @@ export async function buildChain(sound, destination) {
 
   // Output taps for the background visualization — live playback only. Nothing
   // reads them during an offline WAV render, so don't build them there.
-  let outputMeter = null
-  let nativeOutputAnalyser = null
+  let outputMeter: Tone.Meter | null = null
+  let nativeOutputAnalyser: AnalyserNode | null = null
   if (!Tone.getContext().isOffline) {
     outputMeter = new Tone.Meter({ normalRange: true, smoothing: 0.82 })
     nativeOutputAnalyser = Tone.getContext().createAnalyser()
     nativeOutputAnalyser.fftSize = 2048
     nativeOutputAnalyser.smoothingTimeConstant = 0.75
-    disposables.push(outputMeter, { dispose: () => nativeOutputAnalyser.disconnect() })
+    disposables.push(outputMeter, { dispose: () => nativeOutputAnalyser?.disconnect() })
     masterLimiter.connect(outputMeter)
     masterLimiter.connect(nativeOutputAnalyser)
   }
@@ -237,7 +330,7 @@ export async function buildChain(sound, destination) {
   // at trigger time, not held by a Tone node — so always read them from the
   // latest sound state (updated by apply()), never the build-time snapshot.
   let current = sound
-  const freshBlock = (id) => {
+  const freshBlock = (id: string): Block | null => {
     for (const src of current.sources ?? []) {
       if (src.id === id) return src
       const hit = (src.chain ?? []).find((b) => b.id === id)
@@ -245,14 +338,17 @@ export async function buildChain(sound, destination) {
     }
     return (current.master ?? []).find((b) => b.id === id) ?? null
   }
-  const freshParams = (block) => freshBlock(block.id)?.params ?? block.params
-  const freshLane = (laneId) => (current.sources ?? []).find((s) => s.id === laneId)
+  function freshParams<B extends Block>(block: B): B['params'] {
+    return (freshBlock(block.id)?.params ?? block.params) as B['params']
+  }
+  const freshLane = (laneId: string): Lane | undefined => (current.sources ?? []).find((s) => s.id === laneId)
 
   // Extract the amplitude curve fresh and schedule it on a lane's envGain.
   // `noteLen` is the source's own playing length, used when stretching to note.
-  function scheduleAmpEnv(lane, when, noteLen) {
+  function scheduleAmpEnv(lane: LaneRuntime, when: number, noteLen: number): number | null {
     if (!lane.hasAmpEnv) return null
     const block = lane.ampBlocks[0]
+    if (!block) return null
     const sample = getSample(block.id)
     if (!sample?.audioBuffer) return null
     const ep = freshParams(block)
@@ -267,7 +363,10 @@ export async function buildChain(sound, destination) {
     const envGain = lane.envGain
     try {
       envGain.gain.cancelScheduledValues(when)
-      envGain.gain.setValueCurveAtTime(curve, when, dur)
+      // Tone's Param types the curve as number[], but forwards to the native
+      // AudioParam which accepts a Float32Array — pass it through to avoid a
+      // per-trigger Array copy of the contour.
+      envGain.gain.setValueCurveAtTime(curve as unknown as number[], when, dur)
       envGain.gain.setValueAtTime(0, when + dur)
     } catch {
       envGain.gain.cancelScheduledValues(when)
@@ -279,13 +378,14 @@ export async function buildChain(sound, destination) {
   // Natural length a lane's source must be held for: the longest enabled
   // vocoder modulator in THIS lane's chain (a vocoder holds only its own lane's
   // synth carrier so the whole sentence vocodes). Samples are one-shots.
-  function vocoderHold(lane) {
+  function vocoderHold(lane: LaneRuntime): number {
     let hold = 0
     for (const { block } of lane.hooks) {
       if (block.type !== 'vocoder') continue
-      const sample = getSample(block.id)
+      const vblock: VocoderBlock = block
+      const sample = getSample(vblock.id)
       if (!sample?.audioBuffer) continue
-      const p = freshParams(block)
+      const p = freshParams(vblock)
       const full = sample.audioBuffer.duration
       const ts = Math.max(0, p.trimStart ?? 0)
       const te = Math.min(full, p.trimEnd ?? full)
@@ -298,10 +398,10 @@ export async function buildChain(sound, destination) {
   // `transpose` shifts the pitch (semitones); `duration`, when given (a sequencer
   // step), replaces the source's own Length. Returns the lane's playing length
   // (from `when`), so the caller can fold in the lane delay for the total.
-  function triggerLane(lane, when, note) {
+  function triggerLane(lane: LaneRuntime, when: number, note: SeqEvent): number {
     const { src, nodes } = lane
     const transpose = note.transpose ?? 0
-    const carrierHold = (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type)) ? vocoderHold(lane) : 0
+    const carrierHold = (isSynthSource(src.type) || isNoiseSource(src.type)) ? vocoderHold(lane) : 0
     // Sound-wide voicing, read fresh: mono reuses a single voice so each note
     // steals the last; poly fans out across the pool / stacks sample voices.
     const mono = current.voicing === 'mono'
@@ -314,14 +414,15 @@ export async function buildChain(sound, destination) {
     }
 
     if (isSynthSource(src.type)) {
-      const p = freshParams(src)
+      const p = freshParams(src) as SynthParams
+      const pool = nodes.synth as VoicePool
       // Grab the voice that will play this note, so its pitch envelope and length
       // are scheduled on that voice alone — overlapping notes stay independent.
       // Mono pins voice 0, so each note retriggers (steals) the same voice.
-      const voice = mono ? nodes.synth.voices[0] : nodes.synth.allocate()
+      const voice = mono ? pool.voices[0]! : pool.allocate()
       if (lane.envBlocks.length > 0) {
-        const env = freshParams(lane.envBlocks[0])
-        const sig = lane.voiceEnv.get(voice)
+        const env = freshParams(lane.envBlocks[0]!)
+        const sig = lane.voiceEnv.get(voice)!
         sig.cancelScheduledValues(when)
         sig.setValueAtTime(env.start, when)
         sig.linearRampToValueAtTime(env.end, when + env.time)
@@ -357,12 +458,12 @@ export async function buildChain(sound, destination) {
     }
 
     if (isNoiseSource(src.type)) {
-      const p = freshParams(src)
+      const p = freshParams(src) as NoiseParams
       const len = note.duration ?? p.duration
       const ampDur = scheduleAmpEnv(lane, when, len)
       const base = ampDur ?? (carrierHold > 0 ? carrierHold : len)
       const noteDur = Math.max(base, carrierHold)
-      nodes.synth.triggerAttackRelease(noteDur, when)
+      ;(nodes.synth as Tone.NoiseSynth).triggerAttackRelease(noteDur, when)
       dur = noteDur + p.release
     }
 
@@ -376,6 +477,7 @@ export async function buildChain(sound, destination) {
         const sampleCap = mono ? 1 : MAX_SAMPLE_VOICES
         while (lane.activeSampleSources.size >= sampleCap) {
           const oldest = lane.activeSampleSources.values().next().value
+          if (!oldest) break
           lane.activeSampleSources.delete(oldest)
           try { oldest.stop() } catch { /* already stopped */ }
         }
@@ -400,7 +502,7 @@ export async function buildChain(sound, destination) {
           const player = new Tone.GrainPlayer({ url: buf, grainSize: p.grainSize, overlap: overlapSec, loop: p.loop })
           player.playbackRate = Math.max(0.1, p.speed)
           player.detune = (p.pitch + transpose) * 100
-          player.connect(nodes.gain)
+          player.connect(nodes.gain!)
           player.onstop = () => {
             lane.activeSampleSources.delete(player)
             try { player.disconnect(); player.dispose() } catch { /* disposed */ }
@@ -417,7 +519,7 @@ export async function buildChain(sound, destination) {
 
           let minRate = baseRate
           if (lane.envBlocks.length > 0) {
-            const env = freshParams(lane.envBlocks[0])
+            const env = freshParams(lane.envBlocks[0]!)
             const startRate = baseRate * centsToRate(env.start)
             const endRate = baseRate * centsToRate(env.end)
             srcNode.playbackRate.setValueAtTime(startRate, when)
@@ -431,9 +533,9 @@ export async function buildChain(sound, destination) {
             lfo.connect(srcNode.playbackRate)
           }
 
-          srcNode.connect(nodes.gain)
+          srcNode.connect(nodes.gain!)
           srcNode.onended = () => {
-            for (const { lfo } of lane.lfos) try { lfo.disconnect(srcNode.playbackRate) } catch {}
+            for (const { lfo } of lane.lfos) try { lfo.disconnect(srcNode.playbackRate) } catch { /* disposed */ }
             lane.activeSampleSources.delete(srcNode)
             try { srcNode.disconnect(); srcNode.dispose() } catch { /* disposed */ }
           }
@@ -458,7 +560,7 @@ export async function buildChain(sound, destination) {
   // — a chord is several events at offset 0, a sequence is several at rising
   // offsets. Back-compat: a bare number is the legacy single-note transpose
   // (keyboard play), and undefined is one note at the source's own pitch.
-  function trigger(when = Tone.now(), notes = 0) {
+  function trigger(when = Tone.now(), notes: number | SeqEvent[] = 0): number {
     const events = normalizeNotes(notes)
     let total = 0
     for (const note of events) {
@@ -478,7 +580,7 @@ export async function buildChain(sound, destination) {
     return total
   }
 
-  function apply(soundNow) {
+  function apply(soundNow: Sound): void {
     current = soundNow
     masterOut.volume.value = soundNow.outputVolume ?? 0
 
@@ -491,11 +593,13 @@ export async function buildChain(sound, destination) {
       // Source block params.
       if (lane.def.apply) {
         lane.def.apply(lane.nodes, src.params)
-        if (lane.hasAmpEnv && (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type))) flattenEnv(lane.nodes.synth)
+        if (lane.hasAmpEnv && (isSynthSource(lane.src.type) || isNoiseSource(lane.src.type)) && lane.nodes.synth) {
+          flattenEnv(lane.nodes.synth)
+        }
       }
-      if (lane.pwmLfo) applyPulsePwm(lane.pwmLfo, src.params)
+      if (lane.pwmLfo) applyPulsePwm(lane.pwmLfo, src.params as SynthParams)
       // Live voicing toggle (not structural — no rebuild): retune the pool gain.
-      if (isSynthSource(lane.src.type)) lane.nodes.synth.setVoicing(soundNow.voicing === 'mono')
+      if (isSynthSource(lane.src.type)) (lane.nodes.synth as VoicePool).setVoicing(soundNow.voicing === 'mono')
 
       // Lane chain blocks.
       for (const block of src.chain ?? []) {
@@ -521,7 +625,7 @@ export async function buildChain(sound, destination) {
     }
   }
 
-  function dispose() {
+  function dispose(): void {
     for (const lane of lanes) {
       lane.activeSampleSources.forEach((s) => {
         try { s.stop(); s.dispose() } catch { /* already gone */ }
@@ -529,7 +633,7 @@ export async function buildChain(sound, destination) {
       lane.activeSampleSources.clear()
     }
     triggerNodes.forEach((n) => {
-      try { n.stop?.(); n.dispose() } catch { /* already gone */ }
+      try { (n as { stop?: () => void }).stop?.(); n.dispose() } catch { /* already gone */ }
     })
     triggerNodes.clear()
     disposables.forEach((n) => {
@@ -541,7 +645,7 @@ export async function buildChain(sound, destination) {
   await Promise.all(readyPromises)
   return {
     trigger, apply, dispose,
-    getAnalyser: (id) => built.get(id)?.nodes?.analyser ?? null,
+    getAnalyser: (id: string) => built.get(id)?.nodes.analyser ?? null,
     getNativeOutputAnalyser: () => nativeOutputAnalyser,
     getOutputLevel: () => outputMeter?.getValue() ?? 0,
     resetLegatoState: () => { for (const lane of lanes) lane.lastNoteEnd = -Infinity },
@@ -552,12 +656,13 @@ export async function buildChain(sound, destination) {
 // voice count) — included here so they force a rebuild on change. Lane mix props
 // (delay/level/pan) are NOT structural: delay is read fresh at trigger, level
 // and pan are updated in place by apply().
-function blockKey(b) {
-  const extra = (BLOCK_DEFS[b.type]?.structureParams ?? []).map((k) => b.params[k]).join(',')
+function blockKey(b: Block): string {
+  const params = b.params as Record<string, unknown>
+  const extra = (BLOCK_DEFS[b.type]?.structureParams ?? []).map((k) => params[k]).join(',')
   return `${b.id}:${b.type}:${b.enabled ? 1 : 0}${extra ? `:${extra}` : ''}`
 }
 
-export function structureKey(sound) {
+export function structureKey(sound: Sound): string {
   const laneKeys = (sound.sources ?? []).map((src) => {
     const chain = (src.chain ?? []).map(blockKey).join(',')
     return `${blockKey(src)}[${chain}]`
@@ -569,8 +674,9 @@ export function structureKey(sound) {
 // A lane's own playing length from its trigger (source + holds + its inserts'
 // tails), excluding the lane delay. Shared by the renderer and the timeline UI
 // so bar lengths match what's actually rendered.
-export function laneDuration(src) {
-  let laneDur = (isSynthSource(src.type) || isNoiseSource(src.type)) ? synthHold(src.params, src.type) + src.params.release : 0
+export function laneDuration(src: Lane): number {
+  const sp = src.params as SynthParams // synth/noise/metal share attack/decay/duration/release reads here
+  let laneDur = (isSynthSource(src.type) || isNoiseSource(src.type)) ? synthHold(sp, src.type) + sp.release : 0
 
   if (src.type === 'sample') {
     const sample = getSample(src.id)
@@ -587,7 +693,7 @@ export function laneDuration(src) {
         )
       } else {
         let minRate = semisToRate(src.params.pitch)
-        const env = (src.chain ?? []).find((b) => b.type === 'pitchenv' && b.enabled)
+        const env = (src.chain ?? []).find((b): b is PitchenvBlock => b.type === 'pitchenv' && b.enabled)
         if (env) {
           minRate = Math.min(
             minRate,
@@ -602,7 +708,7 @@ export function laneDuration(src) {
 
   // A natural-length sample envelope can hold this lane's source longer.
   const ampEnv = (src.chain ?? []).find(
-    (b) => b.type === 'samplenv' && b.enabled && b.params.stretch === 'natural',
+    (b): b is SamplenvBlock => b.type === 'samplenv' && b.enabled && b.params.stretch === 'natural',
   )
   if (ampEnv) {
     const s = getSample(ampEnv.id)
@@ -637,7 +743,7 @@ export function laneDuration(src) {
   return Math.max(0.1, laneDur) + laneTail
 }
 
-export function estimateDuration(sound) {
+export function estimateDuration(sound: Sound): number {
   let end = 0
   for (const src of sound.sources ?? []) {
     if (!src.enabled) continue
@@ -662,14 +768,12 @@ export function estimateDuration(sound) {
 // ---------------------------------------------------------------- live engine
 
 export class LiveEngine {
-  constructor() {
-    this.handle = null
-    this.key = null
-    this.soundId = null
-    this.buildToken = 0
-  }
+  handle: EngineHandle | null = null
+  key: string | null = null
+  soundId: string | null = null
+  buildToken = 0
 
-  async sync(sound) {
+  async sync(sound: Sound): Promise<void> {
     const key = structureKey(sound)
     if (this.handle && this.soundId === sound.id && this.key === key) {
       this.handle.apply(sound)
@@ -691,7 +795,7 @@ export class LiveEngine {
 
   // `notes` is forwarded straight to trigger(): a bare semitone number for
   // keyboard play today, or a note-event list once chord/sequencer drivers exist.
-  async play(sound, notes = 0) {
+  async play(sound: Sound, notes: number | SeqEvent[] = 0): Promise<{ duration: number }> {
     await Tone.start()
     await this.sync(sound)
     if (!this.handle) return { duration: 0 }
@@ -700,23 +804,23 @@ export class LiveEngine {
     return { duration }
   }
 
-  getAnalyser(id) {
+  getAnalyser(id: string): Tone.Analyser | null {
     return this.handle?.getAnalyser(id) ?? null
   }
 
-  getNativeOutputAnalyser() {
+  getNativeOutputAnalyser(): AnalyserNode | null {
     return this.handle?.getNativeOutputAnalyser() ?? null
   }
 
-  getOutputLevel() {
+  getOutputLevel(): number | number[] {
     return this.handle?.getOutputLevel() ?? 0
   }
 
-  releaseLegato() {
+  releaseLegato(): void {
     this.handle?.resetLegatoState()
   }
 
-  dispose() {
+  dispose(): void {
     this.buildToken += 1
     this.handle?.dispose()
     this.handle = null

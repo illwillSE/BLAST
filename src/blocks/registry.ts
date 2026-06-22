@@ -57,7 +57,9 @@ export type ConnectableNode = Tone.ToneAudioNode | VoicePool
 // shape `N`), the graph in/out, and optional per-trigger + async-ready hooks.
 export interface BlockBuild<P, N> {
   nodes: N
-  input: ConnectableNode | null
+  // A block's input is always a plain Tone node (or null for sources); only the
+  // output can be a VoicePool. The engine connects `prev -> input`.
+  input: Tone.ToneAudioNode | null
   output: ConnectableNode
   // Method syntax (bivariant params) so a precise BlockBuild<XParams, XNodes>
   // stays assignable to the erased BlockBuild<…, unknown>.
@@ -67,7 +69,7 @@ export interface BlockBuild<P, N> {
 
 export interface TriggerContext<P> {
   params: P
-  sample: CachedSample | undefined
+  sample: CachedSample | null
   nodes: Set<Tone.ToneAudioNode>
 }
 
