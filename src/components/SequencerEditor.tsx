@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { newSequencer } from '../audio/sequencer'
 import { useT } from '../state/uiPrefs'
+import type { Sequencer, Sound } from '../types'
 import SequencerModal from './SequencerModal'
 
 // Dock panel for the sound-level sequencer: a compact summary + a one-line
 // pattern strip, with the full piano-roll editor in a pop-out modal (the dock is
 // too short for a two-octave grid). On/off lives here for quick toggling.
-export default function SequencerEditor({ sound, onChange }) {
+export default function SequencerEditor({ sound, onChange }: { sound: Sound; onChange: (patch: Partial<Sequencer>) => void }) {
   const t = useT()
   const seq = sound.sequencer ?? newSequencer()
   const [open, setOpen] = useState(false)

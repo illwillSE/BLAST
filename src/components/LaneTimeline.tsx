@@ -4,6 +4,7 @@ import { laneDuration } from '../audio/engine'
 import { useT } from '../state/uiPrefs'
 import { onPlay } from '../utils/bus'
 import { CAT_STYLES } from './ui'
+import type { Lane, Sound } from '../types'
 
 // A time-domain view of the lanes, stacked to align with the chain rows below.
 // The chain editor's x-axis means signal flow; this strip's x-axis means time.
@@ -13,17 +14,19 @@ import { CAT_STYLES } from './ui'
 const PX_PER_SEC = 200
 const SNAP = 0.005
 
-const fmt = (v) => (v < 0.001 ? '0' : v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`)
+const fmt = (v: number) => (v < 0.001 ? '0' : v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`)
 
-export default function LaneTimeline({ sound, onLaneProp }) {
+interface DragState { id: string; startX: number; startDelay: number }
+
+export default function LaneTimeline({ sound, onLaneProp }: { sound: Sound; onLaneProp: (laneId: string, key: string, value: number) => void }) {
   const t = useT()
   const [open, setOpen] = useState(true)
-  const drag = useRef(null)
+  const drag = useRef<DragState | null>(null)
 
   // Playhead: animate across the timeline over the most recently played sound's
   // duration. Non-interactive (pointer-events-none); a new play cancels and
   // restarts the animation, so only the latest trigger is ever shown.
-  const [playheadX, setPlayheadX] = useState(null)
+  const [playheadX, setPlayheadX] = useState<number | null>(null)
   const rafRef = useRef(0)
   useEffect(() => {
     const off = onPlay((info) => {
@@ -47,10 +50,10 @@ export default function LaneTimeline({ sound, onLaneProp }) {
   const maxEnd = Math.max(1, ...spans.map((s) => s.delay + s.len))
   const width = (maxEnd + 0.25) * PX_PER_SEC
 
-  function onBarDown(e, lane) {
+  function onBarDown(e: React.MouseEvent, lane: Lane) {
     e.preventDefault()
     drag.current = { id: lane.id, startX: e.clientX, startDelay: lane.delay ?? 0 }
-    const move = (ev) => {
+    const move = (ev: MouseEvent) => {
       if (!drag.current) return
       const dx = (ev.clientX - drag.current.startX) / PX_PER_SEC
       let v = Math.max(0, drag.current.startDelay + dx)
@@ -67,8 +70,8 @@ export default function LaneTimeline({ sound, onLaneProp }) {
   }
 
   // Second tick marks for the ruler.
-  const ticks = []
-  for (let t = 0; t <= maxEnd + 0.25; t += 0.5) ticks.push(t)
+  const ticks: number[] = []
+  for (let tk = 0; tk <= maxEnd + 0.25; tk += 0.5) ticks.push(tk)
 
   return (
     <div className="border-b border-divider bg-panel/60">
@@ -85,10 +88,10 @@ export default function LaneTimeline({ sound, onLaneProp }) {
           <div className="relative" style={{ width }}>
             {/* ruler */}
             <div className="relative mb-1 h-4 border-b border-divider">
-              {ticks.map((t) => (
-                <div key={t} className="absolute top-0 text-[9px] text-faint" style={{ left: t * PX_PER_SEC }}>
+              {ticks.map((tk) => (
+                <div key={tk} className="absolute top-0 text-[9px] text-faint" style={{ left: tk * PX_PER_SEC }}>
                   <div className="h-2 w-px bg-edge" />
-                  <span className="absolute left-0.5 top-0">{t === 0 ? '0' : `${t.toFixed(1)}s`}</span>
+                  <span className="absolute left-0.5 top-0">{tk === 0 ? '0' : `${tk.toFixed(1)}s`}</span>
                 </div>
               ))}
             </div>

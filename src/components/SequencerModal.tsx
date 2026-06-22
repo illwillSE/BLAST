@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { Slider, Button } from './ui'
 import { useT } from '../state/uiPrefs'
+import type { RangeParamDef } from '../blocks/registry'
+import type { Sequencer, Sound } from '../types'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 import { onPlay, emitPlay } from '../utils/bus'
 import { liveEngine } from '../audio/engine'
@@ -9,8 +11,8 @@ import {
   newSequencer, stepSeconds, sequenceToNotes, SEQ_RANGE, SEQ_MIN_STEPS, SEQ_MAX_STEPS,
 } from '../audio/sequencer'
 
-const BPM_DEF = { key: 'bpm', label: 'Tempo', type: 'range', min: 40, max: 300, step: 1, default: 120, format: (v) => `${Math.round(v)} BPM` }
-const GATE_DEF = { key: 'gate', label: 'Gate', type: 'range', min: 0.05, max: 1, step: 0.01, default: 0.9, percent: true, format: (v) => `${Math.round(v * 100)}%` }
+const BPM_DEF: RangeParamDef = { key: 'bpm', label: 'Tempo', type: 'range', min: 40, max: 300, step: 1, default: 120, format: (v) => `${Math.round(v)} BPM` }
+const GATE_DEF: RangeParamDef = { key: 'gate', label: 'Gate', type: 'range', min: 0.05, max: 1, step: 0.01, default: 0.9, percent: true, format: (v) => `${Math.round(v * 100)}%` }
 
 // Grid cell geometry (px). PITCH is the per-column stride used to translate a
 // horizontal drag into a step count.
@@ -19,25 +21,35 @@ const GAP = 2
 const PITCH = CELL_W + GAP
 
 // Row label for a semitone offset: 0 is the root, ±12 the octaves.
-const rowLabel = (n) => (n === 0 ? '0' : `${n > 0 ? '+' : ''}${n}`)
+const rowLabel = (n: number) => (n === 0 ? '0' : `${n > 0 ? '+' : ''}${n}`)
+
+interface ResizeDrag { pitch: number; start: number; startLen: number; maxLen: number; startX: number }
+
+interface GridProps {
+  seq: Sequencer
+  playCol: number
+  onAdd: (step: number, pitch: number) => void
+  onRemove: (step: number, pitch: number) => void
+  onSetLen: (step: number, pitch: number, len: number) => void
+}
 
 // ── The type-B piano roll. The ONLY layout-specific piece: it renders from (and
 // edits) the flat `steps` model — each note a { pitch, len } bar that spans `len`
 // columns with a right-edge resize handle. Columns are grouped in fours (beats).
-function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
+function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }: GridProps) {
   const t = useT()
-  const rows = []
+  const rows: number[] = []
   for (let n = SEQ_RANGE.hi; n >= SEQ_RANGE.lo; n--) rows.push(n)
   const cols = seq.steps.length
 
   // Drag-to-resize a note's length. We listen on window (not the handle) so the
   // drag survives the re-renders each length change triggers.
-  const dragRef = useRef(null)
-  const startDrag = (e, pitch, start, len, maxLen) => {
+  const dragRef = useRef<ResizeDrag | null>(null)
+  const startDrag = (e: React.PointerEvent, pitch: number, start: number, len: number, maxLen: number) => {
     e.preventDefault()
     e.stopPropagation()
     dragRef.current = { pitch, start, startLen: len, maxLen, startX: e.clientX }
-    const onMove = (ev) => {
+    const onMove = (ev: PointerEvent) => {
       const d = dragRef.current
       if (!d) return
       const delta = Math.round((ev.clientX - d.startX) / PITCH)
@@ -58,10 +70,10 @@ function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
         const octave = n !== 0 && n % 12 === 0
         // Lay the row out: where notes start (with clamped len) and which columns
         // they cover, so covered columns render nothing (the bar spans them).
-        const starts = new Array(cols).fill(null)
-        const covered = new Array(cols).fill(false)
+        const starts: (number | null)[] = new Array(cols).fill(null)
+        const covered: boolean[] = new Array(cols).fill(false)
         for (let i = 0; i < cols; i++) {
-          for (const note of seq.steps[i].notes ?? []) {
+          for (const note of seq.steps[i]?.notes ?? []) {
             if (note.pitch !== n) continue
             const len = Math.max(1, Math.min(cols - i, note.len ?? 1))
             starts[i] = len
@@ -72,8 +84,9 @@ function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
         const cells = []
         for (let i = 0; i < cols; i++) {
           const beat = i % 4 === 0 && i > 0 ? 'ml-1' : ''
-          if (starts[i] != null) {
-            const len = starts[i]
+          const sLen = starts[i]
+          if (sLen != null) {
+            const len = sLen
             let maxLen = cols - i // can't extend past a following note in this row
             for (let j = i + 1; j < cols; j++) if (starts[j] != null) { maxLen = j - i; break }
             cells.push(
@@ -121,7 +134,13 @@ function SequencerGrid({ seq, playCol, onAdd, onRemove, onSetLen }) {
   )
 }
 
-export default function SequencerModal({ sound, onChange, onClose }) {
+interface SequencerModalProps {
+  sound: Sound
+  onChange: (patch: Partial<Sequencer>) => void
+  onClose: () => void
+}
+
+export default function SequencerModal({ sound, onChange, onClose }: SequencerModalProps) {
   const t = useT()
   const seq = sound.sequencer ?? newSequencer()
   const cols = seq.steps.length
@@ -129,7 +148,7 @@ export default function SequencerModal({ sound, onChange, onClose }) {
   const { entered, handleClose } = useModalAnimation(onClose)
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [handleClose])
@@ -163,14 +182,14 @@ export default function SequencerModal({ sound, onChange, onClose }) {
   }
 
   // ── step edits (a step with several notes is a chord) ──────────────────────
-  const addNote = (step, pitch) =>
+  const addNote = (step: number, pitch: number) =>
     onChange({ steps: seq.steps.map((s, i) => (i === step ? { ...s, notes: [...(s.notes ?? []), { pitch, len: 1 }] } : s)) })
-  const removeNote = (step, pitch) =>
+  const removeNote = (step: number, pitch: number) =>
     onChange({ steps: seq.steps.map((s, i) => (i === step ? { ...s, notes: (s.notes ?? []).filter((no) => no.pitch !== pitch) } : s)) })
-  const setLen = (step, pitch, len) =>
+  const setLen = (step: number, pitch: number, len: number) =>
     onChange({ steps: seq.steps.map((s, i) => (i === step ? { ...s, notes: (s.notes ?? []).map((no) => (no.pitch === pitch ? { ...no, len } : no)) } : s)) })
-  const setStepCount = (n) => {
-    n = Math.max(SEQ_MIN_STEPS, Math.min(SEQ_MAX_STEPS, n))
+  const setStepCount = (next: number) => {
+    const n = Math.max(SEQ_MIN_STEPS, Math.min(SEQ_MAX_STEPS, next))
     if (n === cols) return
     const steps = seq.steps.slice(0, n)
     while (steps.length < n) steps.push({ notes: [] })
