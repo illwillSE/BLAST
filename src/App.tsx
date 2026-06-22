@@ -14,6 +14,8 @@ import { getClipboard, setClipboard } from './state/clipboard'
 import { normalizeProject } from './utils/projectZip'
 import { emitPlay } from './utils/bus'
 import { useT } from './state/uiPrefs'
+import type { CachedSample } from './blocks/registry'
+import type { Block, BlockType, ExportSettings, Lane, Project, Sequencer, SourceType, Sound, Target } from './types'
 import Header from './components/Header'
 import SoundList from './components/SoundList'
 import ChainEditor from './components/ChainEditor'
@@ -26,7 +28,7 @@ import { Play } from 'lucide-react'
 
 // Clone a block (or lane), giving it a fresh id and copying an embedded sample
 // into the new id. Shared by sound duplication and clipboard paste.
-function cloneWithSample(block, sample) {
+function cloneWithSample<T extends object>(block: T, sample: CachedSample | null): T & { id: string } {
   const nb = { ...structuredClone(block), id: uid('blk') }
   if (sample) setSample(nb.id, sample)
   return nb
@@ -40,19 +42,19 @@ export default function App() {
         const parsed = JSON.parse(raw)
         return normalizeProject(parsed.project ?? parsed) // compat: old format was a bare project
       }
-    } catch {}
+    } catch { /* corrupt autosave — fall through to presets */ }
     // First start (no autosave yet): boot with the demo presets. After this the
     // autosave above takes over, so presets only load automatically once — reload
     // them anytime from Settings → Load presets.
     return presetProject()
   })
   const t = useT()
-  const [selectedId, setSelectedId] = useState(() => project.sounds[0].id)
+  const [selectedId, setSelectedId] = useState(() => project.sounds[0]!.id)
   const [exporting, setExporting] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
 
-  const sound = project.sounds.find((s) => s.id === selectedId) ?? project.sounds[0]
+  const sound = project.sounds.find((s) => s.id === selectedId) ?? project.sounds[0]!
 
   const tutorial = useTutorial({ project, reset, setSelectedId })
 
@@ -82,7 +84,7 @@ export default function App() {
           setSample(blockId, { blob, fileName, audioBuffer: await decodeBlob(blob) })
         }
       })
-    } catch {}
+    } catch { /* no/corrupt autosave samples */ }
   }, [])
 
   // Auto-save project JSON + sample manifest on every change (debounced 1 s).
@@ -91,24 +93,24 @@ export default function App() {
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return }
     const timer = setTimeout(async () => {
-      const usedIds = new Set(project.sounds.flatMap(s => allBlocks(s).map(b => b.id)))
+      const usedIds = new Set(project.sounds.flatMap((s) => allBlocks(s).map((b) => b.id)))
       const samples = allSamples()
         .filter(([id]) => usedIds.has(id))
         .map(([blockId, { blob, fileName }]) => ({ blockId, blob, fileName }))
       const sampleManifest = await saveAutosaveSamples(samples)
-      try { localStorage.setItem('blast_autosave', JSON.stringify({ project, sampleManifest })) } catch {}
+      try { localStorage.setItem('blast_autosave', JSON.stringify({ project, sampleManifest })) } catch { /* storage full */ }
     }, 1000)
     return () => clearTimeout(timer)
   }, [project])
 
-  const updateSound = useCallback((soundId, fn, coalesceKey) => {
+  const updateSound = useCallback((soundId: string, fn: (s: Sound) => Sound, coalesceKey?: string) => {
     dispatch((p) => ({
       ...p,
       sounds: p.sounds.map((s) => (s.id === soundId ? fn(s) : s)),
     }), coalesceKey)
   }, [dispatch])
 
-  const playSound = useCallback((soundId, transpose = 0) => {
+  const playSound = useCallback((soundId: string, transpose = 0) => {
     setSelectedId(soundId)
     const target = projectRef.current.sounds.find((s) => s.id === soundId)
     if (!target) return
@@ -125,9 +127,9 @@ export default function App() {
   // selects and buttons don't swallow it (use Enter to activate a button,
   // arrow keys to fine-tune a slider).
   useEffect(() => {
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return
-      const el = document.activeElement
+      const el = document.activeElement as HTMLInputElement | null
       const isTextEntry =
         el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
       if (isTextEntry) return
@@ -147,16 +149,16 @@ export default function App() {
   // Legato gates on physical key hold: releasing all keys resets lastNoteEnd so
   // the next press always gets a fresh attack, matching how a hardware synth works.
   useEffect(() => {
-    const KEY_SEMIS = {
+    const KEY_SEMIS: Record<string, number> = {
       KeyQ: 0, Digit2: 1, KeyW: 2, Digit3: 3, KeyE: 4, KeyR: 5, Digit5: 6,
       KeyT: 7, Digit6: 8, KeyY: 9, Digit7: 10, KeyU: 11, KeyI: 12,
     }
-    const heldKeys = new Set()
-    const onKeyDown = (e) => {
+    const heldKeys = new Set<string>()
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return
       const semis = KEY_SEMIS[e.code]
       if (semis === undefined) return
-      const el = document.activeElement
+      const el = document.activeElement as HTMLInputElement | null
       const isTextEntry =
         el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
       if (isTextEntry) return
@@ -164,7 +166,7 @@ export default function App() {
       heldKeys.add(e.code)
       playSound(selectedId, semis)
     }
-    const onKeyUp = (e) => {
+    const onKeyUp = (e: KeyboardEvent) => {
       if (!heldKeys.has(e.code)) return
       heldKeys.delete(e.code)
       if (heldKeys.size === 0) liveEngine.releaseLegato()
@@ -180,12 +182,12 @@ export default function App() {
   // Undo / redo. Skipped in text-entry fields so the browser's native text
   // undo keeps working in name fields and value popups.
   useEffect(() => {
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return
       const isUndo = e.key === 'z' && !e.shiftKey
       const isRedo = (e.key === 'z' && e.shiftKey) || e.key === 'y'
       if (!isUndo && !isRedo) return
-      const el = document.activeElement
+      const el = document.activeElement as HTMLInputElement | null
       const isTextEntry =
         el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
       if (isTextEntry) return
@@ -205,11 +207,11 @@ export default function App() {
     setSelectedId(s.id)
   }
 
-  function duplicateSound(soundId) {
+  function duplicateSound(soundId: string) {
     const src = project.sounds.find((s) => s.id === soundId)
     if (!src) return
-    const cloneBlock = (b) => cloneWithSample(b, getSample(b.id))
-    const copy = {
+    const cloneBlock = <T extends { id: string }>(b: T): T => cloneWithSample(b, getSample(b.id))
+    const copy: Sound = {
       ...structuredClone({ ...src, name: `${src.name} copy` }),
       id: uid('snd'),
       sources: src.sources.map((lane) => {
@@ -228,10 +230,10 @@ export default function App() {
     setSelectedId(copy.id)
   }
 
-  function deleteSound(soundId) {
+  function deleteSound(soundId: string) {
     if (soundId === selectedId) {
       const remaining = projectRef.current.sounds.filter((s) => s.id !== soundId)
-      if (remaining.length > 0) setSelectedId(remaining[0].id)
+      if (remaining.length > 0) setSelectedId(remaining[0]!.id)
     }
     dispatch((p) => ({ ...p, sounds: p.sounds.filter((s) => s.id !== soundId) }))
   }
@@ -240,27 +242,31 @@ export default function App() {
   // A block lives either in a lane's chain (target = lane/source id) or in the
   // master chain (target = 'master'). Param/toggle/remove find it by id.
 
-  const onParam = (blockId, key, value) =>
+  // The param/value updaters build a new block by spreading the old one and
+  // overriding params — the discriminated Block union can't be proven consistent
+  // through that spread, so the result is asserted Block (the runtime merge keeps
+  // type↔params in sync).
+  const onParam = (blockId: string, key: string, value: unknown) =>
     updateSound(sound.id, (s) =>
-      mapBlock(s, blockId, (b) => ({ ...b, params: { ...b.params, [key]: value } })),
+      mapBlock(s, blockId, (b) => ({ ...b, params: { ...(b.params as Record<string, unknown>), [key]: value } }) as Block),
       `param:${blockId}:${key}`,
     )
 
-  const onToggle = (blockId) =>
+  const onToggle = (blockId: string) =>
     updateSound(sound.id, (s) => mapBlock(s, blockId, (b) => ({ ...b, enabled: !b.enabled })))
 
-  const onRemove = (blockId) => updateSound(sound.id, (s) => removeBlock(s, blockId))
+  const onRemove = (blockId: string) => updateSound(sound.id, (s) => removeBlock(s, blockId))
 
-  const onAdd = (target, type) => {
+  const onAdd = (target: Target, type: BlockType) => {
     const block = newBlock(type)
     updateSound(sound.id, (s) => addBlock(s, target, block))
     return block.id
   }
 
-  const onMove = (target, from, to) =>
+  const onMove = (target: Target, from: number, to: number) =>
     updateSound(sound.id, (s) => moveBlock(s, target, from, to))
 
-  const onSwapSource = (laneId, type) =>
+  const onSwapSource = (laneId: string, type: SourceType) =>
     updateSound(sound.id, (s) => ({
       ...s,
       sources: s.sources.map((src) => (src.id === laneId ? swapSource(src, type) : src)),
@@ -268,10 +274,10 @@ export default function App() {
 
   // ---- lane actions -------------------------------------------------------
 
-  const onLaneProp = (laneId, key, value) =>
+  const onLaneProp = (laneId: string, key: string, value: number) =>
     updateSound(sound.id, (s) => ({
       ...s,
-      sources: s.sources.map((src) => (src.id === laneId ? { ...src, [key]: value } : src)),
+      sources: s.sources.map((src) => (src.id === laneId ? { ...src, [key]: value } as Lane : src)),
     }), `lane:${laneId}:${key}`)
 
   const onAddSource = () => {
@@ -280,22 +286,22 @@ export default function App() {
     return lane.id
   }
 
-  const onRemoveLane = (laneId) =>
+  const onRemoveLane = (laneId: string) =>
     updateSound(sound.id, (s) =>
       s.sources.length <= 1 ? s : { ...s, sources: s.sources.filter((src) => src.id !== laneId) },
     )
 
-  const onOutputVolume = (v) => updateSound(sound.id, (s) => ({ ...s, outputVolume: v }), 'output:volume')
+  const onOutputVolume = (v: number) => updateSound(sound.id, (s) => ({ ...s, outputVolume: v }), 'output:volume')
 
-  const onVoicing = (v) => updateSound(sound.id, (s) => ({ ...s, voicing: v }))
+  const onVoicing = (v: 'mono' | 'poly') => updateSound(sound.id, (s) => ({ ...s, voicing: v }))
 
   // Patch the sound-level sequencer (merge so callers send only changed fields).
-  const onSequencer = (patch) =>
+  const onSequencer = (patch: Partial<Sequencer>) =>
     updateSound(sound.id, (s) => ({ ...s, sequencer: { ...(s.sequencer ?? newSequencer()), ...patch } }))
 
   // ---- export -------------------------------------------------------------
 
-  const setExport = (patch) =>
+  const setExport = (patch: Partial<ExportSettings>) =>
     dispatch((p) => ({ ...p, export: { ...p.export, ...patch } }))
 
   async function exportWav() {
@@ -313,10 +319,10 @@ export default function App() {
 
   // Paste a non-source block as a clone into a lane chain (target = lane id) or
   // the master chain (target = MASTER). Returns the new block id for selection.
-  const pasteBlock = (target) => {
+  const pasteBlock = (target: Target) => {
     const c = getClipboard()
-    if (c?.kind !== 'block' || isSource(c.block)) return
-    const block = cloneWithSample(c.block, c.sample)
+    if (c?.kind !== 'block' || isSource(c.block as Block)) return
+    const block = cloneWithSample(c.block, c.sample) as Block
     updateSound(sound.id, (s) => addBlock(s, target, block))
     return block.id
   }
@@ -324,20 +330,20 @@ export default function App() {
   // A copied source always pastes as a new source lane (empty chain).
   const pasteSourceLane = () => {
     const c = getClipboard()
-    if (c?.kind !== 'block' || !isSource(c.block)) return
-    const lane = { ...newLane(c.block.type), params: structuredClone(c.block.params), enabled: c.block.enabled }
+    if (c?.kind !== 'block' || !isSource(c.block as Block)) return
+    const lane = { ...newLane(c.block.type as SourceType), params: structuredClone(c.block.params), enabled: c.block.enabled } as Lane
     if (c.sample) setSample(lane.id, c.sample)
     updateSound(sound.id, (s) => ({ ...s, sources: [...s.sources, lane] }))
     return lane.id
   }
 
   // Overwrite an existing block's params from a copied block of the same type.
-  const pasteValues = (blockId) => {
+  const pasteValues = (blockId: string) => {
     const c = getClipboard()
     if (c?.kind !== 'block') return
     updateSound(sound.id, (s) =>
       mapBlock(s, blockId, (b) =>
-        b.type === c.block.type ? { ...b, params: structuredClone(c.block.params) } : b),
+        b.type === c.block.type ? ({ ...b, params: structuredClone(c.block.params) }) as Block : b),
     )
   }
 
@@ -346,7 +352,7 @@ export default function App() {
     const c = getClipboard()
     if (c?.kind !== 'sample') return
     const s = newSound(c.label || 'Sample')
-    s.sources[0] = swapSource(s.sources[0], 'sample')
+    s.sources[0] = swapSource(s.sources[0]!, 'sample')
     setSample(s.sources[0].id, c.sample)
     dispatch((p) => ({ ...p, sounds: [...p.sounds, s] }))
     setSelectedId(s.id)
@@ -372,9 +378,9 @@ export default function App() {
     setExporting(false)
   }
 
-  function loadProject(loaded) {
+  function loadProject(loaded: Project) {
     reset(loaded)
-    setSelectedId(loaded.sounds[0]?.id)
+    setSelectedId(loaded.sounds[0]!.id)
   }
 
   // Start fresh. Uses reset (like loadProject) so it clears undo history —
@@ -459,7 +465,7 @@ export default function App() {
               <div className="min-h-0 flex-1">
                 <ChainEditor
                   sound={sound}
-                  initialSelectedKey={tutorial.active?.ctx?.selectId}
+                  initialSelectedKey={tutorial.active?.ctx?.selectId as string | undefined}
                   onParam={onParam}
                   onToggle={onToggle}
                   onRemove={onRemove}
@@ -491,7 +497,7 @@ export default function App() {
         <Spotlight
           step={tutorial.activeStep}
           stepIndex={tutorial.stepIndex}
-          totalSteps={tutorial.activeChapter.steps.length}
+          totalSteps={tutorial.activeChapter?.steps?.length ?? 0}
           canBack={tutorial.stepIndex > 0}
           canAdvance={tutorial.canAdvance}
           onNext={tutorial.advance}

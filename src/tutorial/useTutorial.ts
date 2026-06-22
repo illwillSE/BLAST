@@ -14,7 +14,7 @@ interface ActiveState {
 interface UseTutorialArgs {
   project: Project
   reset: (project: Project) => void
-  setSelectedId: (id: string | undefined) => void
+  setSelectedId: (id: string) => void
 }
 
 // Tutorial engine. Owns which chapter/step is active, drives the per-chapter
@@ -60,7 +60,7 @@ export function useTutorial({ project, reset, setSelectedId }: UseTutorialArgs) 
       const demo = chapter.buildDemo!()
       const ctx = chapter.makeCtx?.(demo) ?? {}
       reset(demo)
-      setSelectedId(ctx.soundId)
+      if (ctx.soundId) setSelectedId(ctx.soundId)
       // Optional side-effects outside the serializable project (e.g. loading a
       // demo sample into the cache). onExit cleans them up on teardown.
       chapter.onEnter?.(demo, ctx)
@@ -104,7 +104,7 @@ export function useTutorial({ project, reset, setSelectedId }: UseTutorialArgs) 
     if (act) getChapter(act.chapterId)?.onExit?.(act.ctx)
     if (stash.current) {
       reset(stash.current.project)
-      setSelectedId(stash.current.selectedId)
+      if (stash.current.selectedId) setSelectedId(stash.current.selectedId)
       stash.current = null
     }
   }
