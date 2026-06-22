@@ -2,11 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronRight, ClipboardPaste } from 'lucide-react'
 import { MASTER, findLane, findBlock, isSource } from '../state/model'
 import { useClipboard, getClipboard, copyBlock } from '../state/clipboard'
+import type { Block, BlockType, Sequencer, Sound, SourceType, Target } from '../types'
 import AddBlockMenu from './AddBlockMenu'
 import SequencerModal from './SequencerModal'
 import LaneRow from './LaneRow'
 import LaneTimeline from './LaneTimeline'
 import InspectorDock from './InspectorDock'
+import type { InspectorHandlers } from './InspectorDock'
 import Chip from './Chip'
 import BackgroundVisualization from './BackgroundVisualization'
 import { getColor } from '../theme/colors'
@@ -14,42 +16,64 @@ import { useT, useUIPrefs } from '../state/uiPrefs'
 
 const Conn = () => <ChevronRight size={12} className="shrink-0 text-faint" />
 
+interface PathInfo { id: string; enabled: boolean; d: string }
+
+interface ChainEditorProps {
+  sound: Sound
+  onParam: (blockId: string, key: string, value: unknown) => void
+  onToggle: (blockId: string) => void
+  onRemove: (blockId: string) => void
+  onMove: (target: Target, from: number, to: number) => void
+  onAdd: (target: Target, type: BlockType) => string | undefined
+  onSwapSource: (blockId: string, type: SourceType) => void
+  onLaneProp: (laneId: string, key: string, value: number) => void
+  onAddSource: () => string | undefined
+  onRemoveLane: (laneId: string) => void
+  onOutputVolume: (v: number) => void
+  onVoicing: (v: 'mono' | 'poly') => void
+  onSequencer: (patch: Partial<Sequencer>) => void
+  onPasteBlock: (target: Target) => string | undefined
+  onPasteSourceLane: () => string | undefined
+  onPasteValues: (blockId: string) => void
+  initialSelectedKey?: string
+}
+
 export default function ChainEditor({
   sound, onParam, onToggle, onRemove, onMove, onAdd, onSwapSource,
   onLaneProp, onAddSource, onRemoveLane, onOutputVolume, onVoicing,
   onSequencer, onPasteBlock, onPasteSourceLane, onPasteValues, initialSelectedKey,
-}) {
+}: ChainEditorProps) {
   const t = useT()
   const { backgroundViz } = useUIPrefs()
   // `initialSelectedKey` lets a caller (the tutorial) open a specific block on
   // load — e.g. pre-select a chain block so its controls are already in the
   // inspector. Defaults to the first source.
-  const [selectedKeys, setSelectedKeys] = useState(() => [initialSelectedKey ?? sound.sources[0]?.id])
-  const [focusedLane, setFocusedLane] = useState(() => findLane(sound, initialSelectedKey)?.id ?? sound.sources[0]?.id)
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(() => [initialSelectedKey ?? sound.sources[0]!.id])
+  const [focusedLane, setFocusedLane] = useState<string>(() => findLane(sound, initialSelectedKey ?? '')?.id ?? sound.sources[0]!.id)
   const [inspectorMin, setInspectorMin] = useState(false)
   const [seqModalOpen, setSeqModalOpen] = useState(false)
-  const masterDragIndex = useRef(null)
-  const [masterDropTarget, setMasterDropTarget] = useState(null)
+  const masterDragIndex = useRef<number | null>(null)
+  const [masterDropTarget, setMasterDropTarget] = useState<number | null>(null)
 
   // Reset selection/focus when switching to a different sound (honouring an
   // initial pre-selection, e.g. the sound the tutorial just loaded).
   useEffect(() => {
-    const initKey = initialSelectedKey ?? sound.sources[0]?.id
+    const initKey = initialSelectedKey ?? sound.sources[0]!.id
     setSelectedKeys([initKey])
-    setFocusedLane(findLane(sound, initKey)?.id ?? sound.sources[0]?.id)
+    setFocusedLane(findLane(sound, initKey)?.id ?? sound.sources[0]!.id)
     setInspectorMin(false)
   }, [sound.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep selection valid if blocks/lanes disappear (remove, mute rebuild, etc.).
-  const valid = (k) => k === 'output' || k === 'seq' || k === 'bus'
-    || (k && findLane(sound, k)) || (k && sound.master.some((b) => b.id === k))
+  const valid = (k: string) => k === 'output' || k === 'seq' || k === 'bus'
+    || (!!k && !!findLane(sound, k)) || (!!k && sound.master.some((b) => b.id === k))
   useEffect(() => {
     const kept = selectedKeys.filter(valid)
-    if (kept.length !== selectedKeys.length) setSelectedKeys(kept.length ? kept : [initialSelectedKey ?? sound.sources[0]?.id])
-    if (!sound.sources.some((s) => s.id === focusedLane)) setFocusedLane(sound.sources[0]?.id)
+    if (kept.length !== selectedKeys.length) setSelectedKeys(kept.length ? kept : [initialSelectedKey ?? sound.sources[0]!.id])
+    if (!sound.sources.some((s) => s.id === focusedLane)) setFocusedLane(sound.sources[0]!.id)
   }) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function select(key, additive) {
+  function select(key: string, additive?: boolean) {
     setInspectorMin(false)
     setSelectedKeys((cur) => {
       if (additive) return cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]
@@ -65,14 +89,14 @@ export default function ChainEditor({
     setInspectorMin(true)
   }
 
-  function focusLane(laneId) {
+  function focusLane(laneId: string) {
     setInspectorMin(false)
     setFocusedLane(laneId)
     const src = sound.sources.find((s) => s.id === laneId)
     if (src) setSelectedKeys([src.id])
   }
 
-  function handleAdd(target, type) {
+  function handleAdd(target: Target, type: BlockType) {
     const id = onAdd(target, type)
     if (!id) return
     setInspectorMin(false)
@@ -88,7 +112,7 @@ export default function ChainEditor({
     setSelectedKeys([id])
   }
 
-  function handlePaste(target) {
+  function handlePaste(target: Target) {
     const id = onPasteBlock(target)
     if (!id) return
     setInspectorMin(false)
@@ -109,15 +133,15 @@ export default function ChainEditor({
   // browser's own copy/paste.
   const clip = useClipboard()
   useEffect(() => {
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return
-      const el = document.activeElement
+      const el = document.activeElement as HTMLInputElement | null
       const isTextEntry = el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && el.type !== 'range')
       if (isTextEntry) return
       const key = e.key.toLowerCase()
       if (key === 'c') {
         const sel = selectedKeys.filter((k) => k !== 'output' && k !== 'bus')
-        const block = sel.length === 1 ? findBlock(sound, sel[0]) : null
+        const block = sel.length === 1 ? findBlock(sound, sel[0]!) : null
         if (!block) return
         e.preventDefault()
         copyBlock(block)
@@ -125,7 +149,8 @@ export default function ChainEditor({
         const c = getClipboard()
         if (c?.kind !== 'block') return
         e.preventDefault()
-        isSource(c.block) ? handlePasteSource() : handlePaste(focusedLane)
+        if (isSource(c.block as Block)) handlePasteSource()
+        else handlePaste(focusedLane)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -133,11 +158,11 @@ export default function ChainEditor({
   }) // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- bezier connectors from each lane's output port to the mix bus -------
-  const wrapRef = useRef(null)
-  const busRef = useRef(null)
-  const portRefs = useRef(new Map())
-  const [paths, setPaths] = useState([])
-  const setPortRef = (id) => (el) => { el ? portRefs.current.set(id, el) : portRefs.current.delete(id) }
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const busRef = useRef<HTMLDivElement>(null)
+  const portRefs = useRef(new Map<string, HTMLSpanElement>())
+  const [paths, setPaths] = useState<PathInfo[]>([])
+  const setPortRef = (id: string) => (el: HTMLSpanElement | null) => { if (el) portRefs.current.set(id, el); else portRefs.current.delete(id) }
 
   useLayoutEffect(() => {
     const compute = () => {
@@ -148,7 +173,7 @@ export default function ChainEditor({
       const br = bus.getBoundingClientRect()
       const bx = br.left - wr.left
       const by = br.top - wr.top + br.height / 2
-      const next = []
+      const next: PathInfo[] = []
       for (const lane of sound.sources) {
         const el = portRefs.current.get(lane.id)
         if (!el) continue
@@ -169,7 +194,7 @@ export default function ChainEditor({
   }, [sound, focusedLane, selectedKeys])
 
   // Master chain reorder — mirrors LaneRow's dragProps but targets MASTER.
-  function masterDragProps(index) {
+  function masterDragProps(index: number): React.HTMLAttributes<HTMLElement> {
     return {
       draggable: true,
       onDragStart: (e) => { masterDragIndex.current = index; e.dataTransfer.effectAllowed = 'move' },
@@ -189,8 +214,8 @@ export default function ChainEditor({
     }
   }
 
-  const isSel = (k) => selectedKeys.includes(k)
-  const handlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onVoicing, onSequencer, onPasteValues, onSelect: select }
+  const isSel = (k: string) => selectedKeys.includes(k)
+  const handlers: InspectorHandlers = { onParam, onToggle, onRemove, onSwapSource, onLaneProp, onRemoveLane, onOutputVolume, onVoicing, onSequencer, onPasteValues, onSelect: select }
   const seqOn = sound.sequencer?.enabled
 
   return (
@@ -202,7 +227,7 @@ export default function ChainEditor({
           here but carry no marker, so they don't trigger a deselect. */}
       <div
         data-canvas-bg
-        onClick={(e) => { if (e.target.dataset.canvasBg !== undefined) deselect() }}
+        onClick={(e) => { if ((e.target as HTMLElement).dataset.canvasBg !== undefined) deselect() }}
         className="relative min-h-0 flex-1 overflow-auto p-4"
       >
         <BackgroundVisualization
@@ -249,7 +274,7 @@ export default function ChainEditor({
               >
                 <span className="text-base leading-none">+</span> {t('chain.addSource')}
               </button>
-              {clip?.kind === 'block' && isSource(clip.block) && (
+              {clip?.kind === 'block' && isSource(clip.block as Block) && (
                 <button
                   onClick={handlePasteSource}
                   className="flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-accent-dim/50 px-3 text-[11px] font-semibold uppercase tracking-wider text-accent-deep/70 transition-colors hover:border-accent-deep hover:bg-accent-deep/10 hover:text-accent"

@@ -7,7 +7,7 @@ import Chip from './Chip'
 import { getColor } from '../theme/colors'
 
 const Conn = () => <ChevronRight size={12} className="shrink-0 text-faint" />
-const Port = ({ portRef }: { portRef: React.RefObject<HTMLSpanElement> }) =>
+const Port = ({ portRef }: { portRef: React.Ref<HTMLSpanElement> }) =>
   <span ref={portRef} className="ml-1 h-2 w-2 shrink-0 rounded-full bg-edge-2" />
 
 interface LaneRowProps {
@@ -22,7 +22,7 @@ interface LaneRowProps {
   onPaste: (laneId: string) => void
   onParam: (blockId: string, key: string, value: unknown) => void
   onAddMenuOpen: () => void
-  outputRef: React.RefObject<HTMLSpanElement>
+  outputRef: React.Ref<HTMLSpanElement>
 }
 
 export default function LaneRow({
