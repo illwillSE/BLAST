@@ -46,7 +46,7 @@ export type SourceType = 'synth' | 'noise' | 'metal' | 'sample'
 
 // ----------------------------------------------------------- per-block params
 
-export interface SynthParams {
+export type SynthParams = {
   wave: 'sine' | 'triangle' | 'square' | 'sawtooth' | 'pulse' | 'custom'
   partials: number
   width: number
@@ -64,7 +64,7 @@ export interface SynthParams {
   legato: boolean
 }
 
-export interface NoiseParams {
+export type NoiseParams = {
   color: 'white' | 'pink' | 'brown'
   attack: number
   decay: number
@@ -73,7 +73,7 @@ export interface NoiseParams {
   release: number
 }
 
-export interface MetalParams {
+export type MetalParams = {
   freq: number
   harmonicity: number
   modIndex: number
@@ -87,12 +87,12 @@ export interface MetalParams {
 // Trim (region) params are added by the sample editor, not by defaultParams, so
 // they're optional. Shared by every sample-carrying block (sample, samplenv,
 // vocoder) — read fresh at trigger.
-export interface SampleTrim {
+export type SampleTrim = {
   trimStart?: number
   trimEnd?: number
 }
 
-export interface SampleParams extends SampleTrim {
+export type SampleParams = SampleTrim & {
   pitch: number
   gain: number
   mode: 'normal' | 'granular'
@@ -103,97 +103,97 @@ export interface SampleParams extends SampleTrim {
   length: number
 }
 
-export interface CompressorParams {
+export type CompressorParams = {
   threshold: number
   ratio: number
   attack: number
   release: number
 }
 
-export interface GateParams {
+export type GateParams = {
   threshold: number
   smoothing: number
 }
 
-export interface SamplenvParams extends SampleTrim {
+export type SamplenvParams = SampleTrim & {
   amount: number
   smoothing: number
   stretch: 'natural' | 'note'
 }
 
-export interface VocoderParams extends SampleTrim {
+export type VocoderParams = SampleTrim & {
   bands: '8' | '16' | '32'
   response: number
   sibilance: number
 }
 
-export interface FilterParams {
+export type FilterParams = {
   filterType: 'lowpass' | 'highpass' | 'bandpass'
   cutoff: number
   resonance: number
 }
 
-export interface EqParams {
+export type EqParams = {
   low: number
   mid: number
   high: number
 }
 
-export interface ReverbParams {
+export type ReverbParams = {
   decay: number
   preDelay: number
   wet: number
 }
 
-export interface DelayParams {
+export type DelayParams = {
   time: number
   feedback: number
   pingpong: boolean
   wet: number
 }
 
-export interface PitchshiftParams {
+export type PitchshiftParams = {
   pitch: number
   wet: number
 }
 
-export interface DetuneParams {
+export type DetuneParams = {
   amount: number
   count: number
   wet: number
 }
 
-export interface PitchlfoParams {
+export type PitchlfoParams = {
   rate: number
   depth: number
   wave: 'sine' | 'square' | 'sawtooth' | 'triangle'
 }
 
-export interface PitchenvParams {
+export type PitchenvParams = {
   start: number
   end: number
   time: number
 }
 
-export interface OverdriveParams {
+export type OverdriveParams = {
   drive: number
   wet: number
 }
 
-export interface BitcrusherParams {
+export type BitcrusherParams = {
   bits: number
   wet: number
 }
 
-export interface VolumeParams {
+export type VolumeParams = {
   volume: number
 }
 
-export interface PanParams {
+export type PanParams = {
   pan: number
 }
 
-export interface MonitorParams {
+export type MonitorParams = {
   mode: 'wave' | 'spectrum' | 'waterfall' | 'fire' | 'meter'
 }
 

@@ -1,5 +1,33 @@
 import * as Tone from 'tone'
 import { VoicePool } from '../audio/voicePool'
+import type {
+  BitcrusherParams,
+  BlockKind,
+  BlockType,
+  Category,
+  CompressorParams,
+  DelayParams,
+  DetuneParams,
+  EqParams,
+  FilterParams,
+  GateParams,
+  Lane,
+  MetalParams,
+  MonitorParams,
+  NoiseParams,
+  OverdriveParams,
+  PanParams,
+  PitchenvParams,
+  PitchlfoParams,
+  PitchshiftParams,
+  ReverbParams,
+  SampleParams,
+  SamplenvParams,
+  SynthParams,
+  Sound,
+  VocoderParams,
+  VolumeParams,
+} from '../types'
 
 // Param types:
 //   { key, label, type:'range', min, max, step, default, unit, scale?:'log', format? }
@@ -11,7 +39,183 @@ import { VoicePool } from '../audio/voicePool'
 //   'control'  — modulates the source's pitch, not in the audio path (pitch LFO / pitch env)
 //   'analyzer' — taps the signal for visualization, audio passes through unchanged
 
-export const CATEGORIES = [
+// ============================================================ type system
+
+// A non-serializable sample (file/mic bytes + decoded buffer) cached by block id
+// in src/audio/sampleCache.js. Read fresh at trigger by the per-trigger hooks.
+export interface CachedSample {
+  blob: Blob
+  fileName: string
+  audioBuffer: AudioBuffer
+}
+
+// Anything the engine can `.connect()` into the graph — a Tone node or the
+// custom polyphonic VoicePool (which proxies connect/disconnect/dispose).
+export type ConnectableNode = Tone.ToneAudioNode | VoicePool
+
+// What a block's `create()` hands back: the node bundle (the per-block `nodes`
+// shape `N`), the graph in/out, and optional per-trigger + async-ready hooks.
+export interface BlockBuild<P, N> {
+  nodes: N
+  input: ConnectableNode | null
+  output: ConnectableNode
+  // Method syntax (bivariant params) so a precise BlockBuild<XParams, XNodes>
+  // stays assignable to the erased BlockBuild<…, unknown>.
+  onTrigger?(when: number, ctx: TriggerContext<P>): void
+  ready?: Promise<unknown>
+}
+
+export interface TriggerContext<P> {
+  params: P
+  sample: CachedSample | undefined
+  nodes: Set<Tone.ToneAudioNode>
+}
+
+interface SelectOption {
+  value: string
+  label: string
+  advanced?: boolean
+}
+
+interface ParamCommon<P> {
+  key: Extract<keyof P, string>
+  label: string
+  group?: string
+  advanced?: boolean
+  // Methods (not function properties) so ParamDef<XParams> erases cleanly to
+  // ParamDef<Record<string, unknown>> in the consumer-facing AnyBlockDef.
+  show?(params: P, sound?: Sound): boolean
+  inactive?(params: P, sound?: Sound): string | false
+}
+
+interface RangeParam<P> extends ParamCommon<P> {
+  type: 'range'
+  min: number
+  max: number
+  step: number
+  default: number
+  unit?: string
+  scale?: 'log'
+  percent?: boolean
+  format?(v: number): string
+}
+
+interface SelectParam<P> extends ParamCommon<P> {
+  type: 'select'
+  options: SelectOption[]
+  default: string
+}
+
+interface ToggleParam<P> extends ParamCommon<P> {
+  type: 'toggle'
+  default: boolean
+}
+
+interface HarmonicsParam<P> extends ParamCommon<P> {
+  type: 'harmonics'
+  default: number[]
+}
+
+export type ParamDef<P> = RangeParam<P> | SelectParam<P> | ToggleParam<P> | HarmonicsParam<P>
+
+interface BlockExample<P> {
+  label: string
+  hint?: string
+  params: Partial<P>
+}
+
+interface BlockPreset<P> {
+  label: string
+  params: Partial<P>
+}
+
+// A registry entry. `P` = this block's param shape, `N` = its node bundle. The
+// callbacks are methods so a precise BlockDef<XParams, XNodes> stays assignable
+// to AnyBlockDef (bivariant params) — that's what lets data-driven code dispatch
+// by `block.type` without a cast, while each entry is still authored against its
+// own narrow types (a typo in `apply`'s destructure is a compile error).
+export interface BlockDef<P, N> {
+  type: BlockType
+  name: string
+  category: Category
+  kind: BlockKind
+  description?: string
+  advanced?: boolean
+  params: ParamDef<P>[]
+  structureParams?: string[]
+  examples?: BlockExample<P>[]
+  presets?: BlockPreset<P>[]
+  overrides?(params: P): string[]
+  tailSeconds?(params: P): number
+  create?(params: P): BlockBuild<P, N>
+  apply?(nodes: N, params: P): void
+}
+
+// Identity helper: locks `P` and `N` per entry so the body is type-checked
+// against this block's own param + node types.
+export function defineBlock<P, N = Record<string, never>>(def: BlockDef<P, N>): BlockDef<P, N> {
+  return def
+}
+
+// The type-erased, consumer-facing view of any registry entry. Method-bivariance
+// (above) makes every concrete BlockDef assignable to this: params erase to
+// Record<string, unknown> (every *Params object type is index-assignable) and the
+// node bundle erases to `unknown` (the engine treats it opaquely — create returns
+// it, apply consumes it, nothing inspects it). So data-driven dispatch like
+// `BLOCK_DEFS[block.type].create(block.params)` type-checks with no cast.
+export type AnyBlockDef = BlockDef<Record<string, unknown>, unknown>
+
+// ---------------------------------------------------------- node bundles
+
+interface SynthNodes { synth: VoicePool }
+interface NoiseNodes { synth: Tone.NoiseSynth }
+interface MetalNodes { synth: VoicePool }
+interface SampleNodes { gain: Tone.Volume }
+interface CompressorNodes { node: Tone.Compressor }
+interface GateNodes { node: Tone.Gate }
+interface FilterNodes { node: Tone.Filter }
+interface EqNodes { node: Tone.EQ3 }
+interface ReverbNodes { node: Tone.Reverb }
+interface PitchshiftNodes { node: Tone.PitchShift }
+interface BitcrusherNodes { node: Tone.BitCrusher }
+interface VolumeNodes { node: Tone.Volume }
+interface PanNodes { node: Tone.Panner }
+interface MonitorNodes { gain: Tone.Gain; analyser: Tone.Analyser }
+interface DelayNodes {
+  node: Tone.FeedbackDelay | Tone.PingPongDelay
+  input?: Tone.Gain
+  toLeft?: Tone.Merge
+  mix?: Tone.CrossFade
+}
+interface DetuneNodes {
+  input: Tone.Gain
+  sum: Tone.Gain
+  mix: Tone.CrossFade
+  shifters: Tone.PitchShift[]
+}
+interface OverdriveNodes {
+  input: Tone.Gain
+  pre: Tone.Gain
+  dist: Tone.Distortion
+  trim: Tone.Gain
+  mix: Tone.CrossFade
+}
+interface VocoderNodes {
+  input: Tone.Gain
+  modIn: Tone.Gain
+  vsum: Tone.Gain
+  followers: Tone.Follower[]
+  sibFol: Tone.Follower
+  sibScale: Tone.Gain
+  sibCar: Tone.Filter
+  sibMod: Tone.Filter
+  sibGain: Tone.Gain
+  bands: Tone.ToneAudioNode[]
+}
+
+// ============================================================ registry
+
+export const CATEGORIES: { id: Category; label: string; color: string }[] = [
   { id: 'source', label: 'Sources', color: 'amber' },
   { id: 'dynamics', label: 'Dynamics', color: 'sky' },
   { id: 'filter', label: 'Filter', color: 'emerald' },
@@ -23,7 +227,7 @@ export const CATEGORIES = [
 
 // Pitch-step multipliers for a unison stack: ceil(n/2) above, floor(n/2)
 // below, e.g. n=4 -> [1, 2, -1, -2]. Negative `amount` mirrors naturally.
-function unisonOffsets(count) {
+function unisonOffsets(count: number): number[] {
   const offsets = []
   for (let k = 1; k <= Math.ceil(count / 2); k++) offsets.push(k)
   for (let k = 1; k <= Math.floor(count / 2); k++) offsets.push(-k)
@@ -33,7 +237,7 @@ function unisonOffsets(count) {
 // Vocoder band centers: log-spaced across the speech-intelligibility range,
 // with a constant-Q per band derived from the spacing so neighbours just meet.
 // Returns one Q for all bands (the spacing ratio is uniform in log space).
-function vocoderBands(count) {
+function vocoderBands(count: number): { freqs: number[]; Q: number } {
   const f0 = 150, f1 = 6000
   const freqs = []
   for (let i = 0; i < count; i++) {
@@ -48,7 +252,7 @@ function vocoderBands(count) {
 // opens the carrier band. Tuned by ear for audible-but-not-clipping output.
 const VOCODER_MAKEUP = 6
 
-const wave = (def = 'sawtooth') => ({
+const wave = (def = 'sawtooth'): SelectParam<{ wave: string }> => ({
   key: 'wave',
   label: 'Wave',
   type: 'select',
@@ -57,16 +261,16 @@ const wave = (def = 'sawtooth') => ({
 })
 
 // percent: true — shown as 0–100%; manual entry uses whole percent, not 0–1
-const wet = (def = 0.5) => ({
+const wet = (def = 0.5): RangeParam<{ wet: number }> => ({
   key: 'wet', label: 'Mix', type: 'range', min: 0, max: 1, step: 0.01, default: def, percent: true,
   format: (v) => `${Math.round(v * 100)}%`,
 })
 
-const hz = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}kHz` : `${Math.round(v)}Hz`)
-const db = (v) => `${v.toFixed(1)}dB`
-const sec = (v) => (v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`)
-const cents = (v) => `${v > 0 ? '+' : ''}${Math.round(v)}ct`
-const semis = (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}st`
+const hz = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}kHz` : `${Math.round(v)}Hz`)
+const db = (v: number) => `${v.toFixed(1)}dB`
+const sec = (v: number) => (v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(2)}s`)
+const cents = (v: number) => `${v > 0 ? '+' : ''}${Math.round(v)}ct`
+const semis = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}st`
 
 // Max simultaneous voices per pitched source (Synth/Metal VoicePool). Enough for
 // chords + overlapping sequence tails; a future user param can expose it. Voices
@@ -77,6 +281,8 @@ const MAX_POLYPHONY = 16
 // lands near unity and clean instead of clipping; a single note is quieter for it.
 const VOICE_HEADROOM = 0.5
 
+interface OscillatorOptions { type: string; partials?: number[]; width?: number }
+
 // Maps the synth's oscillator params to a Tone OmniOscillator *options object*,
 // applied via `polySynth.set({ oscillator })` (a PolySynth has no single
 // oscillator node to mutate). Three "rich" modes beyond the plain waves:
@@ -85,7 +291,7 @@ const VOICE_HEADROOM = 0.5
 // applies `type` first, so `{ type: 'sine', partials }` lands a custom wave;
 // `partials: []` clears any stale custom array when switching back to a plain
 // wave (Tone's deepMerge replaces arrays wholesale).
-function oscillatorOptions(p) {
+function oscillatorOptions(p: SynthParams): OscillatorOptions {
   if (p.wave === 'custom') {
     return { type: 'sine', partials: p.harmonics?.length ? p.harmonics : [1] }
   }
@@ -97,9 +303,9 @@ function oscillatorOptions(p) {
   return { type: count > 0 ? `${p.wave}${count}` : p.wave, partials: [] }
 }
 
-export const BLOCK_DEFS = {
+const DEFS = {
   // ---------------------------------------------------------------- sources
-  synth: {
+  synth: defineBlock<SynthParams, SynthNodes>({
     type: 'synth',
     name: 'Synth',
     category: 'source',
@@ -166,9 +372,9 @@ export const BLOCK_DEFS = {
         envelope: { attack: params.attack, decay: params.decay, sustain: params.sustain, release: params.release },
       })
     },
-  },
+  }),
 
-  noise: {
+  noise: defineBlock<NoiseParams, NoiseNodes>({
     type: 'noise',
     name: 'Noise',
     category: 'source',
@@ -213,9 +419,9 @@ export const BLOCK_DEFS = {
       synth.envelope.sustain = p.sustain
       synth.envelope.release = p.release
     },
-  },
+  }),
 
-  metal: {
+  metal: defineBlock<MetalParams, MetalNodes>({
     type: 'metal',
     name: 'Metal',
     category: 'source',
@@ -259,9 +465,9 @@ export const BLOCK_DEFS = {
         envelope: { attack: p.attack, decay: p.decay, release: p.release },
       })
     },
-  },
+  }),
 
-  sample: {
+  sample: defineBlock<SampleParams, SampleNodes>({
     type: 'sample',
     name: 'Sample',
     category: 'source',
@@ -292,10 +498,10 @@ export const BLOCK_DEFS = {
     apply({ gain }, params) {
       gain.volume.value = params.gain
     },
-  },
+  }),
 
   // --------------------------------------------------------------- dynamics
-  compressor: {
+  compressor: defineBlock<CompressorParams, CompressorNodes>({
     type: 'compressor',
     name: 'Compressor',
     category: 'dynamics',
@@ -318,9 +524,9 @@ export const BLOCK_DEFS = {
       node.attack.value = p.attack
       node.release.value = p.release
     },
-  },
+  }),
 
-  gate: {
+  gate: defineBlock<GateParams, GateNodes>({
     type: 'gate',
     name: 'Gate',
     category: 'dynamics',
@@ -339,9 +545,9 @@ export const BLOCK_DEFS = {
       node.threshold = p.threshold
       node.smoothing = p.smoothing
     },
-  },
+  }),
 
-  samplenv: {
+  samplenv: defineBlock<SamplenvParams>({
     type: 'samplenv',
     name: 'Sample Envelope',
     category: 'dynamics',
@@ -362,10 +568,10 @@ export const BLOCK_DEFS = {
     overrides: (p) => (p.stretch === 'natural'
       ? ['attack', 'decay', 'sustain', 'release', 'duration']
       : ['attack', 'decay', 'sustain', 'release']),
-  },
+  }),
 
   // ----------------------------------------------------------------- filter
-  vocoder: {
+  vocoder: defineBlock<VocoderParams, VocoderNodes>({
     type: 'vocoder',
     name: 'Vocoder',
     category: 'filter',
@@ -398,8 +604,8 @@ export const BLOCK_DEFS = {
       const modIn = new Tone.Gain(1)   // modulator in (the speech source connects here)
       const vsum = new Tone.Gain(1)    // sum of all vocoded bands → output
 
-      const followers = []
-      const bandNodes = []
+      const followers: Tone.Follower[] = []
+      const bandNodes: Tone.ToneAudioNode[] = []
       for (const f of freqs) {
         const cBP = new Tone.Filter({ frequency: f, type: 'bandpass', Q })
         const mBP = new Tone.Filter({ frequency: f, type: 'bandpass', Q })
@@ -421,8 +627,8 @@ export const BLOCK_DEFS = {
       input.connect(sibCar); sibCar.connect(sibGain); sibGain.connect(vsum)
       modIn.connect(sibMod); sibMod.connect(sibFol); sibFol.connect(sibScale); sibScale.connect(sibGain.gain)
 
-      let activeMod = null
-      function onTrigger(when, { params, sample, nodes }) {
+      let activeMod: Tone.ToneBufferSource | null = null
+      function onTrigger(when: number, { params, sample, nodes }: TriggerContext<VocoderParams>) {
         if (activeMod) {
           try { activeMod.stop(); activeMod.dispose() } catch { /* already gone */ }
           nodes.delete(activeMod)
@@ -454,9 +660,9 @@ export const BLOCK_DEFS = {
       sibFol.smoothing = Math.min(0.02, p.response)
       sibScale.gain.value = VOCODER_MAKEUP * (p.sibilance ?? 0)
     },
-  },
+  }),
 
-  filter: {
+  filter: defineBlock<FilterParams, FilterNodes>({
     type: 'filter',
     name: 'Filter',
     category: 'filter',
@@ -478,9 +684,9 @@ export const BLOCK_DEFS = {
       node.frequency.value = p.cutoff
       node.Q.value = p.resonance
     },
-  },
+  }),
 
-  eq: {
+  eq: defineBlock<EqParams, EqNodes>({
     type: 'eq',
     name: 'EQ',
     category: 'filter',
@@ -501,10 +707,10 @@ export const BLOCK_DEFS = {
       node.mid.value = p.mid
       node.high.value = p.high
     },
-  },
+  }),
 
   // ------------------------------------------------------------------- time
-  reverb: {
+  reverb: defineBlock<ReverbParams, ReverbNodes>({
     type: 'reverb',
     name: 'Reverb',
     category: 'time',
@@ -532,9 +738,9 @@ export const BLOCK_DEFS = {
       node.preDelay = p.preDelay
       node.wet.value = p.wet
     },
-  },
+  }),
 
-  delay: {
+  delay: defineBlock<DelayParams, DelayNodes>({
     type: 'delay',
     name: 'Delay',
     category: 'time',
@@ -575,10 +781,10 @@ export const BLOCK_DEFS = {
       if (mix) mix.fade.value = p.wet // ping-pong: our manual dry/wet
       else node.wet.value = p.wet
     },
-  },
+  }),
 
   // ------------------------------------------------------------------ pitch
-  pitchshift: {
+  pitchshift: defineBlock<PitchshiftParams, PitchshiftNodes>({
     type: 'pitchshift',
     name: 'Pitch Shift',
     category: 'pitch',
@@ -597,9 +803,9 @@ export const BLOCK_DEFS = {
       node.pitch = p.pitch
       node.wet.value = p.wet
     },
-  },
+  }),
 
-  detune: {
+  detune: defineBlock<DetuneParams, DetuneNodes>({
     type: 'detune',
     name: 'Detune',
     category: 'pitch',
@@ -634,13 +840,13 @@ export const BLOCK_DEFS = {
     },
     apply({ shifters, sum, mix }, p) {
       const offsets = unisonOffsets(shifters.length)
-      shifters.forEach((ps, i) => { ps.pitch = (offsets[i] * p.amount) / 100 })
+      shifters.forEach((ps, i) => { ps.pitch = ((offsets[i] ?? 0) * p.amount) / 100 })
       sum.gain.value = 1 / Math.sqrt(shifters.length + 1)
       mix.fade.value = p.wet
     },
-  },
+  }),
 
-  pitchlfo: {
+  pitchlfo: defineBlock<PitchlfoParams>({
     type: 'pitchlfo',
     name: 'Pitch LFO',
     category: 'pitch',
@@ -652,9 +858,9 @@ export const BLOCK_DEFS = {
       { key: 'depth', label: 'Depth', type: 'range', min: 0, max: 1200, step: 1, default: 50, format: cents },
       wave('sine'),
     ],
-  },
+  }),
 
-  pitchenv: {
+  pitchenv: defineBlock<PitchenvParams>({
     type: 'pitchenv',
     name: 'Pitch Envelope',
     category: 'pitch',
@@ -666,10 +872,10 @@ export const BLOCK_DEFS = {
       { key: 'end', label: 'End', type: 'range', min: -2400, max: 2400, step: 10, default: 1200, format: cents },
       { key: 'time', label: 'Time', type: 'range', min: 0.02, max: 4, step: 0.01, default: 0.3, scale: 'log', format: sec },
     ],
-  },
+  }),
 
   // ------------------------------------------------------------- distortion
-  overdrive: {
+  overdrive: defineBlock<OverdriveParams, OverdriveNodes>({
     type: 'overdrive',
     name: 'Overdrive',
     category: 'distortion',
@@ -698,9 +904,9 @@ export const BLOCK_DEFS = {
       trim.gain.value = 1 / (1 + p.drive)
       mix.fade.value = p.wet
     },
-  },
+  }),
 
-  bitcrusher: {
+  bitcrusher: defineBlock<BitcrusherParams, BitcrusherNodes>({
     type: 'bitcrusher',
     name: 'Bitcrusher',
     category: 'distortion',
@@ -711,17 +917,18 @@ export const BLOCK_DEFS = {
       wet(1),
     ],
     create(p) {
-      const node = new Tone.BitCrusher({ bits: p.bits, wet: p.wet })
+      const node = new Tone.BitCrusher({ bits: p.bits })
+      node.wet.value = p.wet
       return { nodes: { node }, input: node, output: node }
     },
     apply({ node }, p) {
       node.bits.value = p.bits
       node.wet.value = p.wet
     },
-  },
+  }),
 
   // ---------------------------------------------------------------- utility
-  volume: {
+  volume: defineBlock<VolumeParams, VolumeNodes>({
     type: 'volume',
     name: 'Volume',
     category: 'utility',
@@ -737,9 +944,9 @@ export const BLOCK_DEFS = {
     apply({ node }, p) {
       node.volume.value = p.volume
     },
-  },
+  }),
 
-  pan: {
+  pan: defineBlock<PanParams, PanNodes>({
     type: 'pan',
     name: 'Pan',
     category: 'utility',
@@ -756,9 +963,9 @@ export const BLOCK_DEFS = {
     apply({ node }, p) {
       node.pan.value = p.pan
     },
-  },
+  }),
 
-  monitor: {
+  monitor: defineBlock<MonitorParams, MonitorNodes>({
     type: 'monitor',
     name: 'Monitor',
     category: 'utility',
@@ -778,17 +985,19 @@ export const BLOCK_DEFS = {
       return { nodes: { gain, analyser }, input: gain, output: gain }
     },
     apply() {},
-  },
+  }),
 
 }
+
+export const BLOCK_DEFS: Record<BlockType, AnyBlockDef> = DEFS
 
 // Which of a lane's source params are currently overridden by another enabled
 // block in that lane's chain (e.g. the Sample Envelope flattens the synth
 // ADSR). Returns paramKey -> { name, id } of the overriding block, so the UI can
 // grey the control out, name the culprit, and link to it. Blocks opt in with an
 // `overrides(params)` def.
-export function disabledSourceParams(lane) {
-  const locks = new Map()
+export function disabledSourceParams(lane: Lane): Map<string, { name: string; id: string }> {
+  const locks = new Map<string, { name: string; id: string }>()
   for (const block of lane.chain ?? []) {
     if (!block.enabled) continue
     const def = BLOCK_DEFS[block.type]
@@ -802,11 +1011,11 @@ export function disabledSourceParams(lane) {
 // (`includeAdvanced: false`) blocks tagged `advanced` are dropped from the menu;
 // this only curates what's *addable* — an advanced block already in a chain
 // still renders and stays editable.
-export function blocksByCategory({ includeAdvanced = true } = {}) {
-  const byCat = new Map(CATEGORIES.map((c) => [c.id, { ...c, blocks: [] }]))
+export function blocksByCategory({ includeAdvanced = true }: { includeAdvanced?: boolean } = {}) {
+  const byCat = new Map(CATEGORIES.map((c) => [c.id, { ...c, blocks: [] as AnyBlockDef[] }]))
   for (const def of Object.values(BLOCK_DEFS)) {
     if (!includeAdvanced && def.advanced) continue
-    byCat.get(def.category).blocks.push(def)
+    byCat.get(def.category)?.blocks.push(def)
   }
   return [...byCat.values()]
 }
