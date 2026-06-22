@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
-import { BLOCK_DEFS, disabledSourceParams } from '../blocks/registry'
+import { BLOCK_DEFS, disabledSourceParams, isPitchModType, pitchModInert } from '../blocks/registry'
 import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
 import { useT } from '../state/uiPrefs'
@@ -85,6 +85,8 @@ function Panel({ keyId, sound, handlers }: { keyId: string; sound: Sound; handle
   if (!block || !BLOCK_DEFS[block.type]) return null
   const source = isSource(block)
   const lane = findLane(sound, keyId)
+  // A Pitch Env / Pitch LFO is inert when its lane's source can't be pitch-modulated.
+  const inactiveBy = lane && isPitchModType(block.type) ? (pitchModInert(lane) ?? undefined) : undefined
   return (
     <BlockControls
       block={block}
@@ -93,6 +95,7 @@ function Panel({ keyId, sound, handlers }: { keyId: string; sound: Sound; handle
       isSource={source}
       canRemoveLane={source && sound.sources.length > 1}
       disabledParams={source && lane ? disabledSourceParams(lane) : undefined}
+      inactiveBy={inactiveBy}
       onParam={(key, value) => handlers.onParam(block.id, key, value)}
       onToggle={() => handlers.onToggle(block.id)}
       onRemove={() => (source ? handlers.onRemoveLane(block.id) : handlers.onRemove(block.id))}

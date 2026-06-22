@@ -1018,6 +1018,22 @@ export function disabledSourceParams(lane: Lane): Map<string, { name: string; id
   return locks
 }
 
+// Pitch Envelope / Pitch LFO modulate the source's pitch *rate*, which only
+// exists for a pitched synth/metal (each voice's detune) or a Sample in normal
+// mode (the buffer source's playbackRate). On Noise (no pitch) or a granular
+// Sample (GrainPlayer's detune is a static number, not an automatable Signal)
+// they have no effect — so the UI greys those control blocks and names the
+// source, mirroring how `disabledSourceParams` flags an overridden source param.
+export const isPitchModType = (type: string): boolean => type === 'pitchlfo' || type === 'pitchenv'
+
+export function pitchModInert(lane: Lane): { sourceName: string; sourceId: string } | null {
+  if (lane.type === 'noise') return { sourceName: BLOCK_DEFS.noise.name, sourceId: lane.id }
+  if (lane.type === 'sample' && (lane.params as { mode?: string }).mode === 'granular') {
+    return { sourceName: BLOCK_DEFS.sample.name, sourceId: lane.id }
+  }
+  return null
+}
+
 // Group block defs by category for the add-menu. In Beginner mode
 // (`includeAdvanced: false`) blocks tagged `advanced` are dropped from the menu;
 // this only curates what's *addable* — an advanced block already in a chain

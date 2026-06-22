@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
-import { BLOCK_DEFS } from '../blocks/registry'
+import { BLOCK_DEFS, isPitchModType, pitchModInert } from '../blocks/registry'
 import type { BlockType, Lane } from '../types'
 import AddBlockMenu from './AddBlockMenu'
 import Chip from './Chip'
@@ -32,6 +32,8 @@ export default function LaneRow({
   const [dropTarget, setDropTarget] = useState<number | null>(null)
   const isSel = (key: string) => selectedKeys.includes(key)
   const click = (key: string) => (e: React.MouseEvent) => onSelect(key, e.shiftKey || e.metaKey)
+  // Pitch Env / LFO have no effect when this lane's source can't be pitch-modulated.
+  const pmInert = !!pitchModInert(lane)
 
   // Unfocused lane: same chip pills as focused, but dimmed and without drag/add.
   if (!focused) {
@@ -44,7 +46,7 @@ export default function LaneRow({
         {lane.chain.filter((b) => BLOCK_DEFS[b.type]).map((b) => (
           <span key={b.id} className="flex items-center gap-2">
             <Conn />
-            <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} onParam={onParam} />
+            <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} onParam={onParam} inert={pmInert && isPitchModType(b.type)} />
           </span>
         ))}
         <Port portRef={outputRef} />
@@ -82,7 +84,7 @@ export default function LaneRow({
       {lane.chain.filter((b) => BLOCK_DEFS[b.type]).map((b, i) => (
         <span key={b.id} className="flex items-center gap-2">
           <Conn />
-          <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} onParam={onParam} drag={dragProps(i)} />
+          <Chip block={b} selected={isSel(b.id)} onClick={click(b.id)} onParam={onParam} drag={dragProps(i)} inert={pmInert && isPitchModType(b.type)} />
         </span>
       ))}
       <Conn />

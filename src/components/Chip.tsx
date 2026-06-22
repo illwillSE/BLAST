@@ -1,5 +1,6 @@
 import { BLOCK_DEFS } from '../blocks/registry'
 import { CAT_STYLES, formatValue } from './ui'
+import { useT } from '../state/uiPrefs'
 import type { Block, MonitorBlock } from '../types'
 import OutputVisualizer from './OutputVisualizer'
 import DebugMeter from './DebugMeter'
@@ -36,6 +37,9 @@ interface ChipProps {
   onClick: React.MouseEventHandler<HTMLElement>
   onParam: OnParam
   drag?: DragProps
+  // True when the block has no effect on the lane's current source (e.g. Pitch
+  // Env / LFO on a granular Sample or Noise) — dimmed, but not "bypassed".
+  inert?: boolean
 }
 
 // The Monitor is rendered as a card (live canvas / meter + view selector) rather
@@ -78,7 +82,8 @@ function MonitorCard({ block, selected, onClick, onParam, drag }: { block: Monit
 
 // A single block node in the graph. Selected = amber ring; bypassed = dim +
 // struck-through name (sources are never "bypassed" — they mute via the lane).
-export default function Chip({ block, selected, onClick, onParam, drag }: ChipProps) {
+export default function Chip({ block, selected, onClick, onParam, drag, inert }: ChipProps) {
+  const t = useT()
   const def = BLOCK_DEFS[block.type]
   if (block.type === 'monitor') return <MonitorCard block={block} selected={selected} onClick={onClick} onParam={onParam} drag={drag} />
   const cat = CAT_STYLES[def.category]
@@ -88,11 +93,12 @@ export default function Chip({ block, selected, onClick, onParam, drag }: ChipPr
     <button
       onClick={onClick}
       {...(drag || {})}
+      title={inert ? t('block.inactiveTitle') : undefined}
       className={`flex items-center gap-1.5 rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] shadow-sm transition-all duration-150 ${
         drag ? 'cursor-grab active:cursor-grabbing' : ''
       } ${
         selected ? `border-accent-deep ring-1 ring-accent-deep/70 ${cat.glow}` : 'border-edge hover:border-edge-hover hover:bg-surface-hover/40'
-      } ${bypassed ? 'opacity-45' : ''}`}
+      } ${bypassed ? 'opacity-45' : inert ? 'opacity-50' : ''}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
       <span className={`font-semibold ${cat.text} ${bypassed ? 'line-through' : ''}`}>{def.name}</span>

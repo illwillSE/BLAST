@@ -143,13 +143,16 @@ interface BlockControlsProps {
   onPasteValues: () => void
   disabledParams?: DisabledParams
   onSelect?: SelectFn
+  // Set when this block has no effect on the lane's current source (e.g. Pitch
+  // Env / LFO on a granular Sample or Noise); names the source for a link badge.
+  inactiveBy?: { sourceName: string; sourceId: string }
 }
 
 // Full controls for one block, rendered in the inspector dock. Params lay out
 // in a responsive 2-column grid; the rich editors (sample waveform, harmonics)
 // span the full width above the grid.
 export default function BlockControls({
-  block, sound, soundId, isSource, canRemoveLane, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams, onSelect,
+  block, sound, soundId, isSource, canRemoveLane, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams, onSelect, inactiveBy,
 }: BlockControlsProps) {
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
@@ -183,6 +186,15 @@ export default function BlockControls({
           i
         </button>
         {isSource && <span data-tut="source-swap" className="ml-1"><SourceTypeSwitch block={block} onSwapSource={onSwapSource} /></span>}
+        {inactiveBy && (
+          <button
+            onClick={() => onSelect?.(inactiveBy.sourceId)}
+            title={t('block.inactiveTitle')}
+            className="rounded bg-well px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-muted transition-colors hover:text-accent-bright"
+          >
+            {t('block.inactive')} · {inactiveBy.sourceName} ↗
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-1.5 text-[10px]">
           <button
             onClick={() => copyBlock(block)}
@@ -226,7 +238,7 @@ export default function BlockControls({
         </div>
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className={`mt-3 space-y-3 ${inactiveBy ? 'opacity-50' : ''}`}>
         {block.type === 'sample' && <SampleEditor block={block} soundId={soundId} onParam={onParam} />}
         {block.type === 'samplenv' && <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />}
         {def.presets && (

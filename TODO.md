@@ -203,3 +203,15 @@ Everything else below is v1.0 (small fixes and polish).
       Vite build warning).
 - [ ] **Browser smoke test** (Playwright script: load, play, add blocks,
       export WAV, check console errors).
+
+## Known limitations
+- [ ] **Pitch Envelope / Pitch LFO don't modulate a Sample in granular mode.**
+      Deliberate, documented at `src/audio/engine.ts` (granular branch of
+      `triggerLane`). Normal mode plays through `Tone.ToneBufferSource` whose
+      `playbackRate` is an automatable Param — so the pitch-env ramp and LFO
+      land. Granular mode uses `Tone.GrainPlayer`, whose `detune`/`playbackRate`
+      are plain number properties set once at trigger, not connectable Signals,
+      so per-trigger modulation can't be applied (the static Pitch control +
+      keyboard transpose still work). To fix: drive `GrainPlayer.detune` via a
+      `Tone.Signal`/scheduled ramp instead of a number. `laneDuration`'s granular
+      branch is consistent (ignores the pitch-env min-rate window).
