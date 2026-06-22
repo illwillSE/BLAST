@@ -1,7 +1,7 @@
 // BLAST logo symbol: a burst (corner spikes) around a centered waveform.
 // Identical markup to public/favicon.svg — one shape, two consumers. Inline so
 // it scales and sits in the intro modal; favicon.svg is the standalone tab icon.
-export default function BlastMark({ size = 40, className = '' }) {
+export default function BlastMark({ size = 40, className = '' }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}

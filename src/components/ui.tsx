@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { getColor } from '../theme/colors'
 import { getSample, setSample } from '../audio/sampleCache'
 import { useClipboard, getClipboard, copySample } from '../state/clipboard'
 import { useUIPrefs, useT } from '../state/uiPrefs'
+import type { HarmonicsParamDef, RangeParamDef, SelectParamDef, ToggleParamDef, UiParam } from '../blocks/registry'
+import type { Block } from '../types'
 import HelpModal from './HelpModal'
 
 // Shared control primitives — every control always shows its current value.
@@ -12,7 +15,7 @@ export { CAT_STYLES } from '../theme/categories'
 
 // The signal-flow connector between cards. `active` lights it amber when audio
 // actually passes (an enabled block or a source), dim otherwise.
-export const Arrow = ({ active }) => (
+export const Arrow = ({ active }: { active: boolean }) => (
   <div className={`flex h-10 shrink-0 items-center self-start text-lg ${active ? 'text-accent-deep/80' : 'text-dim'}`}>
     ─▶
   </div>
@@ -22,7 +25,7 @@ export const Arrow = ({ active }) => (
 // toggle as the block (i)) to explain a nearby visual — the oscillator/envelope
 // previews. Takes i18n keys and resolves them here so the flag toggle, which
 // flips the shared language, re-renders the title and text.
-export function InfoDot({ titleKey, textKey }) {
+export function InfoDot({ titleKey, textKey }: { titleKey: string; textKey: string }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   return (
@@ -46,12 +49,12 @@ export function InfoDot({ titleKey, textKey }) {
   )
 }
 
-function toPos(value, def) {
+function toPos(value: number, def: RangeParamDef): number {
   if (def.scale === 'log') return Math.log(value / def.min) / Math.log(def.max / def.min)
   return (value - def.min) / (def.max - def.min)
 }
 
-function toValue(pos, def) {
+function toValue(pos: number, def: RangeParamDef): number {
   let v
   if (def.scale === 'log') v = def.min * Math.pow(def.max / def.min, pos)
   else v = def.min + (def.max - def.min) * pos
@@ -59,17 +62,18 @@ function toValue(pos, def) {
   return Math.min(def.max, Math.max(def.min, v))
 }
 
-export function formatValue(def, value) {
-  if (def.format) return def.format(value)
-  return `${value}${def.unit || ''}`
+export function formatValue(def: UiParam, value: unknown): string {
+  if (def.type === 'range' && def.format) return def.format(value as number)
+  const unit = def.type === 'range' ? (def.unit ?? '') : ''
+  return `${value}${unit}`
 }
 
-function stepDecimals(step) {
+function stepDecimals(step: number): number {
   const s = String(step)
-  return s.includes('.') ? s.split('.')[1].length : 0
+  return s.includes('.') ? s.split('.')[1]!.length : 0
 }
 
-function ValueEntry({ def, value, onChange, onClose }) {
+function ValueEntry({ def, value, onChange, onClose }: { def: RangeParamDef; value: number; onChange: (v: number) => void; onClose: () => void }) {
   // Percent params are edited as whole 0–100 numbers, stored as 0–1.
   const factor = def.percent ? 100 : 1
   const decimals = Math.max(0, stepDecimals(def.step) - (def.percent ? 2 : 0))
@@ -108,7 +112,7 @@ function ValueEntry({ def, value, onChange, onClose }) {
   )
 }
 
-export function Slider({ def, value, onChange }) {
+export function Slider({ def, value, onChange }: { def: RangeParamDef; value: number; onChange: (v: number) => void }) {
   const t = useT()
   const pos = toPos(value, def)
   const fillPct = `${(pos * 100).toFixed(1)}%`
@@ -135,19 +139,19 @@ export function Slider({ def, value, onChange }) {
         min={0}
         max={1000}
         value={Math.round(pos * 1000)}
-        onChange={(e) => onChange(toValue(e.target.value / 1000, def))}
+        onChange={(e) => onChange(toValue(Number(e.target.value) / 1000, def))}
         onDoubleClick={() => onChange(def.default)}
         onKeyDown={(e) => {
           // The native 1/1000-track nudge rounds away to nothing for coarse
           // steps — make arrows move exactly one parameter step instead.
-          const dir = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key]
+          const dir = ({ ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 } as Record<string, number>)[e.key]
           if (!dir) return
           e.preventDefault()
           const stepped = (e.shiftKey ? 10 : 1) * dir * def.step + value
           onChange(Math.min(def.max, Math.max(def.min, Math.round(stepped / def.step) * def.step)))
         }}
         className="blast-slider w-full"
-        style={{ '--fill': fillPct }}
+        style={{ '--fill': fillPct } as React.CSSProperties}
       />
     </div>
   )
@@ -157,15 +161,15 @@ export function Slider({ def, value, onChange }) {
 // Slider, laid out as a tall draggable track. Used by the bus mixer's channel
 // strips. Drag the track to set the value; double-click the track to reset;
 // double-click the value to type it exactly.
-export function VFader({ def, value, onChange }) {
+export function VFader({ def, value, onChange }: { def: RangeParamDef; value: number; onChange: (v: number) => void }) {
   const t = useT()
   const pos = toPos(value, def)
-  const trackRef = useRef(null)
+  const trackRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
   const [editing, setEditing] = useState(false)
 
-  function setFromEvent(e) {
-    const rect = trackRef.current.getBoundingClientRect()
+  function setFromEvent(e: React.PointerEvent) {
+    const rect = trackRef.current!.getBoundingClientRect()
     const p = Math.min(1, Math.max(0, 1 - (e.clientY - rect.top) / rect.height))
     onChange(toValue(p, def))
   }
@@ -199,7 +203,7 @@ export function VFader({ def, value, onChange }) {
   )
 }
 
-export function Select({ def, value, onChange }) {
+export function Select({ def, value, onChange }: { def: SelectParamDef; value: string; onChange: (v: string) => void }) {
   const { mode } = useUIPrefs()
   // In Beginner mode, hide options tagged `advanced` — but always keep the
   // currently-selected option visible so a saved advanced value isn't lost.
@@ -223,31 +227,32 @@ export function Select({ def, value, onChange }) {
 // "Draw your own waveform" — a row of draggable bars, one per harmonic, each
 // the relative level (0..1) of that partial. The array feeds the synth's
 // custom OmniOscillator partials. Drag up/down on a bar to set its level.
-export function HarmonicsEditor({ def, value, onChange }) {
+export function HarmonicsEditor({ def, value, onChange }: { def: HarmonicsParamDef; value: number[]; onChange: (v: number[]) => void }) {
   const t = useT()
   const partials = Array.isArray(value) && value.length ? value : [1]
-  const canvasRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const draggingRef = useRef(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
+    if (!ctx) return
     const { width, height } = canvas
     ctx.clearRect(0, 0, width, height)
     const slot = width / partials.length
     const fundamental = getColor('accent') // brighter than overtones
     const overtone = getColor('overtone')
     for (let i = 0; i < partials.length; i++) {
-      const v = Math.min(1, Math.max(0, partials[i]))
+      const v = Math.min(1, Math.max(0, partials[i]!))
       const barH = v * (height - 2)
       ctx.fillStyle = i === 0 ? fundamental : overtone
       ctx.fillRect(i * slot + 1, height - barH, slot - 2, barH)
     }
   }, [partials])
 
-  function setAt(e) {
-    const rect = canvasRef.current.getBoundingClientRect()
+  function setAt(e: React.PointerEvent) {
+    const rect = canvasRef.current!.getBoundingClientRect()
     const n = partials.length
     const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - rect.left) / rect.width) * n)))
     const v = Math.min(1, Math.max(0, 1 - (e.clientY - rect.top) / rect.height))
@@ -274,7 +279,7 @@ export function HarmonicsEditor({ def, value, onChange }) {
   )
 }
 
-export function Toggle({ def, value, onChange }) {
+export function Toggle({ def, value, onChange }: { def: ToggleParamDef; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex cursor-pointer select-none items-center gap-2 py-1">
       <input
@@ -288,15 +293,29 @@ export function Toggle({ def, value, onChange }) {
   )
 }
 
-export function ParamControl({ def, value, onChange }) {
-  if (def.type === 'select') return <Select def={def} value={value} onChange={onChange} />
-  if (def.type === 'toggle') return <Toggle def={def} value={value} onChange={onChange} />
-  if (def.type === 'harmonics') return <HarmonicsEditor def={def} value={value} onChange={onChange} />
-  return <Slider def={def} value={value} onChange={onChange} />
+// Dispatches a param def to its control. `value`/`onChange` are typed `unknown`
+// because the value type is keyed by `def.type` (number / string / boolean /
+// number[]) — a correlation the type system can't follow — so each branch casts
+// after `def.type` narrows the def.
+export function ParamControl({ def, value, onChange }: { def: UiParam; value: unknown; onChange: (v: unknown) => void }) {
+  if (def.type === 'select') return <Select def={def} value={value as string} onChange={onChange as (v: string) => void} />
+  if (def.type === 'toggle') return <Toggle def={def} value={value as boolean} onChange={onChange as (v: boolean) => void} />
+  if (def.type === 'harmonics') return <HarmonicsEditor def={def} value={value as number[]} onChange={onChange as (v: number[]) => void} />
+  return <Slider def={def} value={value as number} onChange={onChange as (v: number) => void} />
 }
 
 // Browse / Record button row + error line, shared by the sample blocks.
-export function SampleLoadControls({ block, recording, onBrowse, onStartRecording, onStopRecording, onOpenLibrary, error }) {
+interface SampleLoadControlsProps {
+  block: Block
+  recording: boolean
+  onBrowse: () => void
+  onStartRecording: () => void
+  onStopRecording: () => void
+  onOpenLibrary: () => void
+  error: string | null
+}
+
+export function SampleLoadControls({ block, recording, onBrowse, onStartRecording, onStopRecording, onOpenLibrary, error }: SampleLoadControlsProps) {
   const clip = useClipboard()
   const t = useT()
   const hasSample = !!getSample(block.id)
@@ -314,14 +333,23 @@ export function SampleLoadControls({ block, recording, onBrowse, onStartRecordin
       </div>
       <div className="mt-1.5 flex gap-1.5">
         <Button onClick={() => copySample(block)} disabled={!hasSample} className="flex-1 disabled:opacity-40">{t('sample.copySample')}</Button>
-        <Button onClick={() => setSample(block.id, getClipboard().sample)} disabled={!canPaste} className="flex-1 disabled:opacity-40">{t('sample.pasteSample')}</Button>
+        <Button
+          onClick={() => { const c = getClipboard(); if (c?.kind === 'sample') setSample(block.id, c.sample) }}
+          disabled={!canPaste}
+          className="flex-1 disabled:opacity-40"
+        >{t('sample.pasteSample')}</Button>
       </div>
       {error && <div className="mt-1.5 text-[11px] text-danger">{error}</div>}
     </>
   )
 }
 
-export function Button({ children, onClick, variant = 'default', className = '', ...rest }) {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'primary' | 'danger'
+  children: ReactNode
+}
+
+export function Button({ children, onClick, variant = 'default', className = '', ...rest }: ButtonProps) {
   const variants = {
     default: 'border-edge bg-surface text-ink hover:border-edge-2 hover:bg-surface-hover',
     primary: 'border-accent-deep/60 bg-accent-deep/15 text-accent-bright hover:bg-accent-deep/25',

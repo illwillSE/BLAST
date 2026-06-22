@@ -1,19 +1,28 @@
 import { useEffect } from 'react'
+import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { useUIPrefs } from '../state/uiPrefs'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
+
+interface HelpModalProps {
+  dot?: string
+  title: ReactNode
+  titleClass?: string
+  onClose: () => void
+  children: ReactNode
+}
 
 // Shared chrome for the (i) help dialogs — backdrop, card, a header with an
 // optional category dot, the title, the English/Swedish flag toggle, and close
 // (also closes on Esc / backdrop click). The flag flips the shared UI language
 // so the body re-renders in the chosen language, like the rest of the app.
 // Body content is passed as children.
-export default function HelpModal({ dot, title, titleClass, onClose, children }) {
+export default function HelpModal({ dot, title, titleClass, onClose, children }: HelpModalProps) {
   const { lang, setLang } = useUIPrefs()
   const { entered, handleClose } = useModalAnimation(onClose)
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handleClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [handleClose])

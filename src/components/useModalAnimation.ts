@@ -7,7 +7,7 @@ const DURATION = 200 // ms — keep in sync with the duration-200 classes below
 // `entered` flag plus a `handleClose` that plays the exit before the parent
 // unmounts us via onClose. Drop `backdropAnim`/`panelAnim` into the respective
 // className strings.
-export function useModalAnimation(onClose) {
+export function useModalAnimation(onClose: () => void): { entered: boolean; handleClose: () => void } {
   const [entered, setEntered] = useState(false)
 
   // Trigger the enter transition on the frame after mount.
@@ -25,8 +25,8 @@ export function useModalAnimation(onClose) {
   return { entered, handleClose }
 }
 
-export const backdropAnim = (entered) =>
+export const backdropAnim = (entered: boolean): string =>
   `transition-opacity duration-200 ease-out ${entered ? 'opacity-100' : 'opacity-0'}`
 
-export const panelAnim = (entered) =>
+export const panelAnim = (entered: boolean): string =>
   `transition-transform duration-200 ease-out ${entered ? 'translate-y-0 scale-100' : '-translate-y-6 scale-[.97]'}`

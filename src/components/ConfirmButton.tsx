@@ -1,18 +1,27 @@
 import { useState, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { useT } from '../state/uiPrefs'
 
-export default function ConfirmButton({ onConfirm, children, className, armedClassName, resetAfter = 3000 }) {
+interface ConfirmButtonProps {
+  onConfirm: () => void
+  children: ReactNode
+  className?: string
+  armedClassName?: string
+  resetAfter?: number
+}
+
+export default function ConfirmButton({ onConfirm, children, className, armedClassName, resetAfter = 3000 }: ConfirmButtonProps) {
   const t = useT()
   const [armed, setArmed] = useState(false)
-  const resetTimer = useRef(null)
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function handleClick(e) {
+  function handleClick(e: React.MouseEvent) {
     e.stopPropagation()
     if (!armed) {
       setArmed(true)
       resetTimer.current = setTimeout(() => setArmed(false), resetAfter)
     } else {
-      clearTimeout(resetTimer.current)
+      if (resetTimer.current) clearTimeout(resetTimer.current)
       setArmed(false)
       onConfirm()
     }

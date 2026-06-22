@@ -120,6 +120,15 @@ interface HarmonicsParam<P> extends ParamCommon<P> {
 
 export type ParamDef<P> = RangeParam<P> | SelectParam<P> | ToggleParam<P> | HarmonicsParam<P>
 
+// UI-facing param-def types (params erased): the controls in ui.tsx render from
+// these — they read def metadata (min/max/options/label…) and a raw value, never
+// the owning block's param object. `def.type` discriminates the union.
+export type UiParam = ParamDef<Record<string, unknown>>
+export type RangeParamDef = RangeParam<Record<string, unknown>>
+export type SelectParamDef = SelectParam<Record<string, unknown>>
+export type ToggleParamDef = ToggleParam<Record<string, unknown>>
+export type HarmonicsParamDef = HarmonicsParam<Record<string, unknown>>
+
 interface BlockExample<P> {
   label: string
   hint?: string
