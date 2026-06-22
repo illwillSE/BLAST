@@ -4,14 +4,32 @@ import { BLOCK_DEFS, disabledSourceParams } from '../blocks/registry'
 import { findBlock, findLane, isSource } from '../state/model'
 import { estimateDuration } from '../audio/engine'
 import { useT } from '../state/uiPrefs'
+import type { RangeParamDef } from '../blocks/registry'
+import type { Sequencer, Sound, SourceType } from '../types'
 import { Slider } from './ui'
 import BlockControls from './BlockControls'
 import BusMixer from './BusMixer'
 import SequencerEditor from './SequencerEditor'
 
-const OUT_VOLUME_DEF = { key: 'outputVolume', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
+const OUT_VOLUME_DEF: RangeParamDef = { key: 'outputVolume', label: 'Level', type: 'range', min: -40, max: 6, step: 0.1, default: 0, format: (v) => `${v.toFixed(1)}dB` }
 
-function OutputControls({ sound, onOutputVolume, onVoicing }) {
+// The shared handler bag the inspector threads to its panels (BlockControls,
+// BusMixer, OutputControls, SequencerEditor). App constructs it.
+export interface InspectorHandlers {
+  onParam: (blockId: string, key: string, value: unknown) => void
+  onToggle: (blockId: string) => void
+  onRemove: (blockId: string) => void
+  onRemoveLane: (laneId: string) => void
+  onSwapSource: (blockId: string, type: SourceType) => void
+  onPasteValues: (blockId: string) => void
+  onSelect: (key: string, additive?: boolean) => void
+  onSequencer: (patch: Partial<Sequencer>) => void
+  onOutputVolume: (v: number) => void
+  onVoicing: (v: 'mono' | 'poly') => void
+  onLaneProp: (laneId: string, key: string, value: number) => void
+}
+
+function OutputControls({ sound, onOutputVolume, onVoicing }: { sound: Sound; onOutputVolume: (v: number) => void; onVoicing: (v: 'mono' | 'poly') => void }) {
   const t = useT()
   const voicing = sound.voicing ?? 'poly'
   return (
@@ -24,7 +42,7 @@ function OutputControls({ sound, onOutputVolume, onVoicing }) {
         <div>
           <span className="text-[11px] uppercase tracking-wide text-faint">{t('inspector.voicing')}</span>
           <div className="mt-1 flex items-center gap-px rounded-md border border-edge bg-surface p-0.5">
-            {['mono', 'poly'].map((v) => (
+            {(['mono', 'poly'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => onVoicing(v)}
@@ -43,7 +61,7 @@ function OutputControls({ sound, onOutputVolume, onVoicing }) {
   )
 }
 
-function Summary({ sound }) {
+function Summary({ sound }: { sound: Sound }) {
   const t = useT()
   const lanes = sound.sources?.length ?? 0
   const master = sound.master?.length ?? 0
@@ -59,7 +77,7 @@ function Summary({ sound }) {
 }
 
 // Resolve one selection key to a rendered control panel.
-function Panel({ keyId, sound, handlers }) {
+function Panel({ keyId, sound, handlers }: { keyId: string; sound: Sound; handlers: InspectorHandlers }) {
   if (keyId === 'output') return <OutputControls sound={sound} {...handlers} />
   if (keyId === 'seq') return <SequencerEditor sound={sound} onChange={handlers.onSequencer} />
   if (keyId === 'bus') return <BusMixer sound={sound} handlers={handlers} />
@@ -85,18 +103,27 @@ function Panel({ keyId, sound, handlers }) {
   )
 }
 
-export default function InspectorDock({ sound, selectedKeys, handlers, minimized, onToggleMinimize }) {
+interface InspectorDockProps {
+  sound: Sound
+  selectedKeys: string[]
+  handlers: InspectorHandlers
+  minimized: boolean
+  onToggleMinimize: () => void
+}
+
+export default function InspectorDock({ sound, selectedKeys, handlers, minimized, onToggleMinimize }: InspectorDockProps) {
   const t = useT()
   const keys = selectedKeys.filter((k) => k === 'output' || k === 'seq' || k === 'bus' || findBlock(sound, k))
 
   // Measure real content height via ResizeObserver, then animate the outer
   // wrapper between 0 (minimized) and the measured value.
-  const innerRef = useRef(null)
-  const [contentHeight, setContentHeight] = useState(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [contentHeight, setContentHeight] = useState<number | null>(null)
   useEffect(() => {
     if (!innerRef.current) return
     const ro = new ResizeObserver((entries) => {
-      setContentHeight(entries[0].borderBoxSize[0].blockSize)
+      const size = entries[0]?.borderBoxSize?.[0]?.blockSize
+      if (size != null) setContentHeight(size)
     })
     ro.observe(innerRef.current)
     return () => ro.disconnect()

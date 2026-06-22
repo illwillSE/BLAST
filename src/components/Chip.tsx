@@ -33,7 +33,7 @@ const VIEW_OPTS = [
 interface ChipProps {
   block: Block
   selected: boolean
-  onClick: () => void
+  onClick: React.MouseEventHandler<HTMLElement>
   onParam: OnParam
   drag?: DragProps
 }

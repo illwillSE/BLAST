@@ -1,34 +1,40 @@
 import { useState } from 'react'
 import { Copy, ClipboardPaste, Power, X } from 'lucide-react'
 import { BLOCK_DEFS } from '../blocks/registry'
+import type { UiParam } from '../blocks/registry'
 import { useClipboard, copyBlock } from '../state/clipboard'
 import { useUIPrefs, useT } from '../state/uiPrefs'
 import { CAT_STYLES, ParamControl, InfoDot } from './ui'
+import type { Block, SourceType, Sound, SynthParams } from '../types'
 import SampleEditor from './SampleEditor'
 import ConfirmButton from './ConfirmButton'
 import EnvelopeSampleLoader from './EnvelopeSampleLoader'
 import SynthPreview from './SynthPreview'
 import BlockHelpModal from './BlockHelpModal'
 
+type SelectFn = (key: string, additive?: boolean) => void
+type DisabledParams = Map<string, { name: string; id: string }>
+type OnParam = (key: string, value: unknown) => void
+
 // `metal` is an advanced source — hidden from the in-place source switch in
 // Beginner mode (still selectable in Advanced). Keeping the current type listed
 // means a sound that already uses Metal still shows it as the active choice.
-function SourceTypeSwitch({ block, onSwapSource }) {
+function SourceTypeSwitch({ block, onSwapSource }: { block: Block; onSwapSource: (type: SourceType) => void }) {
   const { mode } = useUIPrefs()
-  const types = ['synth', 'metal', 'noise', 'sample'].filter(
+  const types = (['synth', 'metal', 'noise', 'sample'] as const).filter(
     (t) => mode === 'advanced' || t !== 'metal' || block.type === 'metal',
   )
   return (
     <div className="inline-flex gap-1 rounded bg-well p-0.5">
-      {types.map((t) => (
+      {types.map((tp) => (
         <button
-          key={t}
-          onClick={() => t !== block.type && onSwapSource(t)}
+          key={tp}
+          onClick={() => tp !== block.type && onSwapSource(tp)}
           className={`rounded px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-            block.type === t ? 'bg-accent-deep/20 text-accent-bright' : 'text-muted hover:text-ink-soft'
+            block.type === tp ? 'bg-accent-deep/20 text-accent-bright' : 'text-muted hover:text-ink-soft'
           }`}
         >
-          {t}
+          {tp}
         </button>
       ))}
     </div>
@@ -41,7 +47,7 @@ const NOISE_COLORS = [
   { value: 'brown', bg: '#7a4728', label: 'brown' },
 ]
 
-function NoiseColorPicker({ value, onChange }) {
+function NoiseColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-[10px] uppercase tracking-wider text-faint">Color</span>
@@ -68,7 +74,14 @@ function NoiseColorPicker({ value, onChange }) {
 // Vocoder) has taken over one of the panel's params, a badge names it so the
 // greyed controls read as deliberate, not broken — the same info the per-control
 // hover tooltip carries, surfaced at a glance.
-function PanelHeader({ label, titleKey, textKey, params, disabledParams, onSelect }) {
+function PanelHeader({ label, titleKey, textKey, params, disabledParams, onSelect }: {
+  label: string
+  titleKey: string
+  textKey?: string
+  params: UiParam[]
+  disabledParams?: DisabledParams
+  onSelect?: SelectFn
+}) {
   const t = useT()
   const lockedBy = params.map((p) => disabledParams?.get(p.key)).find(Boolean)
   return (
@@ -88,7 +101,12 @@ function PanelHeader({ label, titleKey, textKey, params, disabledParams, onSelec
   )
 }
 
-function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
+function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }: {
+  visibleParams: UiParam[]
+  blockParams: Record<string, unknown>
+  disabledParams?: DisabledParams
+  onParam: OnParam
+}) {
   return (
     <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
       {visibleParams.map((p) => {
@@ -112,12 +130,27 @@ function ParamsGrid({ visibleParams, blockParams, disabledParams, onParam }) {
   )
 }
 
+interface BlockControlsProps {
+  block: Block
+  sound: Sound
+  soundId: string
+  isSource: boolean
+  canRemoveLane: boolean
+  onParam: OnParam
+  onToggle: () => void
+  onRemove: () => void
+  onSwapSource: (type: SourceType) => void
+  onPasteValues: () => void
+  disabledParams?: DisabledParams
+  onSelect?: SelectFn
+}
+
 // Full controls for one block, rendered in the inspector dock. Params lay out
 // in a responsive 2-column grid; the rich editors (sample waveform, harmonics)
 // span the full width above the grid.
 export default function BlockControls({
   block, sound, soundId, isSource, canRemoveLane, onParam, onToggle, onRemove, onSwapSource, onPasteValues, disabledParams, onSelect,
-}) {
+}: BlockControlsProps) {
   const def = BLOCK_DEFS[block.type]
   const cat = CAT_STYLES[def.category]
   const { mode } = useUIPrefs()
@@ -126,8 +159,9 @@ export default function BlockControls({
   const clip = useClipboard()
   const canPasteValues = clip?.kind === 'block' && clip.block.type === block.type
 
+  const blockParams = block.params as Record<string, unknown>
   const shown = def.params.filter((p) =>
-    (!p.show || p.show(block.params, sound)) && !(block.type === 'noise' && p.key === 'color')
+    (!p.show || p.show(blockParams, sound)) && !(block.type === 'noise' && p.key === 'color')
     && !(block.type === 'monitor' && p.key === 'mode')
   )
   // Beginner mode hides params tagged `advanced`. If that would empty the
@@ -211,7 +245,7 @@ export default function BlockControls({
         )}
         {/* Beginner-friendly one-click examples, surfaced from the registry so
             kids can learn by clicking without opening the help modal. */}
-        {def.examples?.length > 0 && (
+        {def.examples && def.examples.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-faint">{t('block.examples')}</span>
             {def.examples.map((ex) => (
@@ -232,12 +266,12 @@ export default function BlockControls({
             params grid alone. */}
         {block.type === 'synth' ? (
           <div className="grid gap-x-8 gap-y-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-            {[['osc', t('block.oscillator'), 'wave'], ['env', t('block.envelope'), 'env']].map(([group, label, which]) => (
+            {([['osc', t('block.oscillator'), 'wave'], ['env', t('block.envelope'), 'env']] as const).map(([group, label, which]) => (
               <div key={group} data-tut={group === 'osc' ? 'source-osc' : 'source-env'} className="rounded-lg border border-edge/60 p-3">
                 <PanelHeader label={label} titleKey={which === 'wave' ? 'block.oscillator' : 'block.envelope'} textKey={which === 'wave' ? 'block.oscInfo' : 'block.envInfo'} params={visibleParams.filter((p) => p.group === group)} disabledParams={disabledParams} onSelect={onSelect} />
                 <SynthPreview params={block.params} which={which} />
                 <div className="mt-3">
-                  <ParamsGrid visibleParams={visibleParams.filter((p) => p.group === group)} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+                  <ParamsGrid visibleParams={visibleParams.filter((p) => p.group === group)} blockParams={blockParams} disabledParams={disabledParams} onParam={onParam} />
                 </div>
               </div>
             ))}
@@ -249,9 +283,11 @@ export default function BlockControls({
             </div>
             <div className="rounded-lg border border-edge/60 p-3">
               <PanelHeader label={t('block.envelope')} titleKey="block.envelope" textKey="block.envInfo" params={visibleParams} disabledParams={disabledParams} onSelect={onSelect} />
-              <SynthPreview params={block.params} which="env" />
+              {/* Noise has no oscillator preview; SynthPreview's env view only reads
+                  the ADSR fields, which NoiseParams shares. */}
+              <SynthPreview params={block.params as unknown as SynthParams} which="env" />
               <div className="mt-3">
-                <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+                <ParamsGrid visibleParams={visibleParams} blockParams={blockParams} disabledParams={disabledParams} onParam={onParam} />
               </div>
             </div>
           </div>
@@ -260,10 +296,10 @@ export default function BlockControls({
             <div className="w-64 shrink-0">
               <EnvelopeSampleLoader block={block} soundId={soundId} onParam={onParam} />
             </div>
-            <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+            <ParamsGrid visibleParams={visibleParams} blockParams={blockParams} disabledParams={disabledParams} onParam={onParam} />
           </div>
         ) : (
-          <ParamsGrid visibleParams={visibleParams} blockParams={block.params} disabledParams={disabledParams} onParam={onParam} />
+          <ParamsGrid visibleParams={visibleParams} blockParams={blockParams} disabledParams={disabledParams} onParam={onParam} />
         )}
       </div>
 

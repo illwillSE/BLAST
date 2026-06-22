@@ -1,5 +1,8 @@
 // Ambient declarations for dependencies that ship no TypeScript types.
 
+// Vite handles CSS side-effect imports; TS just needs them declared.
+declare module '*.css' {}
+
 // WaveSurfer's plugin `.esm.js` deep paths resolve to no `.esm.d.ts`, but the
 // sibling `.js` export path is typed (regions.d.ts / zoom.d.ts). Re-export those
 // types for the exact `.esm.js` specifiers the app imports, so the runtime
