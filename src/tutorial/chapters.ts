@@ -11,30 +11,32 @@
 import { newProject, newSound, newBlock, newLane, findLane } from '../state/model'
 import { setSample, removeSample, decodeBlob } from '../audio/sampleCache'
 import { bufferToWavBlob } from '../audio/bufferOps'
+import type { Block, Lane, Project, SampleTrim } from '../types'
+import type { TutorialChapter, TutorialCtx } from './types'
 
 // The lane this chapter operates on, resolved fresh from a given project.
-function lane(project, ctx) {
+function lane(project: Project, ctx: TutorialCtx): Lane | null {
   const sound = project.sounds.find((s) => s.id === ctx.soundId)
   if (!sound) return null
-  return findLane(sound, ctx.laneId) ?? sound.sources.find((s) => s.id === ctx.laneId) ?? null
+  return findLane(sound, ctx.laneId ?? '') ?? sound.sources.find((s) => s.id === ctx.laneId) ?? null
 }
 
-function chainIds(project, ctx) {
+function chainIds(project: Project, ctx: TutorialCtx): string[] {
   return lane(project, ctx)?.chain.map((b) => b.id) ?? []
 }
 
 // The seeded Pitch LFO control block in the Effects chapter's lane.
-function pitchLfo(project, ctx) {
+function pitchLfo(project: Project, ctx: TutorialCtx): Block | null {
   return lane(project, ctx)?.chain.find((b) => b.type === 'pitchlfo') ?? null
 }
 
 // Curated throwaway demo for the Core flow chapter: one synth lane seeded with
 // a Filter block, so a "reorder" step has two blocks to work with once the
 // learner adds a second one.
-function buildCoreFlowDemo() {
+function buildCoreFlowDemo(): Project {
   const project = newProject()
   const sound = newSound('Tutorial Sound')
-  sound.sources[0].chain = [newBlock('filter')]
+  sound.sources[0]!.chain = [newBlock('filter')]
   project.sounds = [sound]
   return project
 }
@@ -42,7 +44,7 @@ function buildCoreFlowDemo() {
 // Sources chapter demo: a bare synth source, no effects — the focus is the raw
 // tone, so nothing downstream colours it. The source lane is pre-selected by
 // ChainEditor on load, so its controls are already open.
-function buildSourcesDemo() {
+function buildSourcesDemo(): Project {
   const project = newProject()
   const sound = newSound('Tutorial Source')
   project.sounds = [sound]
@@ -54,10 +56,10 @@ function buildSourcesDemo() {
 // hands-on. The control block is seeded rather than added because it is an
 // advanced block, hidden from the add-menu in Beginner mode — its controls
 // still render in either mode once it exists.
-function buildEffectsDemo() {
+function buildEffectsDemo(): Project {
   const project = newProject()
   const sound = newSound('Tutorial Effects')
-  sound.sources[0].chain = [newBlock('reverb'), newBlock('pitchlfo')]
+  sound.sources[0]!.chain = [newBlock('reverb'), newBlock('pitchlfo')]
   project.sounds = [sound]
   return project
 }
@@ -67,7 +69,7 @@ function buildEffectsDemo() {
 // sequencer, projects); only the "add a layer" step is hands-on, the rest point
 // at controls and explain (the sequencer lives behind a modal and saving a
 // project downloads a file — neither belongs in a throwaway sandbox).
-function buildLayersDemo() {
+function buildLayersDemo(): Project {
   const project = newProject()
   const sound = newSound('Tutorial Layers')
   project.sounds = [sound]
@@ -77,7 +79,7 @@ function buildLayersDemo() {
 // Sampler chapter demo: a single Sample source. The buffer is loaded into the
 // sample cache by the chapter's onEnter hook (samples live in the cache, not the
 // serializable project), so the editor and tools have audio to work on.
-function buildSamplerDemo() {
+function buildSamplerDemo(): Project {
   const project = newProject()
   const sound = newSound('Tutorial Sampler')
   sound.sources = [newLane('sample')]
@@ -88,8 +90,8 @@ function buildSamplerDemo() {
 // Synthesize a short demo clip (a decaying tone + a noisy transient) and load it
 // into the sample cache for `blockId`, via the same decode path a real file uses
 // — so the waveform, trim, and destructive tools all behave normally.
-async function loadDemoSample(blockId) {
-  const Ctx = window.AudioContext || window.webkitAudioContext
+async function loadDemoSample(blockId: string): Promise<void> {
+  const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!
   const ctx = new Ctx()
   const sr = ctx.sampleRate
   const n = Math.floor(sr * 1.6)
@@ -110,7 +112,7 @@ async function loadDemoSample(blockId) {
   } catch { /* if decode fails the chapter still runs, just without a waveform */ }
 }
 
-export const CHAPTERS = [
+export const CHAPTERS: TutorialChapter[] = [
   {
     id: 'core-flow',
     title: { en: 'Core flow', sv: 'Grundflödet' },
@@ -120,7 +122,7 @@ export const CHAPTERS = [
     },
     sandbox: 'demo',
     buildDemo: buildCoreFlowDemo,
-    makeCtx: (demo) => ({ soundId: demo.sounds[0].id, laneId: demo.sounds[0].sources[0].id }),
+    makeCtx: (demo) => ({ soundId: demo.sounds[0]!.id, laneId: demo.sounds[0]!.sources[0]!.id }),
     steps: [
       {
         id: 'orient',
@@ -242,7 +244,7 @@ export const CHAPTERS = [
     },
     sandbox: 'demo',
     buildDemo: buildSourcesDemo,
-    makeCtx: (demo) => ({ soundId: demo.sounds[0].id, laneId: demo.sounds[0].sources[0].id }),
+    makeCtx: (demo) => ({ soundId: demo.sounds[0]!.id, laneId: demo.sounds[0]!.sources[0]!.id }),
     steps: [
       {
         id: 'orient',
@@ -270,7 +272,7 @@ export const CHAPTERS = [
         validate: (project, start, ctx) => {
           const cur = lane(project, ctx)
           const was = lane(start, ctx)
-          return !!cur && !!was && cur.params.wave !== was.params.wave
+          return !!cur && !!was && (cur.params as Record<string, unknown>).wave !== (was.params as Record<string, unknown>).wave
         },
       },
       {
@@ -291,7 +293,9 @@ export const CHAPTERS = [
           const cur = lane(project, ctx)
           const was = lane(start, ctx)
           if (!cur || !was) return false
-          return ['attack', 'decay', 'sustain', 'release', 'duration'].some((k) => cur.params[k] !== was.params[k])
+          const cp = cur.params as Record<string, unknown>
+          const wp = was.params as Record<string, unknown>
+          return ['attack', 'decay', 'sustain', 'release', 'duration'].some((k) => cp[k] !== wp[k])
         },
       },
       {
@@ -327,8 +331,8 @@ export const CHAPTERS = [
     // Pre-select the Pitch LFO so its controls open in the inspector on load —
     // the learner tweaks it without first hunting for a chip in the dimmed lane.
     makeCtx: (demo) => {
-      const lane = demo.sounds[0].sources[0]
-      return { soundId: demo.sounds[0].id, laneId: lane.id, selectId: lane.chain.find((b) => b.type === 'pitchlfo').id }
+      const lane = demo.sounds[0]!.sources[0]!
+      return { soundId: demo.sounds[0]!.id, laneId: lane.id, selectId: lane.chain.find((b) => b.type === 'pitchlfo')?.id }
     },
     steps: [
       {
@@ -410,7 +414,7 @@ export const CHAPTERS = [
     },
     sandbox: 'demo',
     buildDemo: buildLayersDemo,
-    makeCtx: (demo) => ({ soundId: demo.sounds[0].id, laneId: demo.sounds[0].sources[0].id }),
+    makeCtx: (demo) => ({ soundId: demo.sounds[0]!.id, laneId: demo.sounds[0]!.sources[0]!.id }),
     steps: [
       {
         id: 'orient',
@@ -489,11 +493,11 @@ export const CHAPTERS = [
     },
     sandbox: 'demo',
     buildDemo: buildSamplerDemo,
-    makeCtx: (demo) => ({ soundId: demo.sounds[0].id, laneId: demo.sounds[0].sources[0].id }),
+    makeCtx: (demo) => ({ soundId: demo.sounds[0]!.id, laneId: demo.sounds[0]!.sources[0]!.id }),
     // The sample buffer lives in the cache, not the project — load it on enter,
     // drop it on exit so the throwaway demo leaves nothing behind.
-    onEnter: (demo, ctx) => loadDemoSample(ctx.laneId),
-    onExit: (ctx) => removeSample(ctx.laneId),
+    onEnter: (demo, ctx) => loadDemoSample(ctx.laneId!),
+    onExit: (ctx) => removeSample(ctx.laneId!),
     steps: [
       {
         id: 'orient',
@@ -550,7 +554,8 @@ export const CHAPTERS = [
         },
         validate: (project, start, ctx) => {
           const l = lane(project, ctx)
-          return !!l && (l.params.trimStart != null || l.params.trimEnd != null)
+          const lp = l?.params as SampleTrim | undefined
+          return !!l && (lp?.trimStart != null || lp?.trimEnd != null)
         },
       },
       {
@@ -576,6 +581,6 @@ export const CHAPTERS = [
   },
 ]
 
-export function getChapter(id) {
+export function getChapter(id: string): TutorialChapter | null {
   return CHAPTERS.find((c) => c.id === id) ?? null
 }

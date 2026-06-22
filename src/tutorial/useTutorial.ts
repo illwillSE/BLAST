@@ -1,6 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { CHAPTERS, getChapter } from './chapters'
 import { getProgress, setCurrent, markCompleted, resetProgress } from './progress'
+import type { Project } from '../types'
+import type { TutorialCtx } from './types'
+
+interface ActiveState {
+  chapterId: string
+  stepIndex: number
+  ctx: TutorialCtx
+  stepStartProject: Project
+}
+
+interface UseTutorialArgs {
+  project: Project
+  reset: (project: Project) => void
+  setSelectedId: (id: string | undefined) => void
+}
 
 // Tutorial engine. Owns which chapter/step is active, drives the per-chapter
 // sandbox swap, and auto-advances `do` steps by watching the real project
@@ -9,15 +24,14 @@ import { getProgress, setCurrent, markCompleted, resetProgress } from './progres
 // `project`/`reset`/`setSelectedId` are the same handles App.jsx already uses
 // for load/new-project — a demo sandbox is just reset() under the hood, with
 // the live project stashed and restored on exit.
-export function useTutorial({ project, reset, setSelectedId }) {
+export function useTutorial({ project, reset, setSelectedId }: UseTutorialArgs) {
   const [menuOpen, setMenuOpen] = useState(false)
-  // active: { chapterId, stepIndex, ctx, stepStartProject } | null
-  const [active, setActive] = useState(null)
+  const [active, setActive] = useState<ActiveState | null>(null)
   // Latch for gated `read` steps: once the goal is met Next stays unlocked, so
   // an A/B action that returns to the original state (e.g. bypass then re-enable)
   // doesn't re-lock the button. Reset whenever the active step changes.
   const [unlocked, setUnlocked] = useState(false)
-  const stash = useRef(null) // { project, selectedId } while a demo sandbox is live
+  const stash = useRef<{ project: Project; selectedId: string | undefined } | null>(null) // while a demo sandbox is live
 
   // Latest project, so non-reactive callbacks read fresh state.
   const projectRef = useRef(project)
@@ -27,7 +41,7 @@ export function useTutorial({ project, reset, setSelectedId }) {
   // current step's validate against the snapshot taken when the step began.
   useEffect(() => {
     if (!active) return
-    const step = getChapter(active.chapterId)?.steps[active.stepIndex]
+    const step = getChapter(active.chapterId)?.steps?.[active.stepIndex]
     if (!step || step.kind !== 'do' || !step.validate) return
     if (step.validate(project, active.stepStartProject, active.ctx)) advance()
   }, [project]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -35,7 +49,7 @@ export function useTutorial({ project, reset, setSelectedId }) {
   // Reset the gated-step latch whenever the active step changes.
   useEffect(() => { setUnlocked(false) }, [active?.chapterId, active?.stepIndex])
 
-  function startChapter(chapterId, { resumeStep } = {}) {
+  function startChapter(chapterId: string, { resumeStep }: { resumeStep?: number } = {}) {
     const chapter = getChapter(chapterId)
     if (!chapter || chapter.stub) return
     setMenuOpen(false)
@@ -43,8 +57,8 @@ export function useTutorial({ project, reset, setSelectedId }) {
 
     if (chapter.sandbox === 'demo') {
       stash.current = { project: projectRef.current, selectedId: projectRef.current.sounds[0]?.id }
-      const demo = chapter.buildDemo()
-      const ctx = chapter.makeCtx(demo)
+      const demo = chapter.buildDemo!()
+      const ctx = chapter.makeCtx?.(demo) ?? {}
       reset(demo)
       setSelectedId(ctx.soundId)
       // Optional side-effects outside the serializable project (e.g. loading a
@@ -64,7 +78,7 @@ export function useTutorial({ project, reset, setSelectedId }) {
       if (!cur) return cur
       const chapter = getChapter(cur.chapterId)
       const next = cur.stepIndex + 1
-      if (next >= chapter.steps.length) {
+      if (next >= (chapter?.steps?.length ?? 0)) {
         markCompleted(cur.chapterId)
         teardown(cur)
         return null
@@ -86,7 +100,7 @@ export function useTutorial({ project, reset, setSelectedId }) {
 
   // Restore the stashed live project (demo sandbox only), run the chapter's
   // onExit cleanup (e.g. drop a demo sample from the cache), and clear state.
-  function teardown(act) {
+  function teardown(act: ActiveState | null) {
     if (act) getChapter(act.chapterId)?.onExit?.(act.ctx)
     if (stash.current) {
       reset(stash.current.project)
@@ -115,7 +129,7 @@ export function useTutorial({ project, reset, setSelectedId }) {
   }))
   const resumeChapter = progress.current && getChapter(progress.current.chapterId)
   const activeChapter = active ? getChapter(active.chapterId) : null
-  const activeStep = activeChapter ? activeChapter.steps[active.stepIndex] : null
+  const activeStep = active && activeChapter ? (activeChapter.steps?.[active.stepIndex] ?? null) : null
 
   // A gated `read` step (`requireValidate`) keeps Next disabled until its
   // validate passes — the learner can then play freely and continue when ready.
@@ -123,7 +137,7 @@ export function useTutorial({ project, reset, setSelectedId }) {
   // button unlocks the moment the model reaches the goal; `unlocked` latches it
   // so it stays available afterwards. Normal steps are always advanceable.
   const gatedReady =
-    activeStep?.kind === 'read' && activeStep.requireValidate && activeStep.validate
+    activeStep?.kind === 'read' && activeStep.requireValidate && activeStep.validate && active
       ? activeStep.validate(project, active.stepStartProject, active.ctx)
       : true
   const canAdvance =
@@ -149,3 +163,5 @@ export function useTutorial({ project, reset, setSelectedId }) {
     exitChapter,
   }
 }
+
+export type Tutorial = ReturnType<typeof useTutorial>

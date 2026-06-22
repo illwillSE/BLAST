@@ -1,8 +1,22 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useUIPrefs } from '../state/uiPrefs'
 import { STRINGS } from '../i18n/strings'
+import type { TutorialStep } from './types'
 
 const PAD = 6 // px of breathing room around the cut-out
+
+interface Rect { top: number; left: number; width: number; height: number }
+
+interface SpotlightProps {
+  step: TutorialStep | null
+  stepIndex: number
+  totalSteps: number
+  canBack: boolean
+  canAdvance?: boolean
+  onNext: () => void
+  onBack: () => void
+  onSkip: () => void
+}
 
 // Spotlight overlay: dims the screen, cuts a highlight out around the current
 // step's target (a giant box-shadow on the cut-out rect — no SVG mask needed),
@@ -12,25 +26,26 @@ const PAD = 6 // px of breathing room around the cut-out
 // ResizeObserver + scroll/resize listeners keep the cut-out aligned — the same
 // getBoundingClientRect pattern the inspector uses. Dev-time console.warn if a
 // target never resolves, per the authoring spec.
-export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdvance = true, onNext, onBack, onSkip }) {
+export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdvance = true, onNext, onBack, onSkip }: SpotlightProps) {
   const { lang } = useUIPrefs()
-  const [rect, setRect] = useState(null)
+  const [rect, setRect] = useState<Rect | null>(null)
   const warnedRef = useRef(false)
   const startRef = useRef(0)
   // Measured tooltip size, so we can keep it inside the viewport on both axes —
   // the inspector dock resizes when a panel's content changes (e.g. swapping the
   // source type), which moves anchored targets and could push the tooltip (and
   // its Next button) off-screen.
-  const tipRef = useRef(null)
-  const [tipSize, setTipSize] = useState(null)
+  const tipRef = useRef<HTMLDivElement>(null)
+  const [tipSize, setTipSize] = useState<{ w: number; h: number } | null>(null)
 
   useEffect(() => { startRef.current = Date.now(); warnedRef.current = false }, [step])
 
   useEffect(() => {
     if (!step?.target) { setRect(null); return }
-    let ro
+    const target = step.target
+    let ro: ResizeObserver | undefined
     const update = () => {
-      const el = document.querySelector(step.target)
+      const el = document.querySelector(target)
       if (el) {
         const r = el.getBoundingClientRect()
         setRect({ top: r.top, left: r.left, width: r.width, height: r.height })
@@ -39,7 +54,7 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
         setRect(null)
         if (!warnedRef.current && Date.now() - startRef.current > 4000) {
           warnedRef.current = true
-          console.warn(`[tutorial] step "${step.id}" target "${step.target}" not found`)
+          console.warn(`[tutorial] step "${step.id}" target "${target}" not found`)
         }
       }
     }
@@ -67,11 +82,11 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
   }, [step])
 
   if (!step) return null
-  const tut = (STRINGS[lang] ?? STRINGS.en).tutorial
+  const tut = ((STRINGS[lang] ?? STRINGS.en).tutorial) as Record<string, string>
   const text = step.text[lang] ?? step.text.en
   const last = stepIndex >= totalSteps - 1
 
-  const cutout = rect
+  const cutout: React.CSSProperties = rect
     ? {
         position: 'fixed', top: rect.top - PAD, left: rect.left - PAD,
         width: rect.width + PAD * 2, height: rect.height + PAD * 2,
@@ -88,12 +103,12 @@ export default function Spotlight({ step, stepIndex, totalSteps, canBack, canAdv
   // Tooltip sits above modals (e.g. the sequencer, z-80) so its instructions and
   // Next stay visible while the learner works in a modal; the dim/cut-out (z-70)
   // stays behind the modal so the modal itself reads bright.
-  let tip = { position: 'fixed', zIndex: 90, maxWidth: 320 }
+  let tip: React.CSSProperties = { position: 'fixed', zIndex: 90, maxWidth: 320 }
   if (rect) {
     const place = step.placement ?? 'bottom'
     const w = tipSize?.w ?? 320
     const h = tipSize?.h ?? 0
-    let top, left
+    let top: number, left: number
     if (place === 'right') { top = rect.top; left = rect.left + rect.width + PAD * 2 + 8 }
     else if (place === 'left') { top = rect.top; left = rect.left - PAD * 2 - 8 - w }
     else if (place === 'top') { top = rect.top - PAD - 8 - h; left = rect.left }

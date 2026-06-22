@@ -3,14 +3,15 @@ import { useUIPrefs } from '../state/uiPrefs'
 import { STRINGS } from '../i18n/strings'
 import { Button } from '../components/ui'
 import { useModalAnimation, backdropAnim, panelAnim } from '../components/useModalAnimation'
+import type { Tutorial } from './useTutorial'
 
 // Course screen: lists every chapter with a done/in-progress badge, a Resume
 // shortcut when progress exists, and per-chapter Start/Replay/Continue. Stub
 // chapters render as disabled, titled placeholders. Mirrors the IntroModal /
 // SettingsModal chrome.
-export default function TutorialMenu({ tutorial, onClose }) {
+export default function TutorialMenu({ tutorial, onClose }: { tutorial: Tutorial; onClose: () => void }) {
   const { lang } = useUIPrefs()
-  const tut = (STRINGS[lang] ?? STRINGS.en).tutorial
+  const tut = ((STRINGS[lang] ?? STRINGS.en).tutorial) as Record<string, string>
   const { entered, handleClose } = useModalAnimation(onClose)
 
   return (
