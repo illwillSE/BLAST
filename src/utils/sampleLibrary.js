@@ -23,6 +23,22 @@ function openDB() {
   return dbPromise
 }
 
+// Closes any open connection (deleteDatabase blocks while one is open) then
+// drops the whole IndexedDB database — used by the System settings tab to
+// wipe everything.
+export async function deleteAllData() {
+  if (dbPromise) {
+    try { (await dbPromise).close() } catch {}
+    dbPromise = null
+  }
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(DB_NAME)
+    req.onsuccess = () => resolve()
+    req.onerror = () => reject(req.error)
+    req.onblocked = () => resolve()
+  })
+}
+
 function getAll(storeName) {
   return openDB().then(db => new Promise((resolve, reject) => {
     const req = db.transaction(storeName, 'readonly').objectStore(storeName).getAll()

@@ -4,6 +4,7 @@ import { SAMPLE_RATES, EXPORT_CHANNELS, EXPORT_FORMATS } from '../audio/render'
 import { useUIPrefs, useT } from '../state/uiPrefs'
 import { useModalAnimation, backdropAnim, panelAnim } from './useModalAnimation'
 import { Button } from './ui'
+import { deleteAllData } from '../utils/sampleLibrary'
 
 // A labelled native <select>, matching the chain editor's select styling.
 function SelectField({ label, value, onChange, children }) {
@@ -31,12 +32,21 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
   const [tab, setTab] = useState('general')
   const [confirmingNew, setConfirmingNew] = useState(false)
   const [confirmingPresets, setConfirmingPresets] = useState(false)
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  const [clearText, setClearText] = useState('')
   const { entered, handleClose } = useModalAnimation(onClose)
 
   const TABS = [
     { id: 'general', label: t('settings.general') },
     { id: 'export', label: t('settings.export') },
+    { id: 'system', label: t('settings.system') },
   ]
+
+  async function handleClearAll() {
+    try { await deleteAllData() } catch {}
+    try { localStorage.clear() } catch {}
+    window.location.reload()
+  }
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') handleClose() }
@@ -189,6 +199,42 @@ export default function SettingsModal({ project, onRenameProject, onSetExport, o
                 {EXPORT_FORMATS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
               </SelectField>
             </>
+          )}
+
+          {tab === 'system' && (
+            <div className="space-y-2 rounded border border-danger/60 bg-danger/10 p-2.5">
+              <p className="text-[12px] leading-relaxed text-ink">{t('settings.clearAllWarning')}</p>
+              {!confirmingClear ? (
+                <button
+                  onClick={() => setConfirmingClear(true)}
+                  className="rounded border border-danger bg-danger px-2 py-0.5 text-[12px] text-white transition-colors"
+                >
+                  {t('settings.clearAll')}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[12px] leading-relaxed text-ink">{t('settings.clearAllConfirm')}</p>
+                  <input
+                    value={clearText}
+                    onChange={(e) => setClearText(e.target.value)}
+                    placeholder={t('settings.clearAllTypeYes')}
+                    spellCheck={false}
+                    autoFocus
+                    className="w-full rounded border border-edge bg-surface px-1.5 py-1 font-mono text-[12px] text-ink outline-none focus:border-accent-deep/60"
+                  />
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={handleClearAll}
+                      disabled={clearText.trim().toLowerCase() !== 'yes'}
+                      className="rounded border border-danger bg-danger px-2 py-0.5 text-[12px] text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {t('settings.clearAllConfirmBtn')}
+                    </button>
+                    <Button onClick={() => { setConfirmingClear(false); setClearText('') }}>{t('common.cancel')}</Button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
